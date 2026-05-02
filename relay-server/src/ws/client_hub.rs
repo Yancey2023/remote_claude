@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::models::Device;
-use crate::store::MemoryStore;
+use crate::store::SqliteStore;
 
 #[derive(Clone)]
 pub struct ClientHub {
@@ -114,7 +114,7 @@ impl ClientHub {
 pub async fn handle_client_ws(
     ws: WebSocket,
     hub: ClientHub,
-    store: MemoryStore,
+    store: SqliteStore,
     config: Config,
 ) {
     let (mut ws_sender, mut ws_receiver) = ws.split();

@@ -13,7 +13,7 @@ pub struct AppState {
     pub config: Config,
     pub client_hub: client_hub::ClientHub,
     pub web_hub: web_hub::WebHub,
-    pub store: crate::store::MemoryStore,
+    pub store: crate::store::SqliteStore,
 }
 
 /// Handle a raw WebSocket connection, routing by URL path.

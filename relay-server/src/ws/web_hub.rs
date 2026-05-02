@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 
 use crate::auth::jwt::verify_token;
 use crate::config::Config;
-use crate::store::MemoryStore;
+use crate::store::SqliteStore;
 
 use super::client_hub::ClientHub;
 use super::session::{SessionActor, SessionRegistry};
@@ -71,7 +71,7 @@ pub async fn handle_web_ws(
     ws: WebSocket,
     hub: WebHub,
     client_hub: ClientHub,
-    store: MemoryStore,
+    store: SqliteStore,
     config: Config,
 ) {
     let (mut ws_sender, mut ws_receiver) = ws.split();
@@ -159,7 +159,7 @@ async fn handle_web_message(
     user_id: &str,
     hub: &WebHub,
     client_hub: &ClientHub,
-    _store: &MemoryStore,
+    _store: &SqliteStore,
 ) -> Result<(), String> {
     let parsed: serde_json::Value =
         serde_json::from_str(text).map_err(|e| format!("invalid JSON: {}", e))?;

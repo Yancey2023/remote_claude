@@ -1,3 +1,3 @@
-pub mod memory_store;
+pub mod sqlite_store;
 
-pub use memory_store::MemoryStore;
+pub use sqlite_store::SqliteStore;

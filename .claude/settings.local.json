@@ -5,7 +5,9 @@
       "Bash(pnpm install *)",
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
-      "Bash(cargo test *)"
+      "Bash(cargo test *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git add *)"
     ]
   }
 }

@@ -49,7 +49,9 @@ async fn main() {
     }));
 
     let config = config::Config::from_env();
-    let store = store::MemoryStore::new();
+    let store = store::SqliteStore::new(&config.database_url)
+        .await
+        .expect("failed to initialize database");
     let client_hub = ClientHub::new();
     let web_hub = WebHub::new();
 
