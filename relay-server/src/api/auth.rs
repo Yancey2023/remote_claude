@@ -135,3 +135,55 @@ async fn verify(
         role: user.role,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_login_request_deserialization() {
+        let json = r#"{"username":"admin","password":"secret123"}"#;
+        let req: LoginRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.username, "admin");
+        assert_eq!(req.password, "secret123");
+    }
+
+    #[test]
+    fn test_login_response_serialization() {
+        let resp = LoginResponse {
+            token: "test-token".into(),
+            user_id: "test-user".into(),
+            username: "testuser".into(),
+            role: "Admin".into(),
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["token"], "test-token");
+        assert_eq!(json["user_id"], "test-user");
+        assert_eq!(json["username"], "testuser");
+        assert_eq!(json["role"], "Admin");
+    }
+
+    #[test]
+    fn test_logout_response_serialization() {
+        let resp = LogoutResponse {
+            message: "logged out".into(),
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["message"], "logged out");
+    }
+
+    #[test]
+    fn test_verify_response_serialization() {
+        let resp = VerifyResponse {
+            valid: true,
+            user_id: "uid".into(),
+            username: "user".into(),
+            role: "Admin".into(),
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["valid"], true);
+        assert_eq!(json["user_id"], "uid");
+        assert_eq!(json["username"], "user");
+        assert_eq!(json["role"], "Admin");
+    }
+}

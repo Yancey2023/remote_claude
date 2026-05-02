@@ -266,3 +266,129 @@ async fn receive_register(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::sync::mpsc;
+
+    #[tokio::test]
+    async fn test_new_hub_empty() {
+        let hub = ClientHub::new();
+        assert!(hub.list_online().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_and_lookup() {
+        let hub = ClientHub::new();
+        let (tx, _rx) = mpsc::channel(256);
+
+        let entry = hub.register("token-1", "pc-1", "1.0", tx).await;
+        assert!(!entry.id.is_empty());
+        assert_eq!(entry.name, "pc-1");
+        assert_eq!(entry.token, "token-1");
+        assert_eq!(entry.version, "1.0");
+
+        let found = hub.get_by_token("token-1").await;
+        assert!(found.is_some());
+        assert_eq!(found.as_ref().unwrap().id, entry.id);
+
+        let found_by_id = hub.get_by_device_id(&entry.id).await;
+        assert!(found_by_id.is_some());
+        assert_eq!(found_by_id.unwrap().id, entry.id);
+    }
+
+    #[tokio::test]
+    async fn test_get_by_token_not_found() {
+        let hub = ClientHub::new();
+        let found = hub.get_by_token("nonexistent").await;
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_by_device_id_not_found() {
+        let hub = ClientHub::new();
+        let found = hub.get_by_device_id("nonexistent").await;
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_unregister_removes_entry() {
+        let hub = ClientHub::new();
+        let (tx, _rx) = mpsc::channel(256);
+
+        hub.register("token-2", "pc-2", "1.0", tx).await;
+        assert_eq!(hub.list_online().await.len(), 1);
+
+        let removed = hub.unregister("token-2").await;
+        assert!(removed.is_some());
+        assert_eq!(removed.unwrap().name, "pc-2");
+
+        assert!(hub.list_online().await.is_empty());
+        assert!(hub.get_by_token("token-2").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_unregister_nonexistent() {
+        let hub = ClientHub::new();
+        let removed = hub.unregister("nonexistent").await;
+        assert!(removed.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_list_online_returns_all() {
+        let hub = ClientHub::new();
+        let (tx1, _rx1) = mpsc::channel(256);
+        let (tx2, _rx2) = mpsc::channel(256);
+        let (tx3, _rx3) = mpsc::channel(256);
+
+        hub.register("token-a", "pc-a", "1.0", tx1).await;
+        hub.register("token-b", "pc-b", "2.0", tx2).await;
+        hub.register("token-c", "pc-c", "3.0", tx3).await;
+
+        let list = hub.list_online().await;
+        assert_eq!(list.len(), 3);
+
+        let names: std::collections::HashSet<&str> = list.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains("pc-a"));
+        assert!(names.contains("pc-b"));
+        assert!(names.contains("pc-c"));
+    }
+
+    #[tokio::test]
+    async fn test_send_to_device_offline() {
+        let hub = ClientHub::new();
+        let result = hub.send_to_device("unknown-device", "hello").await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "device offline");
+    }
+
+    #[tokio::test]
+    async fn test_send_to_device_success() {
+        let hub = ClientHub::new();
+        let (tx, mut rx) = mpsc::channel(256);
+
+        let entry = hub.register("token-send", "pc-send", "1.0", tx).await;
+
+        let result = hub.send_to_device(&entry.id, "test message").await;
+        assert!(result.is_ok());
+
+        let received = rx.recv().await;
+        assert!(received.is_some());
+        assert_eq!(received.unwrap(), "test message");
+    }
+
+    #[tokio::test]
+    async fn test_multiple_registrations_have_unique_ids() {
+        let hub = ClientHub::new();
+        let (tx1, _rx1) = mpsc::channel(256);
+        let (tx2, _rx2) = mpsc::channel(256);
+
+        let e1 = hub.register("token-x", "pc-x", "1.0", tx1).await;
+        let e2 = hub.register("token-y", "pc-y", "2.0", tx2).await;
+
+        assert_ne!(e1.id, e2.id);
+        assert_eq!(e1.name, "pc-x");
+        assert_eq!(e2.name, "pc-y");
+    }
+}

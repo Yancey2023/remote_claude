@@ -189,3 +189,71 @@ async fn handle_server_message(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_kick_message() {
+        let (out_tx, _out_rx) = mpsc::unbounded_channel();
+        let (res_tx, _res_rx) = mpsc::unbounded_channel();
+
+        let result = handle_server_message("__kick__", &out_tx, &res_tx).await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "kicked");
+    }
+
+    #[tokio::test]
+    async fn test_ping_message() {
+        let (out_tx, mut out_rx) = mpsc::unbounded_channel();
+        let (res_tx, _res_rx) = mpsc::unbounded_channel();
+
+        let result = handle_server_message(r#"{"type":"ping","payload":{}}"#, &out_tx, &res_tx).await;
+        assert!(result.is_ok());
+
+        // Check pong was sent
+        let sent = out_rx.try_recv().unwrap();
+        assert!(sent.contains("pong"));
+    }
+
+    #[tokio::test]
+    async fn test_command_message() {
+        let (out_tx, mut out_rx) = mpsc::unbounded_channel();
+        let (res_tx, _res_rx) = mpsc::unbounded_channel();
+
+        let result = handle_server_message(
+            r#"{"type":"command","payload":{"session_id":"s1","command":"test cmd"}}"#,
+            &out_tx, &res_tx,
+        )
+        .await;
+        assert!(result.is_ok());
+
+        // Should send status_update(busy=true)
+        let sent = out_rx.try_recv().unwrap();
+        assert!(sent.contains("status_update"));
+        assert!(sent.contains("true")); // busy
+    }
+
+    #[tokio::test]
+    async fn test_unknown_message() {
+        let (out_tx, _out_rx) = mpsc::unbounded_channel();
+        let (res_tx, _res_rx) = mpsc::unbounded_channel();
+
+        let result = handle_server_message(
+            r#"{"type":"unknown","payload":{}}"#,
+            &out_tx, &res_tx,
+        )
+        .await;
+        assert!(result.is_ok()); // unknown types are ignored, not errors
+    }
+
+    #[tokio::test]
+    async fn test_invalid_json() {
+        let (out_tx, _out_rx) = mpsc::unbounded_channel();
+        let (res_tx, _res_rx) = mpsc::unbounded_channel();
+
+        let result = handle_server_message("not json", &out_tx, &res_tx).await;
+        assert!(result.is_ok()); // invalid JSON is silently ignored
+    }
+}

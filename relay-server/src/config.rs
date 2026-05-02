@@ -40,3 +40,38 @@ impl Config {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_default_values() {
+        let config = Config {
+            admin_user: "admin".into(),
+            admin_pass: "admin123".into(),
+            jwt_secret: "dev-secret".into(),
+            database_url: "sqlite:data.db".into(),
+            host: "0.0.0.0".into(),
+            port: 8080,
+            jwt_expiry_hours: 24,
+            heartbeat_interval_secs: 15,
+            heartbeat_timeout_secs: 30,
+        };
+        assert_eq!(config.admin_user, "admin");
+        assert_eq!(config.admin_pass, "admin123");
+        assert_eq!(config.jwt_secret, "dev-secret");
+        assert_eq!(config.database_url, "sqlite:data.db");
+        assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.jwt_expiry_hours, 24);
+        assert_eq!(config.heartbeat_interval_secs, 15);
+        assert_eq!(config.heartbeat_timeout_secs, 30);
+    }
+
+    #[test]
+    fn test_from_env_does_not_panic() {
+        let config = Config::from_env();
+        assert!(config.port > 0);
+    }
+}

@@ -110,9 +110,9 @@ pnpm build        # 生产构建 → dist/
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 22 tests
-cd desktop-client && cargo test  # 8 tests
-cd web-ui && pnpm test           # 30 tests
+cd relay-server && cargo test    # 50 tests
+cd desktop-client && cargo test  # 15 tests
+cd web-ui && pnpm test           # 55 tests
 ```
 
 ## 开发约定

@@ -66,3 +66,65 @@ impl IntoResponse for AppError {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::StatusCode;
+
+    #[test]
+    fn test_unauthorized_status_code() {
+        let err = AppError::Unauthorized("test".into());
+        assert_eq!(err.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[test]
+    fn test_forbidden_status_code() {
+        let err = AppError::Forbidden("test".into());
+        assert_eq!(err.status_code(), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn test_not_found_status_code() {
+        let err = AppError::NotFound("test".into());
+        assert_eq!(err.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_bad_request_status_code() {
+        let err = AppError::BadRequest("test".into());
+        assert_eq!(err.status_code(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_conflict_status_code() {
+        let err = AppError::Conflict("test".into());
+        assert_eq!(err.status_code(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn test_internal_status_code() {
+        let err = AppError::Internal("test".into());
+        assert_eq!(err.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn test_code_str_values() {
+        assert_eq!(AppError::Unauthorized("".into()).code_str(), "ERR_UNAUTHORIZED");
+        assert_eq!(AppError::Forbidden("".into()).code_str(), "ERR_FORBIDDEN");
+        assert_eq!(AppError::NotFound("".into()).code_str(), "ERR_NOT_FOUND");
+        assert_eq!(AppError::BadRequest("".into()).code_str(), "ERR_BAD_REQUEST");
+        assert_eq!(AppError::Conflict("".into()).code_str(), "ERR_CONFLICT");
+        assert_eq!(AppError::Internal("".into()).code_str(), "ERR_INTERNAL");
+    }
+
+    #[test]
+    fn test_message_returns_inner_string() {
+        assert_eq!(AppError::Unauthorized("access denied".into()).message(), "access denied");
+        assert_eq!(AppError::Forbidden("forbidden area".into()).message(), "forbidden area");
+        assert_eq!(AppError::NotFound("missing".into()).message(), "missing");
+        assert_eq!(AppError::BadRequest("bad input".into()).message(), "bad input");
+        assert_eq!(AppError::Conflict("conflict".into()).message(), "conflict");
+        assert_eq!(AppError::Internal("server error".into()).message(), "server error");
+    }
+}
+

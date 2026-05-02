@@ -78,3 +78,38 @@ impl AuthUser {
         self.role == "Admin"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_admin_returns_true_when_role_is_admin() {
+        let user = AuthUser {
+            user_id: "1".into(),
+            username: "admin".into(),
+            role: "Admin".into(),
+        };
+        assert!(user.is_admin());
+    }
+
+    #[test]
+    fn test_is_admin_returns_false_when_role_is_user() {
+        let user = AuthUser {
+            user_id: "2".into(),
+            username: "user".into(),
+            role: "User".into(),
+        };
+        assert!(!user.is_admin());
+    }
+
+    #[test]
+    fn test_is_admin_returns_false_when_role_is_empty() {
+        let user = AuthUser {
+            user_id: "3".into(),
+            username: "guest".into(),
+            role: "".into(),
+        };
+        assert!(!user.is_admin());
+    }
+}

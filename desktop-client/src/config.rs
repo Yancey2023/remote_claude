@@ -39,3 +39,37 @@ fn hostname() -> String {
         })
         .unwrap_or_else(|| "unknown-device".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_direct() {
+        let config = Config {
+            server_url: "ws://test:8080/ws/client".into(),
+            register_token: "test-token".into(),
+            device_name: "test-pc".into(),
+            client_version: "1.0.0".into(),
+            max_retry_delay_secs: 30,
+        };
+        assert_eq!(config.server_url, "ws://test:8080/ws/client");
+        assert_eq!(config.register_token, "test-token");
+        assert_eq!(config.device_name, "test-pc");
+        assert_eq!(config.client_version, "1.0.0");
+        assert_eq!(config.max_retry_delay_secs, 30);
+    }
+
+    #[test]
+    fn test_config_default_version() {
+        let config = Config {
+            server_url: "ws://test:8080/ws/client".into(),
+            register_token: "test-token".into(),
+            device_name: "test-pc".into(),
+            client_version: "0.1.0".into(),
+            max_retry_delay_secs: 60,
+        };
+        assert_eq!(config.client_version, "0.1.0");
+        assert_eq!(config.max_retry_delay_secs, 60);
+    }
+}

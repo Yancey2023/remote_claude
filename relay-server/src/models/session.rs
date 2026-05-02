@@ -20,3 +20,25 @@ impl Session {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_session_new_sets_fields_correctly() {
+        let session = Session::new(
+            "session-1".into(),
+            "device-1".into(),
+            "user-1".into(),
+        );
+        assert_eq!(session.id, "session-1");
+        assert_eq!(session.device_id, "device-1");
+        assert_eq!(session.user_id, "user-1");
+        assert!(!session.closed);
+        let now = chrono::Utc::now().timestamp();
+        assert!(session.created_at > 0);
+        assert!(session.created_at <= now);
+        assert!(session.created_at > now - 10);
+    }
+}
