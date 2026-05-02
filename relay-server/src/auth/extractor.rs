@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{async_trait, Json};
+use axum::Json;
 use axum::extract::FromRequestParts;
 use serde::Serialize;
 use tokio::sync::RwLock;
@@ -30,7 +30,6 @@ impl IntoResponse for AuthError {
     }
 }
 
-#[async_trait]
 impl FromRequestParts<Arc<RwLock<AppState>>> for AuthUser {
     type Rejection = Response;
 

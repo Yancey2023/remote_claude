@@ -144,7 +144,7 @@ pub async fn handle_client_ws(
         "type": "registered",
         "payload": { "device_id": entry.id }
     });
-    if ws_sender.send(Message::Text(registered.to_string())).await.is_err() {
+    if ws_sender.send(Message::Text(registered.to_string().into())).await.is_err() {
         hub.unregister(&token).await;
         return;
     }

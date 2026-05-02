@@ -1,4 +1,5 @@
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER;
 use serde::{Deserialize, Serialize};
 
 use crate::models::UserRole;
@@ -12,6 +13,13 @@ pub struct Claims {
     pub iat: usize,
 }
 
+fn ensure_provider() {
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| {
+        let _ = DEFAULT_PROVIDER.install_default();
+    });
+}
+
 pub fn create_token(
     user_id: &str,
     username: &str,
@@ -19,6 +27,7 @@ pub fn create_token(
     secret: &str,
     expiry_hours: i64,
 ) -> Result<String, String> {
+    ensure_provider();
     let now = chrono::Utc::now().timestamp() as usize;
     let exp = now + (expiry_hours * 3600) as usize;
     let claims = Claims {
@@ -37,6 +46,7 @@ pub fn create_token(
 }
 
 pub fn verify_token(token: &str, secret: &str) -> Result<Claims, String> {
+    ensure_provider();
     decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
