@@ -122,7 +122,7 @@ async fn ws_upgrade(
     Path(path): Path<String>,
     State(state): State<Arc<RwLock<AppState>>>,
 ) -> impl IntoResponse {
-    let path = format!("/{}", path);
+    let path = format!("/ws/{path}");
     info!(%path, "WebSocket upgrade request");
     ws.on_upgrade(move |socket| ws::ws_handler(socket, path, state))
 }
