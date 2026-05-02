@@ -3,9 +3,10 @@ import { useTerminalStore } from '../stores/terminalStore';
 export function ConnectionOverlay() {
   const wsConnected = useTerminalStore((s) => s.wsConnected);
   const connected = useTerminalStore((s) => s.connected);
+  const deviceId = useTerminalStore((s) => s.deviceId);
 
-  // Only show when we expect a connection but don't have one
-  const show = !connected && !wsConnected;
+  // Only show on terminal page when a connection was attempted but not established
+  const show = !connected && !wsConnected && deviceId !== null;
 
   if (!show) return null;
 
