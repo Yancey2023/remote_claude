@@ -112,11 +112,13 @@ pnpm build        # 生产构建 → dist/
 ```bash
 cd relay-server && cargo test    # 22 tests
 cd desktop-client && cargo test  # 8 tests
+cd web-ui && pnpm test           # 30 tests
 ```
 
 ## 开发约定
 
 - **每次代码变更必须同步更新文档和单元测试**。新增功能、修改接口、修复 bug 后，先确认所有测试通过，再提交。
+- **代码变更后自动提交 git**。每完成一组相关联的更改后，创建有意义的 commit，包含变更范围和原因的说明。
 - 测试覆盖：核心数据结构、鉴权逻辑、存储 CRUD、消息序列化。WebSocket handler 等集成环节至少要有 happy path 覆盖。
 - Rust: `#[cfg(test)] mod tests { ... }` 内联在源文件中，`tokio::test` 用于异步测试。
 
