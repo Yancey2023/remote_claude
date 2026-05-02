@@ -31,6 +31,7 @@ ADMIN_USER=admin ADMIN_PASS=admin123 JWT_SECRET=change-me cargo run
 | `JWT_SECRET` | `dev-secret-...` | JWT 签名密钥 |
 | `HOST` | `0.0.0.0` | 监听地址 |
 | `PORT` | `8080` | 监听端口 |
+| `DATABASE_URL` | `sqlite:data.db?mode=rwc` | SQLite 数据库路径 |
 | `HEARTBEAT_INTERVAL_SECS` | `15` | 设备心跳间隔 |
 | `HEARTBEAT_TIMEOUT_SECS` | `30` | 心跳超时断连 |
 
@@ -109,9 +110,15 @@ pnpm build        # 生产构建 → dist/
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 21 tests
+cd relay-server && cargo test    # 22 tests
 cd desktop-client && cargo test  # 8 tests
 ```
+
+## 开发约定
+
+- **每次代码变更必须同步更新文档和单元测试**。新增功能、修改接口、修复 bug 后，先确认所有测试通过，再提交。
+- 测试覆盖：核心数据结构、鉴权逻辑、存储 CRUD、消息序列化。WebSocket handler 等集成环节至少要有 happy path 覆盖。
+- Rust: `#[cfg(test)] mod tests { ... }` 内联在源文件中，`tokio::test` 用于异步测试。
 
 ## 架构要点
 
@@ -122,3 +129,4 @@ cd desktop-client && cargo test  # 8 tests
 - **JWT**: API 除登录外全部 Bearer token 鉴权
 - **双通道**: 设备长连 WS，网页 REST + WS 控制通道
 - **透传**: 客户端不解析 Claude 输出，只做命令下发和结果收集
+- **存储**: SQLite (sqlx)，三表 users/devices/sessions，自动迁移建表
