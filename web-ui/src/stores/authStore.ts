@@ -17,8 +17,13 @@ interface AuthState {
   checkAuth: () => Promise<boolean>;
 }
 
+const storedToken = localStorage.getItem('token');
+if (storedToken) {
+  apiClient.setToken(storedToken);
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: localStorage.getItem('token'),
+  token: storedToken,
   user: null,
   loading: false,
   error: null,
