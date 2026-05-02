@@ -1,0 +1,9 @@
+{
+  "name": "remote-claude",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd web-ui && pnpm dev",
+    "build": "cd web-ui && pnpm build"
+  }
+}
