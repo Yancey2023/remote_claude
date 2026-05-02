@@ -21,12 +21,12 @@ export class WebSocketClient {
     this.maxReconnectDelay = cfg.wsMaxReconnectDelayMs;
   }
 
-  connect() {
+  connect(onReady?: () => void) {
     this.closed = false;
-    this.doConnect();
+    this.doConnect(onReady);
   }
 
-  private doConnect() {
+  private doConnect(onReady?: () => void) {
     if (this.closed) return;
 
     const ws = new WebSocket(this.url);
@@ -41,6 +41,9 @@ export class WebSocketClient {
         type: 'auth',
         payload: { token: this.token },
       }));
+
+      // Notify caller that WS is open and auth has been sent
+      onReady?.();
     };
 
     ws.onmessage = (event) => {

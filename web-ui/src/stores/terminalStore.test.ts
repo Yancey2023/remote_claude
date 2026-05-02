@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useTerminalStore } from './terminalStore';
 
-const mockCreateSession = vi.fn();
 const mockCloseSession = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../api/client', () => ({
   apiClient: {
-    createSession: (...args: unknown[]) => mockCreateSession(...args),
     closeSession: (...args: unknown[]) => mockCloseSession(...args),
   },
 }));
@@ -74,20 +72,13 @@ describe('terminalStore', () => {
     expect(() => useTerminalStore.getState().sendCommand('test')).not.toThrow();
   });
 
-  it('sets error when createSession API fails', async () => {
-    mockCreateSession.mockRejectedValueOnce(new Error('device offline'));
+  it('sets deviceId and ws on connect', async () => {
+    await useTerminalStore.getState().connect('d1', 'fake-token');
 
-    // connect will catch the error and set it in state
-    // but since we mock the api module, the ws import inside terminalStore
-    // still needs to resolve. We use a try/catch approach.
-    try {
-      await useTerminalStore.getState().connect('d1', 'fake-token');
-    } catch {
-      // expected
-    }
-
-    // After error, state should reflect the failure
     const s = useTerminalStore.getState();
-    expect(s.error).toBeTruthy();
+    expect(s.deviceId).toBe('d1');
+    expect(s.ws).not.toBeNull();
+    expect(s.connected).toBe(false);
+    expect(s.wsConnected).toBe(false);
   });
 });

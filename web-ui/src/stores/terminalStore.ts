@@ -34,10 +34,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     }
 
     try {
-      // Create REST session first
-      const session = await apiClient.createSession(deviceId);
-
-      // Connect WebSocket control channel
+      // Connect WebSocket first, then create session over WS
       const cfg = getConfig();
       const wsUrl = cfg.wsBaseUrl || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`;
       const ws = new WebSocketClient(wsUrl, token);
@@ -61,7 +58,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         }
       });
 
-      ws.connect();
+      // Connect and send create_session once WS is open + auth sent
+      ws.connect(() => {
+        ws.send('create_session', { device_id: deviceId });
+      });
 
       set({
         ws,
