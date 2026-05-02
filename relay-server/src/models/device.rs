@@ -42,3 +42,26 @@ impl OnlineDevice {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_device() {
+        let d = Device::new("dev-1".into(), "my-pc".into(), "1.0.0".into());
+        assert_eq!(d.id, "dev-1");
+        assert_eq!(d.name, "my-pc");
+        assert_eq!(d.version, "1.0.0");
+        assert!(d.online);
+        assert!(!d.busy);
+        assert!(d.registered_at > 0);
+    }
+
+    #[test]
+    fn test_device_offline() {
+        let mut d = Device::new("dev-2".into(), "server".into(), "2.0.0".into());
+        d.online = false;
+        assert!(!d.online);
+    }
+}

@@ -118,3 +118,97 @@ impl MemoryStore {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::UserRole;
+
+    #[tokio::test]
+    async fn test_create_and_get_user() {
+        let store = MemoryStore::new();
+        let user = User::new("u1".into(), "alice".into(), "hash".into(), UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        let found = store.get_user("u1").await.unwrap();
+        assert_eq!(found.username, "alice");
+    }
+
+    #[tokio::test]
+    async fn test_get_user_by_username() {
+        let store = MemoryStore::new();
+        let user = User::new("u1".into(), "bob".into(), "hash".into(), UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        let found = store.get_user_by_username("bob").await.unwrap();
+        assert_eq!(found.id, "u1");
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_username_fails() {
+        let store = MemoryStore::new();
+        let u1 = User::new("u1".into(), "alice".into(), "hash".into(), UserRole::User);
+        let u2 = User::new("u2".into(), "alice".into(), "hash2".into(), UserRole::User);
+        store.create_user(u1).await.unwrap();
+        let result = store.create_user(u2).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_update_user() {
+        let store = MemoryStore::new();
+        let mut user = User::new("u1".into(), "alice".into(), "hash".into(), UserRole::User);
+        store.create_user(user.clone()).await.unwrap();
+        user.enabled = false;
+        store.update_user(user).await.unwrap();
+
+        let found = store.get_user("u1").await.unwrap();
+        assert!(!found.enabled);
+    }
+
+    #[tokio::test]
+    async fn test_delete_user() {
+        let store = MemoryStore::new();
+        let user = User::new("u1".into(), "alice".into(), "hash".into(), UserRole::User);
+        store.create_user(user).await.unwrap();
+        store.delete_user("u1").await.unwrap();
+        assert!(store.get_user("u1").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_device_upsert_and_list() {
+        let store = MemoryStore::new();
+        let d = Device::new("dev-1".into(), "pc1".into(), "1.0".into());
+        store.upsert_device(d).await;
+
+        let devices = store.list_devices().await;
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0].name, "pc1");
+    }
+
+    #[tokio::test]
+    async fn test_device_online_status() {
+        let store = MemoryStore::new();
+        let d = Device::new("dev-1".into(), "pc1".into(), "1.0".into());
+        store.upsert_device(d).await;
+        store.set_device_online("dev-1", false).await;
+
+        let device = store.get_device("dev-1").await.unwrap();
+        assert!(!device.online);
+    }
+
+    #[tokio::test]
+    async fn test_create_and_close_session() {
+        let store = MemoryStore::new();
+        let session = Session::new("s1".into(), "dev-1".into(), "u1".into());
+        store.create_session(session).await.unwrap();
+
+        let found = store.get_session("s1").await.unwrap();
+        assert_eq!(found.device_id, "dev-1");
+        assert!(!found.closed);
+
+        store.close_session("s1").await.unwrap();
+        let closed = store.get_session("s1").await.unwrap();
+        assert!(closed.closed);
+    }
+}
