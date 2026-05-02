@@ -100,11 +100,11 @@ describe('模块名', () => {
 
 配置文件路径：
 
-| 程序 | Linux | Windows |
-|------|-------|---------|
-| relay-server | `~/.config/remote-claude/relay-server.toml` | `%APPDATA%/remote-claude/relay-server.toml` |
-| desktop-client | `~/.config/remote-claude/desktop-client.toml` | `%APPDATA%/remote-claude/desktop-client.toml` |
-| web-ui | `dist/config.json`（部署时手动放置） | 同 Linux |
+| 程序 | 路径 |
+|------|------|
+| relay-server | `{exe_dir}/config/relay-server.toml` |
+| desktop-client | `{exe_dir}/config/desktop-client.toml` |
+| web-ui | `dist/config.json`（部署时手动放置） |
 
 可通过 `CONFIG_PATH` 环境变量覆盖配置文件路径。
 
@@ -117,13 +117,13 @@ describe('模块名', () => {
 ```bash
 cd relay-server
 ADMIN_USER=admin ADMIN_PASS=admin123 JWT_SECRET=change-me cargo run
-# 自动创建 ~/.config/remote-claude/relay-server.toml（或 %APPDATA% 对应路径）
+# 自动创建 config/relay-server.toml（相对于可执行文件路径）
 ```
 
 **方式 B** — 直接创建配置文件（推荐生产环境）：
 
 ```toml
-# ~/.config/remote-claude/relay-server.toml
+# {exe_dir}/config/relay-server.toml
 admin_user = "admin"
 admin_pass = "admin123"
 jwt_secret = "change-me"
@@ -160,13 +160,13 @@ cargo run
 ```bash
 cd desktop-client
 REGISTER_TOKEN=<token> SERVER_URL=ws://127.0.0.1:8080/ws/client cargo run
-# 自动创建 ~/.config/remote-claude/desktop-client.toml（或 %APPDATA% 对应路径）
+# 自动创建 config/desktop-client.toml（相对于可执行文件路径）
 ```
 
 **方式 B** — 直接创建配置文件：
 
 ```toml
-# ~/.config/remote-claude/desktop-client.toml
+# {exe_dir}/config/desktop-client.toml
 server_url = "ws://127.0.0.1:8080/ws/client"
 register_token = "<token>"
 device_name = "my-pc"
@@ -290,7 +290,7 @@ cd web-ui && pnpm test:watch
 
 ## 架构要点
 
-- **配置系统**: 配置文件优先（TOML/JSON），环境变量仅作为首次运行的初始值来源。支持 Linux `~/.config/` 和 Windows `%APPDATA%` 路径。
+- **配置系统**: 配置文件优先（TOML/JSON），环境变量仅作为首次运行的初始值来源。配置文件存放于可执行文件所在目录的 `config/` 子目录下。
 - **密码安全**: 普通用户 Argon2 哈希，管理员凭据仅环境变量
 - **心跳**: 15s 间隔 ping，30s 超时自动标记离线
 - **重连**: 指数退避 1s→2s→...→60s max

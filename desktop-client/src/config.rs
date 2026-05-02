@@ -91,8 +91,11 @@ impl Config {
         if let Ok(path) = env::var("CONFIG_PATH") {
             return PathBuf::from(path);
         }
-        let base = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-        base.join("remote-claude").join("desktop-client.toml")
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| PathBuf::from("."));
+        exe_dir.join("config").join("desktop-client.toml")
     }
 
     fn load_file(path: &PathBuf) -> ConfigFile {
