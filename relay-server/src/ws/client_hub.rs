@@ -24,7 +24,6 @@ pub struct ClientHub {
 #[derive(Clone)]
 pub struct OnlineDeviceEntry {
     pub id: String,
-    pub token: String,
     pub name: String,
     pub version: String,
     pub tx: mpsc::Sender<String>,
@@ -49,7 +48,6 @@ impl ClientHub {
         let id = Uuid::new_v4().to_string();
         let entry = OnlineDeviceEntry {
             id: id.clone(),
-            token: token.to_string(),
             name: name.to_string(),
             version: version.to_string(),
             tx,
@@ -286,7 +284,6 @@ mod tests {
         let entry = hub.register("token-1", "pc-1", "1.0", tx).await;
         assert!(!entry.id.is_empty());
         assert_eq!(entry.name, "pc-1");
-        assert_eq!(entry.token, "token-1");
         assert_eq!(entry.version, "1.0");
 
         let found = hub.get_by_token("token-1").await;

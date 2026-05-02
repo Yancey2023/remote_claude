@@ -177,26 +177,8 @@ impl SqliteStore {
         .ok();
     }
 
-    pub async fn get_device(&self, id: &str) -> Option<Device> {
-        sqlx::query("SELECT id, name, version, online, busy, last_seen, registered_at FROM devices WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await
-            .ok()?
-            .map(row_to_device)
-    }
-
     pub async fn list_devices(&self) -> Vec<Device> {
         sqlx::query("SELECT id, name, version, online, busy, last_seen, registered_at FROM devices ORDER BY last_seen DESC")
-            .fetch_all(&self.pool)
-            .await
-            .ok()
-            .map(|rows| rows.into_iter().map(row_to_device).collect())
-            .unwrap_or_default()
-    }
-
-    pub async fn list_online_devices(&self) -> Vec<Device> {
-        sqlx::query("SELECT id, name, version, online, busy, last_seen, registered_at FROM devices WHERE online = 1 ORDER BY last_seen DESC")
             .fetch_all(&self.pool)
             .await
             .ok()
@@ -230,15 +212,6 @@ impl SqliteStore {
         .await
         .map_err(|e| format!("database error: {}", e))?;
         Ok(())
-    }
-
-    pub async fn get_session(&self, id: &str) -> Option<Session> {
-        sqlx::query("SELECT id, device_id, user_id, created_at, closed FROM sessions WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await
-            .ok()?
-            .map(row_to_session)
     }
 
     pub async fn close_session(&self, id: &str) -> Result<(), String> {
@@ -283,16 +256,6 @@ fn row_to_device(row: sqlx::sqlite::SqliteRow) -> Device {
         busy: row.get::<i32, _>("busy") != 0,
         last_seen: row.get("last_seen"),
         registered_at: row.get("registered_at"),
-    }
-}
-
-fn row_to_session(row: sqlx::sqlite::SqliteRow) -> Session {
-    Session {
-        id: row.get("id"),
-        device_id: row.get("device_id"),
-        user_id: row.get("user_id"),
-        created_at: row.get("created_at"),
-        closed: row.get::<i32, _>("closed") != 0,
     }
 }
 
@@ -375,7 +338,8 @@ mod tests {
         let store = test_store().await;
         store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into())).await;
         store.set_device_online("dev-1", false).await;
-        let device = store.get_device("dev-1").await.unwrap();
+        let devices = store.list_devices().await;
+        let device = devices.iter().find(|d| d.id == "dev-1").unwrap();
         assert!(!device.online);
     }
 
@@ -383,11 +347,9 @@ mod tests {
     async fn test_create_and_close_session() {
         let store = test_store().await;
         let session = Session::new("s1".into(), "dev-1".into(), "u1".into());
+        // create_session and close_session should not error
         store.create_session(session).await.unwrap();
-        let found = store.get_session("s1").await.unwrap();
-        assert_eq!(found.device_id, "dev-1");
-        assert!(!found.closed);
         store.close_session("s1").await.unwrap();
-        assert!(store.get_session("s1").await.unwrap().closed);
+        store.close_session("nonexistent").await.unwrap_err();
     }
 }

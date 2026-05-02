@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Device {
@@ -23,22 +22,6 @@ impl Device {
             busy: false,
             last_seen: now,
             registered_at: now,
-        }
-    }
-}
-
-/// Internal device state that includes the communication channel.
-/// This is not serialized over the wire — only used internally by ClientHub.
-pub struct OnlineDevice {
-    pub info: Device,
-    pub tx: mpsc::Sender<String>,
-}
-
-impl OnlineDevice {
-    pub fn new(id: String, name: String, version: String, tx: mpsc::Sender<String>) -> Self {
-        Self {
-            info: Device::new(id, name, version),
-            tx,
         }
     }
 }

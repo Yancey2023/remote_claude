@@ -9,7 +9,7 @@ vi.mock('../api/client', () => {
     logout: vi.fn().mockResolvedValue(undefined),
     verify: vi.fn(),
   };
-  return { apiClient: mockApiClient, ApiClientError: class extends Error { code = ''; status = 0; } };
+  return { apiClient: mockApiClient, ApiClientError: class extends Error { code = ''; status = 0; constructor(_code: string, message: string, _status: number) { super(message); } } };
 });
 
 beforeEach(() => {
@@ -32,7 +32,7 @@ describe('authStore', () => {
   });
 
   it('sets token and user on successful login', async () => {
-    const mockRes = { token: 'jwt-123', user_id: 'u1', username: 'alice', role: 'User' };
+    const mockRes = { token: 'jwt-123', user_id: 'u1', username: 'alice', role: 'User' as const };
     vi.mocked(apiClient.login).mockResolvedValueOnce(mockRes);
 
     await useAuthStore.getState().login('alice', 'pass');
@@ -46,7 +46,7 @@ describe('authStore', () => {
   });
 
   it('sets error on login failure', async () => {
-    const err = new ApiClientError('bad credentials');
+    const err = new ApiClientError('ERR_AUTH', 'bad credentials', 401);
     vi.mocked(apiClient.login).mockRejectedValueOnce(err);
 
     await expect(useAuthStore.getState().login('alice', 'wrong')).rejects.toThrow();

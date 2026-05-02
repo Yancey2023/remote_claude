@@ -16,7 +16,6 @@ use super::session::{SessionActor, SessionRegistry};
 /// Represents a connected web UI client with an authenticated user.
 pub struct WebSession {
     pub user_id: String,
-    pub username: String,
     pub tx: mpsc::Sender<String>,
 }
 
@@ -35,11 +34,10 @@ impl WebHub {
         }
     }
 
-    pub async fn register(&self, user_id: String, username: String) -> mpsc::Receiver<String> {
+    pub async fn register(&self, user_id: String, _username: String) -> mpsc::Receiver<String> {
         let (tx, rx) = mpsc::channel(256);
         let session = WebSession {
             user_id,
-            username,
             tx,
         };
         self.sessions
@@ -215,16 +213,8 @@ async fn handle_web_message(
                 .await
                 .ok_or("device not found or offline")?;
 
-            let web_tx = {
-                let sessions = hub.sessions.read().await;
-                sessions
-                    .get(user_id)
-                    .map(|s| s.tx.clone())
-                    .ok_or("user not connected")?
-            };
-
             let session =
-                SessionActor::new(device.id.clone(), user_id.to_string(), web_tx);
+                SessionActor::new(device.id.clone(), user_id.to_string());
 
             let session_id = hub.session_registry.register(session).await;
 

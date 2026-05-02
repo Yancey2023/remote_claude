@@ -6,7 +6,7 @@ use tracing::{error, info, warn};
 
 use crate::claude_runner;
 use crate::config::Config;
-use crate::protocol::ClientMessage;
+use crate::protocol::{ClientMessage, ServerMessage};
 
 /// Connect to the relay server and run the message loop.
 /// Returns when the connection is closed (for reconnection).
@@ -71,7 +71,7 @@ pub async fn connect_and_run(config: &Config) -> Result<(), String> {
                             warn!(error = %e, "handling server message");
                         }
                     }
-                    Some(Ok(Message::Ping(data))) => {
+                    Some(Ok(Message::Ping(_data))) => {
                         let _ = outbound_tx.send(
                             serde_json::json!({"type": "pong", "payload": {}}).to_string()
                         );
@@ -117,15 +117,8 @@ async fn receive_registered(
         let msg = receiver.next().await?;
         match msg {
             Ok(Message::Text(text)) => {
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
-                    if parsed.get("type").and_then(|t| t.as_str()) == Some("registered") {
-                        let device_id = parsed
-                            .get("payload")
-                            .and_then(|p| p.get("device_id"))
-                            .and_then(|d| d.as_str())
-                            .map(|s| s.to_string())?;
-                        return Some(device_id);
-                    }
+                if let Ok(ServerMessage::Registered { payload }) = serde_json::from_str(&text) {
+                    return Some(payload.device_id);
                 }
                 warn!(msg = %text, "unexpected message during registration");
             }
@@ -150,39 +143,25 @@ async fn handle_server_message(
         return Err("kicked".into());
     }
 
-    // Try to parse as JSON
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
-        let msg_type = parsed.get("type").and_then(|t| t.as_str());
+    if let Ok(msg) = serde_json::from_str::<ServerMessage>(text) {
+        match msg {
+            ServerMessage::Command { payload } => {
+                // Send status: busy
+                let _ = outbound_tx.send(ClientMessage::status_update(true, true));
 
-        match msg_type {
-            Some("command") => {
-                if let Some(payload) = parsed.get("payload") {
-                    let session_id = payload
-                        .get("session_id")
-                        .and_then(|s| s.as_str())
-                        .unwrap_or("unknown")
-                        .to_string();
-                    let command = payload
-                        .get("command")
-                        .and_then(|c| c.as_str())
-                        .unwrap_or("");
-
-                    // Send status: busy
-                    let _ = outbound_tx.send(ClientMessage::status_update(true, true));
-
-                    // Run claude in background task
-                    let tx = result_tx.clone();
-                    let cmd = command.to_string();
-                    tokio::spawn(async move {
-                        claude_runner::run_claude(&cmd, session_id, tx).await;
-                    });
-                }
+                // Run claude in background task
+                let tx = result_tx.clone();
+                let cmd = payload.command;
+                let sid = payload.session_id;
+                tokio::spawn(async move {
+                    claude_runner::run_claude(&cmd, sid, tx).await;
+                });
             }
-            Some("ping") => {
+            ServerMessage::Ping => {
                 let _ = outbound_tx.send(ClientMessage::pong());
             }
-            None | Some(_) => {
-                warn!(msg = %text, "unknown message type: {:?}", msg_type);
+            _ => {
+                warn!(msg = %text, "unexpected server message");
             }
         }
     }

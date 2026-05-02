@@ -48,7 +48,6 @@ globalThis.fetch = defaultFetch;
 try {
   await loadConfig();
 } catch (e) {
-  process.exitCode = 1;
   throw new Error(`config loading failed in setup: ${e}`);
 }
 

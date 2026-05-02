@@ -38,20 +38,18 @@ async fn create_session(
         .await
         .ok_or(AppError::NotFound("device not found or offline".into()))?;
 
-    // Get user's web ws channel
-    let web_tx = {
+    // Verify user is connected via WebSocket
+    {
         let sessions = state.web_hub.sessions.read().await;
-        sessions
-            .get(&user.user_id)
-            .map(|s| s.tx.clone())
-            .ok_or(AppError::BadRequest("web ui not connected via ws".into()))?
-    };
+        if !sessions.contains_key(&user.user_id) {
+            return Err(AppError::BadRequest("web ui not connected via ws".into()));
+        }
+    }
 
     // Create session actor
     let session = crate::ws::session::SessionActor::new(
         device.id.clone(),
         user.user_id.clone(),
-        web_tx,
     );
     let session_id = session.id.clone();
 

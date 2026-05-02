@@ -24,3 +24,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Build artifacts
+*.db
+*.tsbuildinfo
