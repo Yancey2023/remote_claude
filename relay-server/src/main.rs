@@ -21,6 +21,8 @@ use ws::client_hub::ClientHub;
 use ws::web_hub::WebHub;
 use ws::AppState;
 
+use models::UserRole;
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -48,7 +50,35 @@ async fn main() {
         error!(message = %msg, location = %location, "PANIC caught");
     }));
 
-    let config = config::Config::load();
+    let mut config = config::Config::load();
+
+    // Auto-generate jwt_secret if empty (first run) and print an admin token
+    if config.ensure_jwt_secret() {
+        match auth::jwt::create_token(
+            "admin",
+            &config.admin_user,
+            &UserRole::Admin,
+            &config.jwt_secret,
+            config.jwt_expiry_hours,
+        ) {
+            Ok(token) => {
+                info!("Auto-generated JWT secret and admin token");
+                println!();
+                println!("================================================================");
+                println!("  Auto-generated JWT secret (saved to config)");
+                println!("  Secret: {}", config.jwt_secret);
+                println!();
+                println!("  Admin token (use this to authenticate API requests):");
+                println!("  {}", token);
+                println!("================================================================");
+                println!();
+            }
+            Err(e) => {
+                error!("Failed to create admin token: {}", e);
+            }
+        }
+    }
+
     let store = store::SqliteStore::new(&config.database_url)
         .await
         .expect("failed to initialize database");

@@ -68,7 +68,7 @@ impl Config {
         let config = Config {
             admin_user: field_str!(admin_user, "ADMIN_USER", "admin"),
             admin_pass: field_str!(admin_pass, "ADMIN_PASS", "admin123"),
-            jwt_secret: field_str!(jwt_secret, "JWT_SECRET", "dev-secret-change-in-prod"),
+            jwt_secret: field_str!(jwt_secret, "JWT_SECRET", ""),
             database_url: field_str!(database_url, "DATABASE_URL", "sqlite:data.db?mode=rwc"),
             host: field_str!(host, "HOST", "0.0.0.0"),
             port: field_num!(port, "PORT", 8080, u16),
@@ -127,6 +127,23 @@ impl Config {
         let content = toml::to_string_pretty(config).expect("failed to serialize config");
         let _ = std::fs::write(path, content);
     }
+
+    /// Auto-generate a random jwt_secret if the current one is empty.
+    /// Returns `true` if a new secret was generated and saved to the config file.
+    pub fn ensure_jwt_secret(&mut self) -> bool {
+        if !self.jwt_secret.is_empty() {
+            return false;
+        }
+        let bytes: [u8; 32] = rand::random();
+        self.jwt_secret = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+
+        let path = Self::config_path();
+        let mut file_config = Self::load_file(&path);
+        file_config.jwt_secret = Some(self.jwt_secret.clone());
+        Self::save_file(&path, &file_config);
+
+        true
+    }
 }
 
 impl From<ConfigFile> for Config {
@@ -134,9 +151,7 @@ impl From<ConfigFile> for Config {
         Config {
             admin_user: f.admin_user.unwrap_or_else(|| "admin".into()),
             admin_pass: f.admin_pass.unwrap_or_else(|| "admin123".into()),
-            jwt_secret: f
-                .jwt_secret
-                .unwrap_or_else(|| "dev-secret-change-in-prod".into()),
+            jwt_secret: f.jwt_secret.unwrap_or_default(),
             database_url: f
                 .database_url
                 .unwrap_or_else(|| "sqlite:data.db?mode=rwc".into()),
