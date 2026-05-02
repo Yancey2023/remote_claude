@@ -1,0 +1,7 @@
+{
+  "apiBaseUrl": "",
+  "wsBaseUrl": "",
+  "devicePollIntervalMs": 5000,
+  "wsReconnectDelayMs": 1000,
+  "wsMaxReconnectDelayMs": 30000
+}

@@ -48,7 +48,7 @@ async fn main() {
         error!(message = %msg, location = %location, "PANIC caught");
     }));
 
-    let config = config::Config::from_env();
+    let config = config::Config::load();
     let store = store::SqliteStore::new(&config.database_url)
         .await
         .expect("failed to initialize database");

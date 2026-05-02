@@ -5,8 +5,7 @@ import type {
   SessionResponse,
   ApiError,
 } from '../types/protocol';
-
-const BASE_URL = ''; // vite proxy handles /api -> localhost:8080
+import { getConfig } from '../config';
 
 class ApiClient {
   private token: string | null = null;
@@ -27,7 +26,8 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const baseUrl = getConfig().apiBaseUrl;
+    const res = await fetch(`${baseUrl}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,

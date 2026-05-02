@@ -13,53 +13,216 @@
 └── CLAUDE.md
 ```
 
+## 开发约定
+
+最高优先级的开发规则，任何代码变更必须遵守：
+
+1. **每次代码变更必须同步更新文档和单元测试**。新增功能、修改接口、修复 bug 后，先确认所有测试通过，再提交。
+2. **代码变更后自动提交 git**。每完成一组相关联的更改后，创建有意义的 commit，包含变更范围和原因的说明。
+3. **保持依赖最新**。定期运行 `cargo update`（Rust）和 `pnpm update --latest`（前端）更新依赖到最新兼容版本。如有大版本变更导致编译失败，需要同步修复代码。
+
+### 测试约定
+
+测试覆盖范围：核心数据结构、鉴权逻辑、存储 CRUD、消息序列化。WebSocket handler 等集成环节至少要有 happy path 覆盖。
+
+```rust
+// Rust: 内联在源文件末尾，使用 #[cfg(test)] mod tests
+// 同步测试
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_some_behavior() {
+        // Arrange
+        let input = "test";
+        // Act
+        let result = process(input);
+        // Assert
+        assert_eq!(result, expected);
+    }
+}
+
+// 异步测试
+#[cfg(test)]
+mod async_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_async_behavior() {
+        let result = some_async_fn().await;
+        assert!(result.is_ok());
+    }
+}
+```
+
+```typescript
+// TypeScript: 使用 vitest，文件命名 *.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+describe('模块名', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('描述具体行为', async () => {
+    // Arrange
+    const mockFn = vi.fn().mockResolvedValue(mockResponse(200, { data: 'ok' }));
+    globalThis.fetch = mockFn;
+
+    // Act
+    const result = await apiClient.someMethod();
+
+    // Assert
+    expect(result).toEqual(expected);
+    expect(mockFn).toHaveBeenCalledWith(
+      expect.stringContaining('/api/some-path'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+});
+```
+
+| 项目 | 框架 | 测试数量 | 位置 |
+|------|------|----------|------|
+| relay-server | `cargo test` / `tokio::test` | 54 | `#[cfg(test)]` 内联在源文件中 |
+| desktop-client | `cargo test` / `tokio::test` | 18 | `#[cfg(test)]` 内联在源文件中 |
+| web-ui | `vitest` / `pnpm test` | 55 | `*.test.ts` 和测试文件同目录 |
+
+## 配置系统
+
+所有程序采用 **配置文件优先** 的配置加载策略：
+
+1. 读取配置文件（TOML / JSON）
+2. 配置文件中缺失的字段，回退到环境变量
+3. 如果环境变量提供了初始值，自动保存到配置文件中
+4. 下次启动时配置文件已完整，不再需要环境变量
+
+配置文件路径：
+
+| 程序 | Linux | Windows |
+|------|-------|---------|
+| relay-server | `~/.config/remote-claude/relay-server.toml` | `%APPDATA%/remote-claude/relay-server.toml` |
+| desktop-client | `~/.config/remote-claude/desktop-client.toml` | `%APPDATA%/remote-claude/desktop-client.toml` |
+| web-ui | `dist/config.json`（部署时手动放置） | 同 Linux |
+
+可通过 `CONFIG_PATH` 环境变量覆盖配置文件路径。
+
 ## 启动方式
 
 ### 1. 中转服务器
 
+**方式 A** — 首次运行，通过环境变量生成配置文件：
+
 ```bash
 cd relay-server
 ADMIN_USER=admin ADMIN_PASS=admin123 JWT_SECRET=change-me cargo run
+# 自动创建 ~/.config/remote-claude/relay-server.toml（或 %APPDATA% 对应路径）
 ```
 
-环境变量：
+**方式 B** — 直接创建配置文件（推荐生产环境）：
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `ADMIN_USER` | `admin` | 管理员用户名 |
-| `ADMIN_PASS` | `admin123` | 管理员密码（勿用于生产） |
-| `JWT_SECRET` | `dev-secret-...` | JWT 签名密钥 |
-| `HOST` | `0.0.0.0` | 监听地址 |
-| `PORT` | `8080` | 监听端口 |
-| `DATABASE_URL` | `sqlite:data.db?mode=rwc` | SQLite 数据库路径 |
-| `HEARTBEAT_INTERVAL_SECS` | `15` | 设备心跳间隔 |
-| `HEARTBEAT_TIMEOUT_SECS` | `30` | 心跳超时断连 |
+```toml
+# ~/.config/remote-claude/relay-server.toml
+admin_user = "admin"
+admin_pass = "admin123"
+jwt_secret = "change-me"
+database_url = "sqlite:data.db?mode=rwc"
+host = "0.0.0.0"
+port = 8080
+jwt_expiry_hours = 24
+heartbeat_interval_secs = 15
+heartbeat_timeout_secs = 30
+```
+
+```bash
+cd relay-server
+cargo run
+```
+
+配置字段（兼容的环境变量名作为回退来源）：
+
+| 字段 | 环境变量 | 默认值 | 说明 |
+|------|----------|--------|------|
+| `admin_user` | `ADMIN_USER` | `admin` | 管理员用户名 |
+| `admin_pass` | `ADMIN_PASS` | `admin123` | 管理员密码（勿用于生产） |
+| `jwt_secret` | `JWT_SECRET` | `dev-secret-...` | JWT 签名密钥 |
+| `host` | `HOST` | `0.0.0.0` | 监听地址 |
+| `port` | `PORT` | `8080` | 监听端口 |
+| `database_url` | `DATABASE_URL` | `sqlite:data.db?mode=rwc` | SQLite 数据库路径 |
+| `heartbeat_interval_secs` | `HEARTBEAT_INTERVAL_SECS` | `15` | 设备心跳间隔（秒） |
+| `heartbeat_timeout_secs` | `HEARTBEAT_TIMEOUT_SECS` | `30` | 心跳超时断连（秒） |
 
 ### 2. 电脑客户端
+
+**方式 A** — 首次运行，通过环境变量生成配置文件：
 
 ```bash
 cd desktop-client
 REGISTER_TOKEN=<token> SERVER_URL=ws://127.0.0.1:8080/ws/client cargo run
+# 自动创建 ~/.config/remote-claude/desktop-client.toml（或 %APPDATA% 对应路径）
 ```
 
-环境变量：
+**方式 B** — 直接创建配置文件：
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址 |
-| `REGISTER_TOKEN` | **(必填)** | 管理员生成的注册令牌 |
-| `DEVICE_NAME` | `hostname` | 设备显示名称 |
-| `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
+```toml
+# ~/.config/remote-claude/desktop-client.toml
+server_url = "ws://127.0.0.1:8080/ws/client"
+register_token = "<token>"
+device_name = "my-pc"
+client_version = "0.1.0"
+max_retry_delay_secs = 60
+```
+
+```bash
+cd desktop-client
+cargo run
+```
+
+配置字段（兼容的环境变量名）：
+
+| 字段 | 环境变量 | 默认值 | 说明 |
+|------|----------|--------|------|
+| `server_url` | `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址 |
+| `register_token` | `REGISTER_TOKEN` | **(必填)** | 管理员生成的注册令牌 |
+| `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
+| `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
+| `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
 
 ### 3. 网页前端
 
 ```bash
 cd web-ui
-pnpm dev          # 开发模式
+pnpm dev          # 开发模式（Vite proxy → localhost:8080）
 pnpm build        # 生产构建 → dist/
 ```
 
+**运行时配置**（`dist/config.json`）：
+
+```json
+{
+  "apiBaseUrl": "",
+  "wsBaseUrl": "",
+  "devicePollIntervalMs": 5000,
+  "wsReconnectDelayMs": 1000,
+  "wsMaxReconnectDelayMs": 30000
+}
+```
+
+- `apiBaseUrl`：API 基础地址，默认空字符串（同源/Vite proxy）
+- `wsBaseUrl`：WebSocket 地址，默认空字符串（自动从 `window.location` 推导）
+- 生产部署时将 `config.json` 放在 `dist/` 目录中，或配置 Web 服务器提供 `/config.json`
+
+配置加载优先级：`/config.json` > `VITE_*` 环境变量（构建时） > 硬编码默认值。
+
 开发环境通过 Vite proxy 将 `/api` 和 `/ws` 转发到 `localhost:8080`。
+
+## 迁移说明
+
+从旧版（纯环境变量）升级：
+
+1. **Rust 程序**：首次运行时设置所需环境变量，程序自动创建配置文件并保存所有值。后续运行无需再设置环境变量。
+2. **网页前端**：生产部署时在 `dist/config.json` 中配置 API 地址。开发环境无需额外配置。
 
 ## 协议
 
@@ -110,21 +273,24 @@ pnpm build        # 生产构建 → dist/
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 50 tests
-cd desktop-client && cargo test  # 15 tests
+# 运行全部
+cd relay-server && cargo test    # 54 tests
+cd desktop-client && cargo test  # 18 tests
 cd web-ui && pnpm test           # 55 tests
+
+# 运行单个测试文件（Rust）
+cd relay-server && cargo test test_config_default_values
+
+# 运行单个测试文件（前端）
+cd web-ui && pnpm test -- src/api/client.test.ts
+
+# 监听模式（前端）
+cd web-ui && pnpm test:watch
 ```
-
-## 开发约定
-
-- **每次代码变更必须同步更新文档和单元测试**。新增功能、修改接口、修复 bug 后，先确认所有测试通过，再提交。
-- **代码变更后自动提交 git**。每完成一组相关联的更改后，创建有意义的 commit，包含变更范围和原因的说明。
-- **保持依赖最新**。定期运行 `cargo update`（Rust）和 `pnpm update --latest`（前端）更新依赖到最新兼容版本。如有大版本变更导致编译失败，需要同步修复代码。
-- 测试覆盖：核心数据结构、鉴权逻辑、存储 CRUD、消息序列化。WebSocket handler 等集成环节至少要有 happy path 覆盖。
-- Rust: `#[cfg(test)] mod tests { ... }` 内联在源文件中，`tokio::test` 用于异步测试。
 
 ## 架构要点
 
+- **配置系统**: 配置文件优先（TOML/JSON），环境变量仅作为首次运行的初始值来源。支持 Linux `~/.config/` 和 Windows `%APPDATA%` 路径。
 - **密码安全**: 普通用户 Argon2 哈希，管理员凭据仅环境变量
 - **心跳**: 15s 间隔 ping，30s 超时自动标记离线
 - **重连**: 指数退避 1s→2s→...→60s max

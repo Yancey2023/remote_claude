@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDeviceStore } from '../stores/deviceStore';
 import { DeviceCard } from '../components/DeviceCard';
+import { getConfig } from '../config';
 
 export function DeviceListPage() {
   const devices = useDeviceStore((s) => s.devices);
@@ -10,7 +11,7 @@ export function DeviceListPage() {
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 5000); // Poll every 5s
+    const interval = setInterval(fetchDevices, getConfig().devicePollIntervalMs);
     return () => clearInterval(interval);
   }, [fetchDevices]);
 

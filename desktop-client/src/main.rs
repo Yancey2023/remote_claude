@@ -33,7 +33,7 @@ async fn main() {
         error!(message = %msg, location = %location, "PANIC caught");
     }));
 
-    let config = config::Config::from_env();
+    let config = config::Config::load();
     let max_retry = Duration::from_secs(config.max_retry_delay_secs);
 
     info!(

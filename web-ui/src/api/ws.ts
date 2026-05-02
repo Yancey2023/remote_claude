@@ -1,3 +1,5 @@
+import { getConfig } from '../config';
+
 type MessageHandler = (data: Record<string, unknown>) => void;
 type StatusHandler = (connected: boolean) => void;
 
@@ -7,13 +9,16 @@ export class WebSocketClient {
   private token: string;
   private handlers = new Map<string, Set<MessageHandler>>();
   private statusHandlers = new Set<StatusHandler>();
-  private reconnectDelay = 1000;
-  private maxReconnectDelay = 30000;
+  private reconnectDelay: number;
+  private maxReconnectDelay: number;
   private closed = false;
 
   constructor(url: string, token: string) {
+    const cfg = getConfig();
     this.url = url;
     this.token = token;
+    this.reconnectDelay = cfg.wsReconnectDelayMs;
+    this.maxReconnectDelay = cfg.wsMaxReconnectDelayMs;
   }
 
   connect() {
@@ -28,7 +33,7 @@ export class WebSocketClient {
     this.ws = ws;
 
     ws.onopen = () => {
-      this.reconnectDelay = 1000;
+      this.reconnectDelay = getConfig().wsReconnectDelayMs;
       this.notifyStatus(true);
 
       // Authenticate

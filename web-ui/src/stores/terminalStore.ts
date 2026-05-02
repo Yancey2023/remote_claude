@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '../api/client';
 import { WebSocketClient } from '../api/ws';
+import { getConfig } from '../config';
 
 interface TerminalState {
   sessionId: string | null;
@@ -37,7 +38,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       const session = await apiClient.createSession(deviceId);
 
       // Connect WebSocket control channel
-      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`;
+      const cfg = getConfig();
+      const wsUrl = cfg.wsBaseUrl || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`;
       const ws = new WebSocketClient(wsUrl, token);
 
       // Handle session creation from server
