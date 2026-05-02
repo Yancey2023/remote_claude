@@ -14,7 +14,8 @@
       "Bash(cargo update *)",
       "Bash(pnpm update *)",
       "Bash(cargo build *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(git commit *)"
     ]
   }
 }
