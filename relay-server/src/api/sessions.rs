@@ -1,4 +1,4 @@
-use axum::{routing::{post, delete}, Json, Router};
+use axum::{routing::{post, delete, get}, Json, Router};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -9,19 +9,29 @@ use crate::ws::AppState;
 
 pub fn router() -> Router<Arc<RwLock<AppState>>> {
     Router::new()
-        .route("/", post(create_session))
-        .route("/{id}", delete(close_session))
+        .route("/", post(create_session).get(list_sessions))
+        .route("/{id}", get(get_session).delete(close_session))
 }
 
 #[derive(Deserialize)]
 pub struct CreateSessionRequest {
     pub device_id: String,
+    pub cwd: Option<String>,
 }
 
 #[derive(Serialize)]
 pub struct CreateSessionResponse {
     pub session_id: String,
     pub ws_url: String,
+}
+
+#[derive(Serialize)]
+pub struct SessionInfo {
+    pub id: String,
+    pub device_id: String,
+    pub user_id: String,
+    pub created_at: i64,
+    pub cwd: Option<String>,
 }
 
 async fn create_session(
@@ -38,18 +48,11 @@ async fn create_session(
         .await
         .ok_or(AppError::NotFound("device not found or offline".into()))?;
 
-    // Verify user is connected via WebSocket
-    {
-        let sessions = state.web_hub.sessions.read().await;
-        if !sessions.contains_key(&user.user_id) {
-            return Err(AppError::BadRequest("web ui not connected via ws".into()));
-        }
-    }
-
     // Create session actor
     let session = crate::ws::session::SessionActor::new(
         device.id.clone(),
         user.user_id.clone(),
+        req.cwd.clone(),
     );
     let session_id = session.id.clone();
 
@@ -60,6 +63,7 @@ async fn create_session(
         session_id.clone(),
         req.device_id.clone(),
         user.user_id.clone(),
+        req.cwd.clone(),
     );
     state
         .store
@@ -70,6 +74,51 @@ async fn create_session(
     Ok(Json(CreateSessionResponse {
         session_id,
         ws_url: format!("/ws/web"),
+    }))
+}
+
+async fn list_sessions(
+    state: axum::extract::State<Arc<RwLock<AppState>>>,
+    user: AuthUser,
+) -> Json<Vec<SessionInfo>> {
+    let state = state.read().await;
+    let sessions = state.store.list_sessions(&user.user_id).await;
+    Json(
+        sessions
+            .into_iter()
+            .map(|s| SessionInfo {
+                id: s.id,
+                device_id: s.device_id,
+                user_id: s.user_id,
+                created_at: s.created_at,
+                cwd: s.cwd,
+            })
+            .collect(),
+    )
+}
+
+async fn get_session(
+    state: axum::extract::State<Arc<RwLock<AppState>>>,
+    user: AuthUser,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<SessionInfo>, AppError> {
+    let state = state.read().await;
+    let s = state
+        .store
+        .get_session(&id)
+        .await
+        .ok_or(AppError::NotFound("session not found".into()))?;
+
+    if s.user_id != user.user_id && !user.is_admin() {
+        return Err(AppError::Forbidden("not your session".into()));
+    }
+
+    Ok(Json(SessionInfo {
+        id: s.id,
+        device_id: s.device_id,
+        user_id: s.user_id,
+        created_at: s.created_at,
+        cwd: s.cwd,
     }))
 }
 

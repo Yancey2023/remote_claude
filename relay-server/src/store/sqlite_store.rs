@@ -56,11 +56,17 @@ impl SqliteStore {
                 device_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
-                closed INTEGER NOT NULL DEFAULT 0
+                closed INTEGER NOT NULL DEFAULT 0,
+                cwd TEXT
             )",
         )
         .execute(&self.pool)
         .await?;
+
+        // Add cwd column for existing databases
+        let _ = sqlx::query("ALTER TABLE sessions ADD COLUMN cwd TEXT")
+            .execute(&self.pool)
+            .await;
 
         Ok(())
     }
@@ -215,13 +221,14 @@ impl SqliteStore {
 
     pub async fn create_session(&self, session: Session) -> Result<(), String> {
         sqlx::query(
-            "INSERT INTO sessions (id, device_id, user_id, created_at, closed) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO sessions (id, device_id, user_id, created_at, closed, cwd) VALUES (?, ?, ?, ?, ?, ?)",
         )
         .bind(&session.id)
         .bind(&session.device_id)
         .bind(&session.user_id)
         .bind(session.created_at)
         .bind(session.closed as i32)
+        .bind(&session.cwd)
         .execute(&self.pool)
         .await
         .map_err(|e| format!("database error: {}", e))?;
@@ -241,9 +248,55 @@ impl SqliteStore {
         }
         Ok(())
     }
+
+    pub async fn list_sessions(&self, user_id: &str) -> Vec<Session> {
+        sqlx::query(
+            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE user_id = ? AND closed = 0 ORDER BY created_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .ok()
+        .map(|rows| rows.into_iter().map(row_to_session).collect())
+        .unwrap_or_default()
+    }
+
+    pub async fn list_sessions_for_device(&self, device_id: &str) -> Vec<Session> {
+        sqlx::query(
+            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE device_id = ? AND closed = 0 ORDER BY created_at DESC",
+        )
+        .bind(device_id)
+        .fetch_all(&self.pool)
+        .await
+        .ok()
+        .map(|rows| rows.into_iter().map(row_to_session).collect())
+        .unwrap_or_default()
+    }
+
+    pub async fn get_session(&self, id: &str) -> Option<Session> {
+        sqlx::query(
+            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE id = ?",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?
+        .map(row_to_session)
+    }
 }
 
 // ── Row mappers ──
+
+fn row_to_session(row: sqlx::sqlite::SqliteRow) -> Session {
+    Session {
+        id: row.get("id"),
+        device_id: row.get("device_id"),
+        user_id: row.get("user_id"),
+        created_at: row.get("created_at"),
+        closed: row.get::<i32, _>("closed") != 0,
+        cwd: row.get("cwd"),
+    }
+}
 
 fn row_to_user(row: sqlx::sqlite::SqliteRow) -> User {
     let role_str: String = row.get("role");
@@ -360,10 +413,22 @@ mod tests {
     #[tokio::test]
     async fn test_create_and_close_session() {
         let store = test_store().await;
-        let session = Session::new("s1".into(), "dev-1".into(), "u1".into());
-        // create_session and close_session should not error
+        let session = Session::new("s1".into(), "dev-1".into(), "u1".into(), Some("/tmp".into()));
         store.create_session(session).await.unwrap();
         store.close_session("s1").await.unwrap();
         store.close_session("nonexistent").await.unwrap_err();
+    }
+
+    #[tokio::test]
+    async fn test_list_sessions() {
+        let store = test_store().await;
+        store.create_session(Session::new("s1".into(), "dev-1".into(), "u1".into(), None)).await.unwrap();
+        store.create_session(Session::new("s2".into(), "dev-1".into(), "u1".into(), Some("/home".into()))).await.unwrap();
+        let list = store.list_sessions("u1").await;
+        assert_eq!(list.len(), 2);
+        let list_dev = store.list_sessions_for_device("dev-1").await;
+        assert_eq!(list_dev.len(), 2);
+        let s = store.get_session("s1").await.unwrap();
+        assert_eq!(s.id, "s1");
     }
 }

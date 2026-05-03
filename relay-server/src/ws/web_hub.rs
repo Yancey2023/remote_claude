@@ -123,17 +123,7 @@ pub async fn handle_web_ws(
 
     recv_handle.await.ok();
 
-    // Notify devices to kill PTY sessions belonging to this user
-    let user_sessions = hub.session_registry.get_sessions_for_user(&user_id).await;
-    for session in &user_sessions {
-        let close_msg = serde_json::json!({
-            "type": "session_closed",
-            "payload": { "session_id": &session.id }
-        });
-        let _ = client_hub.send_to_device(&session.device_id, &close_msg.to_string()).await;
-        hub.session_registry.unregister(&session.id).await;
-    }
-
+    // Sessions persist across disconnects; PTY keeps running
     hub.unregister(&user_id).await;
     info!(user_id = %user_id, "web UI disconnected");
 }
@@ -212,6 +202,10 @@ async fn handle_web_message(
                 .get("device_id")
                 .and_then(|d| d.as_str())
                 .ok_or("missing device_id")?;
+            let cwd = payload
+                .get("cwd")
+                .and_then(|c| c.as_str())
+                .map(|s| s.to_string());
 
             let device = client_hub
                 .get_by_device_id(device_id)
@@ -219,7 +213,7 @@ async fn handle_web_message(
                 .ok_or("device not found or offline")?;
 
             let session =
-                SessionActor::new(device.id.clone(), user_id.to_string());
+                SessionActor::new(device.id.clone(), user_id.to_string(), cwd.clone());
 
             let session_id = hub.session_registry.register(session).await;
 
@@ -228,7 +222,8 @@ async fn handle_web_message(
                 "type": "session_created",
                 "payload": {
                     "session_id": session_id,
-                    "device_id": device_id
+                    "device_id": device_id,
+                    "cwd": cwd
                 }
             });
 
