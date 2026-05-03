@@ -17,22 +17,22 @@ export function TerminalPage() {
   const device = devices.find((d) => d.id === deviceId);
   const store = useTerminalStore();
   const { connect, sendRawInput, sendResize, disconnect, connected, ws, error, sessionId: activeSessionId } = store;
-  const initRef = useRef(false);
   const terminalRef = useRef<TerminalHandle>(null);
   const terminalSizeRef = useRef<{ cols: number; rows: number } | null>(null);
+  const displayedSessionId = activeSessionId ?? sessionId;
 
-  // Connection setup
+  // (Re)attach on session change; store handles same-device fast switching.
   useEffect(() => {
-    if (!deviceId || !sessionId || !token || initRef.current) return;
-    initRef.current = true;
-
+    if (!deviceId || !sessionId || !token) return;
     connect(deviceId, token, sessionId!, cwd);
+  }, [deviceId, sessionId, token, cwd, connect]);
 
+  // Close WS only when leaving terminal page.
+  useEffect(() => {
     return () => {
-      initRef.current = false;
       disconnect();
     };
-  }, [deviceId, sessionId, token, connect, disconnect]);
+  }, [disconnect]);
 
   // Listen for result_chunks and write to terminal
   useEffect(() => {
@@ -41,10 +41,7 @@ export function TerminalPage() {
       const chunk = payload.chunk as string;
       const done = payload.done as boolean;
       const sid = payload.session_id as string;
-      // For /sessions/new, router param stays "new" until refresh.
-      // Use store sessionId once server creates the real session.
-      const expectedSessionId = activeSessionId ?? sessionId;
-      if (sid !== expectedSessionId) return;
+      if (sid !== displayedSessionId) return;
       const term = terminalRef.current;
       if (term && chunk) {
         term.write(chunk);
@@ -63,7 +60,7 @@ export function TerminalPage() {
       unsub();
       unsubErr();
     };
-  }, [ws, sessionId, activeSessionId]);
+  }, [ws, displayedSessionId, t]);
 
   const handleData = useCallback(
     (data: string) => {
@@ -122,7 +119,7 @@ export function TerminalPage() {
           {device?.name || deviceId || ''}
         </span>
         <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {(activeSessionId ?? sessionId)?.slice(0, 8)}...
+          {displayedSessionId?.slice(0, 8)}...
         </span>
         <span
           style={{
@@ -140,6 +137,7 @@ export function TerminalPage() {
 
       <div style={{ flex: 1, padding: '0.5rem', overflow: 'hidden' }}>
         <Terminal
+          key={displayedSessionId ?? 'pending'}
           ref={terminalRef}
           onData={handleData}
           onResize={handleResize}

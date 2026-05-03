@@ -30,12 +30,28 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   error: null,
 
   connect: async (deviceId: string, token: string, existingSessionId: string, cwd?: string) => {
-    const existingWs = get().ws;
+    const prev = get();
+    const existingWs = prev.ws;
+    const sameDevice = !!existingWs && prev.deviceId === deviceId;
+
+    const isNew = existingSessionId === 'new';
+
+    // Fast path: switching sessions on the same device should reuse the WS connection.
+    // This avoids full-page reconnect feel and only refreshes terminal content.
+    if (sameDevice) {
+      if (isNew) {
+        existingWs!.send('create_session', { device_id: deviceId, cwd: cwd ?? null });
+        set({ sessionId: null, connected: false, error: null });
+      } else {
+        existingWs!.send('attach_session', { session_id: existingSessionId });
+        set({ sessionId: existingSessionId, connected: true, error: null });
+      }
+      return;
+    }
+
     if (existingWs) {
       existingWs.disconnect();
     }
-
-    const isNew = existingSessionId === 'new';
 
     try {
       const cfg = getConfig();
