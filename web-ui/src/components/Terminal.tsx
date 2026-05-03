@@ -43,7 +43,10 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
         cursorBlink: true,
         cursorStyle: 'block',
         fontSize: 14,
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+        // Use a resilient cross-platform monospace stack to avoid blocked local font lookups
+        // (e.g. Firefox privacy levels blocking Cascadia Code) and keep terminal rendering stable.
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+        lineHeight: 1.25,
         theme: {
           background: '#1a1a2e',
           foreground: '#e0e0e0',
