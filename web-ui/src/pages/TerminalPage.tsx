@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTerminalStore } from '../stores/terminalStore';
 import { useAuthStore } from '../stores/authStore';
 import { useDeviceStore } from '../stores/deviceStore';
-import { Terminal, getTerminal } from '../components/Terminal';
-import { showToast } from '../components/Toast';
+import { Terminal, type TerminalHandle } from '../components/Terminal';
 
 export function TerminalPage() {
   const { id: deviceId } = useParams<{ id: string }>();
@@ -13,8 +12,9 @@ export function TerminalPage() {
   const devices = useDeviceStore((s) => s.devices);
   const device = devices.find((d) => d.id === deviceId);
   const store = useTerminalStore();
-  const { connect, sendCommand, disconnect, connected, ws, output } = store;
+  const { connect, sendRawInput, sendResize, disconnect, connected, ws, error } = store;
   const initRef = useRef(false);
+  const terminalRef = useRef<TerminalHandle>(null);
 
   // Connection setup
   useEffect(() => {
@@ -35,20 +35,18 @@ export function TerminalPage() {
     const unsub = ws.on('result_chunk', (payload) => {
       const chunk = payload.chunk as string;
       const done = payload.done as boolean;
-      const term = getTerminal();
+      const term = terminalRef.current;
       if (term && chunk) {
         term.write(chunk);
       }
       if (done) {
-        term?.writeln('');
+        terminalRef.current?.writeln('\r\n\x1b[1;33m[Session ended]\x1b[0m');
       }
     });
 
     const unsubErr = ws.on('error', (payload) => {
       const msg = payload.message as string;
-      showToast(msg, 'error');
-      const term = getTerminal();
-      term?.writeln(`\x1b[1;31mError: ${msg}\x1b[0m`);
+      terminalRef.current?.writeln(`\r\n\x1b[1;31mError: ${msg}\x1b[0m`);
     });
 
     return () => {
@@ -57,18 +55,20 @@ export function TerminalPage() {
     };
   }, [ws]);
 
-  const handleCommand = useCallback(
-    (cmd: string) => {
-      if (!connected) {
-        showToast('Session not connected', 'error');
-        return;
-      }
-      // Echo the command in the terminal
-      const term = getTerminal();
-      term?.writeln(`\x1b[1;32m> ${cmd}\x1b[0m`);
-      sendCommand(cmd);
+  const handleData = useCallback(
+    (data: string) => {
+      if (!connected) return;
+      sendRawInput(data);
     },
-    [connected, sendCommand],
+    [connected, sendRawInput],
+  );
+
+  const handleResize = useCallback(
+    (cols: number, rows: number) => {
+      if (!connected) return;
+      sendResize(cols, rows);
+    },
+    [connected, sendResize],
   );
 
   return (
@@ -112,13 +112,18 @@ export function TerminalPage() {
           }}
         />
         <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {connected ? 'Connected' : 'Disconnected'}
+          {connected ? 'Connected' : error ? 'Error' : 'Disconnected'}
         </span>
       </div>
 
       {/* Terminal area */}
       <div style={{ flex: 1, padding: '0.5rem', overflow: 'hidden' }}>
-        <Terminal onCommand={handleCommand} readOnly={!connected} />
+        <Terminal
+          ref={terminalRef}
+          onData={handleData}
+          onResize={handleResize}
+          readOnly={!connected}
+        />
       </div>
     </div>
   );

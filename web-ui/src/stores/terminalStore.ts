@@ -13,6 +13,8 @@ interface TerminalState {
   error: string | null;
   connect: (deviceId: string, token: string) => Promise<void>;
   sendCommand: (cmd: string) => void;
+  sendRawInput: (data: string) => void;
+  sendResize: (cols: number, rows: number) => void;
   disconnect: () => void;
   appendOutput: (chunk: string) => void;
   setWsConnected: (connected: boolean) => void;
@@ -80,6 +82,18 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     const { ws, sessionId, connected } = get();
     if (!ws || !sessionId || !connected) return;
     ws.send('command', { session_id: sessionId, command: cmd });
+  },
+
+  sendRawInput: (data: string) => {
+    const { ws, sessionId, connected } = get();
+    if (!ws || !sessionId || !connected) return;
+    ws.send('terminal_input', { session_id: sessionId, data });
+  },
+
+  sendResize: (cols: number, rows: number) => {
+    const { ws, sessionId, connected } = get();
+    if (!ws || !sessionId || !connected) return;
+    ws.send('terminal_resize', { session_id: sessionId, cols, rows });
   },
 
   disconnect: () => {
