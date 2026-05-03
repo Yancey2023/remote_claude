@@ -26,10 +26,11 @@ pub async fn ws_handler(
     match path.as_str() {
         "/ws/client" => {
             let client_hub = s.client_hub.clone();
+            let web_hub = s.web_hub.clone();
             let store = s.store.clone();
             let config = s.config.clone();
             drop(s);
-            client_hub::handle_client_ws(ws, client_hub, store, config)
+            client_hub::handle_client_ws(ws, client_hub, web_hub, store, config)
                 .instrument(tracing::info_span!("client_ws"))
                 .await;
         }

@@ -13,6 +13,8 @@ use crate::config::Config;
 use crate::models::Device;
 use crate::store::SqliteStore;
 
+use super::web_hub::WebHub;
+
 #[derive(Clone)]
 pub struct ClientHub {
     /// token → device info + sender channel
@@ -128,6 +130,7 @@ impl ClientHub {
 pub async fn handle_client_ws(
     ws: WebSocket,
     hub: ClientHub,
+    web_hub: WebHub,
     store: SqliteStore,
     config: Config,
 ) {
@@ -197,6 +200,7 @@ pub async fn handle_client_ws(
     // Main loop: relay messages from server → client and client → server
     let device_id_fwd = device_id.clone();
     let last_pong_fwd = last_pong.clone();
+    let web_hub_fwd = web_hub.clone();
     let forward_handle = tokio::spawn(async move {
         loop {
             tokio::select! {
@@ -216,9 +220,22 @@ pub async fn handle_client_ws(
                     match msg {
                         Some(Ok(Message::Text(text))) => {
                             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
-                                if parsed.get("type").and_then(|t| t.as_str()) == Some("pong") {
-                                    *last_pong_fwd.write().await = Instant::now();
-                                    continue;
+                                let msg_type = parsed.get("type").and_then(|t| t.as_str());
+                                match msg_type {
+                                    Some("pong") => {
+                                        *last_pong_fwd.write().await = Instant::now();
+                                        continue;
+                                    }
+                                    Some("result_chunk") => {
+                                        // Forward result_chunk to the web user who owns this session
+                                        if let Some(session_id) = parsed["payload"]["session_id"].as_str() {
+                                            if let Some(session) = web_hub_fwd.session_registry.get(session_id).await {
+                                                let _ = web_hub_fwd.send_to_user(&session.user_id, &text).await;
+                                            }
+                                        }
+                                        continue;
+                                    }
+                                    _ => {}
                                 }
                             }
                             tracing::debug!(device_id = %device_id_fwd, msg = %text, "unhandled client message");
