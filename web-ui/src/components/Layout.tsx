@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { ToastContainer } from './Toast';
 import { ConnectionOverlay } from './ConnectionOverlay';
+import { useI18n } from '../i18n';
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -87,6 +88,19 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     lineHeight: 1.2,
   },
+  languageRow: {
+    display: 'flex',
+    gap: '0.35rem',
+    marginTop: '0.35rem',
+  },
+  langBtn: {
+    background: 'none',
+    border: '1px solid #16213e',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '0.72rem',
+    padding: '0.12rem 0.4rem',
+  },
   footer: {
     padding: '0.5rem',
     fontSize: '0.8rem',
@@ -103,6 +117,7 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 export function Layout() {
+  const { locale, setLocale, t } = useI18n();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
@@ -118,7 +133,7 @@ export function Layout() {
   const handleDeleteSession = (e: React.MouseEvent, sid: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!window.confirm('Delete this session?')) return;
+    if (!window.confirm(t('deleteSessionConfirm'))) return;
     deleteSession(sid);
     if (sid === activeSessionId) {
       navigate(`/devices/${deviceId || ''}`);
@@ -128,7 +143,7 @@ export function Layout() {
   return (
     <div style={styles.container}>
       <div style={styles.sidebar}>
-        <div style={styles.logo}>Remote Claude</div>
+        <div style={styles.logo}>{t('appName')}</div>
         <nav style={styles.nav}>
           <NavLink
             to="/devices"
@@ -138,20 +153,20 @@ export function Layout() {
               ...(isActive ? styles.activeLink : {}),
             })}
           >
-            Devices
+            {t('devices')}
           </NavLink>
         </nav>
 
         {deviceId && (
           <div style={styles.sessionsSection}>
             <div style={styles.sectionHeader}>
-              <span style={styles.sectionTitle}>SESSIONS</span>
+              <span style={styles.sectionTitle}>{t('sessions')}</span>
               <button
                 style={styles.newSessionBtn}
                 onClick={() => navigate(`/devices/${deviceId}/sessions/new`)}
-                title="New session"
+                title={t('newSessionTitle')}
               >
-                + New
+                {t('new')}
               </button>
             </div>
             {sessions
@@ -181,7 +196,7 @@ export function Layout() {
                       flexShrink: 0,
                       marginLeft: '4px',
                     }}
-                    title="Close session"
+                    title={t('closeSessionTitle')}
                   >
                     ✕
                   </button>
@@ -192,6 +207,20 @@ export function Layout() {
 
         <div style={styles.footer}>
           <div style={{ marginBottom: '0.25rem' }}>{user?.username}</div>
+          <div style={styles.languageRow}>
+            <button
+              onClick={() => setLocale('en')}
+              style={{ ...styles.langBtn, color: locale === 'en' ? '#e94560' : '#888' }}
+            >
+              {t('languageEnglish')}
+            </button>
+            <button
+              onClick={() => setLocale('zh')}
+              style={{ ...styles.langBtn, color: locale === 'zh' ? '#e94560' : '#888' }}
+            >
+              {t('languageChinese')}
+            </button>
+          </div>
           <button
             onClick={handleLogout}
             style={{
@@ -203,7 +232,7 @@ export function Layout() {
               fontSize: '0.8rem',
             }}
           >
-            Logout
+            {t('logout')}
           </button>
         </div>
       </div>

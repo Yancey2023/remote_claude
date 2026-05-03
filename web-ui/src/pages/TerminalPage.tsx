@@ -4,8 +4,10 @@ import { useTerminalStore } from '../stores/terminalStore';
 import { useAuthStore } from '../stores/authStore';
 import { useDeviceStore } from '../stores/deviceStore';
 import { Terminal, type TerminalHandle } from '../components/Terminal';
+import { useI18n } from '../i18n';
 
 export function TerminalPage() {
+  const { t } = useI18n();
   const { id: deviceId, sessionId } = useParams<{ id: string; sessionId: string }>();
   const [searchParams] = useSearchParams();
   const cwd = searchParams.get('cwd') || undefined;
@@ -48,13 +50,13 @@ export function TerminalPage() {
         term.write(chunk);
       }
       if (done) {
-        terminalRef.current?.writeln('\r\n\x1b[1;33m[Session ended]\x1b[0m');
+        terminalRef.current?.writeln(`\r\n\x1b[1;33m${t('terminalSessionEnded')}\x1b[0m`);
       }
     });
 
     const unsubErr = ws.on('error', (payload) => {
       const msg = payload.message as string;
-      terminalRef.current?.writeln(`\r\n\x1b[1;31mError: ${msg}\x1b[0m`);
+      terminalRef.current?.writeln(`\r\n\x1b[1;31m${t('terminalErrorPrefix')}: ${msg}\x1b[0m`);
     });
 
     return () => {
@@ -114,7 +116,7 @@ export function TerminalPage() {
             fontSize: '0.8rem',
           }}
         >
-          &larr; Back
+          &larr; {t('back')}
         </button>
         <span style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
           {device?.name || deviceId || ''}
@@ -132,7 +134,7 @@ export function TerminalPage() {
           }}
         />
         <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {connected ? 'Connected' : error ? 'Error' : 'Disconnected'}
+          {connected ? t('connected') : error ? t('error') : t('disconnected')}
         </span>
       </div>
 

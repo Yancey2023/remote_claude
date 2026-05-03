@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '../api/client';
 import type { DeviceResponse } from '../types/protocol';
+import { translate } from '../i18n';
 
 interface DeviceState {
   devices: DeviceResponse[];
@@ -22,7 +23,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const devices = await apiClient.listDevices();
       set({ devices, loading: false });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to fetch devices', loading: false });
+      set({ error: e instanceof Error ? e.message : translate('fetchDevicesFailed'), loading: false });
     }
   },
 
@@ -33,7 +34,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const devices = get().devices.filter((d) => d.id !== deviceId);
       set({ devices });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to delete device' });
+      set({ error: e instanceof Error ? e.message : translate('deleteDeviceFailed') });
     }
   },
 

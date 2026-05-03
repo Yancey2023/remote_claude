@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '../api/client';
 import type { SessionInfo } from '../types/protocol';
+import { translate } from '../i18n';
 
 interface SessionState {
   sessions: SessionInfo[];
@@ -23,7 +24,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessions = await apiClient.listSessions();
       set({ sessions, loading: false });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to fetch sessions', loading: false });
+      set({ error: e instanceof Error ? e.message : translate('fetchSessionsFailed'), loading: false });
     }
   },
 
@@ -36,7 +37,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({ sessions });
       return sessions.find((s) => s.id === res.session_id) || null;
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to create session' });
+      set({ error: e instanceof Error ? e.message : translate('createSessionFailed') });
       return null;
     }
   },
@@ -48,7 +49,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessions = get().sessions.filter((s) => s.id !== sessionId);
       set({ sessions });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to delete session' });
+      set({ error: e instanceof Error ? e.message : translate('deleteSessionFailed') });
     }
   },
 

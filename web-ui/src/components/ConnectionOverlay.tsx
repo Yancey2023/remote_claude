@@ -1,6 +1,8 @@
 import { useTerminalStore } from '../stores/terminalStore';
+import { useI18n } from '../i18n';
 
 export function ConnectionOverlay() {
+  const { t } = useI18n();
   const wsConnected = useTerminalStore((s) => s.wsConnected);
   const connected = useTerminalStore((s) => s.connected);
   const deviceId = useTerminalStore((s) => s.deviceId);
@@ -38,7 +40,7 @@ export function ConnectionOverlay() {
         }}
       />
       <p style={{ color: '#a0a0a0', fontSize: '0.9rem' }}>
-        Connecting...
+        {t('connecting')}
       </p>
       <style>{`
         @keyframes spin {

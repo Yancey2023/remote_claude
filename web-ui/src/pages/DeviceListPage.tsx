@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { useDeviceStore } from '../stores/deviceStore';
 import { DeviceCard } from '../components/DeviceCard';
 import { getConfig } from '../config';
+import { useI18n } from '../i18n';
 
 export function DeviceListPage() {
+  const { t } = useI18n();
   const devices = useDeviceStore((s) => s.devices);
   const loading = useDeviceStore((s) => s.loading);
   const error = useDeviceStore((s) => s.error);
@@ -18,7 +20,7 @@ export function DeviceListPage() {
   return (
     <div style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
       <h2 style={{ margin: '0 0 1.5rem', fontSize: '1.25rem', color: '#e0e0e0' }}>
-        Devices
+        {t('devices')}
       </h2>
 
       {error && (
@@ -36,12 +38,12 @@ export function DeviceListPage() {
       )}
 
       {loading && devices.length === 0 && (
-        <p style={{ color: '#666' }}>Loading devices...</p>
+        <p style={{ color: '#666' }}>{t('loadingDevices')}</p>
       )}
 
       {!loading && devices.length === 0 && (
         <p style={{ color: '#666' }}>
-          No devices found. Make sure the desktop client is running and connected.
+          {t('noDevices')}
         </p>
       )}
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { WebSocketClient } from '../api/ws';
 import { getConfig } from '../config';
+import { translate } from '../i18n';
 
 interface TerminalState {
   sessionId: string | null;
@@ -87,7 +88,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         error: null,
       });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to connect' });
+      set({ error: e instanceof Error ? e.message : translate('connectFailed') });
     }
   },
 

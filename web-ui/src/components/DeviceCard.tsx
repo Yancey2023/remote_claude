@@ -2,23 +2,25 @@ import { useNavigate } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { showToast } from './Toast';
 import type { DeviceResponse } from '../types/protocol';
+import { useI18n } from '../i18n';
 
 interface Props {
   device: DeviceResponse;
 }
 
 export function DeviceCard({ device }: Props) {
+  const { t, tf } = useI18n();
   const navigate = useNavigate();
   const deleteDevice = useDeviceStore((s) => s.deleteDevice);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete device "${device.name}"? This cannot be undone.`)) return;
+    if (!window.confirm(tf('deviceDeleteConfirm', { name: device.name }))) return;
     try {
       await deleteDevice(device.id);
-      showToast(`Device "${device.name}" deleted`, 'success');
+      showToast(tf('deviceDeleted', { name: device.name }), 'success');
     } catch {
-      showToast('Failed to delete device', 'error');
+      showToast(t('deviceDeleteFailed'), 'error');
     }
   };
 
@@ -56,12 +58,12 @@ export function DeviceCard({ device }: Props) {
       </div>
       <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#888' }}>
         <span>v{device.version}</span>
-        <span>{device.busy ? 'Busy' : 'Idle'}</span>
-        <span>{device.online ? 'Online' : 'Offline'}</span>
+        <span>{device.busy ? t('busy') : t('idle')}</span>
+        <span>{device.online ? t('online') : t('offline')}</span>
       </div>
       <button
         onClick={handleDelete}
-        title={`Delete ${device.name}`}
+        title={tf('deviceDeleteTitle', { name: device.name })}
         style={{
           position: 'absolute',
           top: '6px',

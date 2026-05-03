@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { useSessionStore } from '../stores/sessionStore';
+import { useI18n } from '../i18n';
 
 export function SessionListPage() {
+  const { t } = useI18n();
   const { id: deviceId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const devices = useDeviceStore((s) => s.devices);
@@ -47,7 +49,7 @@ export function SessionListPage() {
           }}
         />
         <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {device?.online ? 'Online' : 'Offline'}
+          {device?.online ? t('sessionOnline') : t('sessionOffline')}
         </span>
       </div>
 
@@ -64,7 +66,7 @@ export function SessionListPage() {
             marginBottom: '1.5rem',
           }}
         >
-          + New Session
+          {t('plusNewSession')}
         </button>
       )}
 
@@ -79,13 +81,13 @@ export function SessionListPage() {
           }}
         >
           <div style={{ marginBottom: '0.75rem', color: '#e0e0e0', fontSize: '0.9rem' }}>
-            New Session
+            {t('sessionNewTitle')}
           </div>
           <input
             type="text"
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
-            placeholder="Working directory (optional, e.g. C:\projects)"
+            placeholder={t('workingDirPlaceholder')}
             style={{
               width: '100%',
               padding: '0.5rem',
@@ -113,7 +115,7 @@ export function SessionListPage() {
                 fontSize: '0.85rem',
               }}
             >
-              Start
+              {t('start')}
             </button>
             <button
               onClick={() => setShowNew(false)}
@@ -127,16 +129,16 @@ export function SessionListPage() {
                 fontSize: '0.85rem',
               }}
             >
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
       )}
 
-      {loading && <p style={{ color: '#666' }}>Loading sessions...</p>}
+      {loading && <p style={{ color: '#666' }}>{t('loadingSessions')}</p>}
 
       {!loading && deviceSessions.length === 0 && !showNew && (
-        <p style={{ color: '#666' }}>No sessions yet. Click "+ New Session" to start.</p>
+        <p style={{ color: '#666' }}>{t('noSessionsYet')}</p>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -164,7 +166,7 @@ export function SessionListPage() {
           >
             <div>
               <div style={{ color: '#e0e0e0', fontSize: '0.9rem', marginBottom: '0.2rem' }}>
-                {s.cwd || 'default directory'}
+                {s.cwd || t('defaultDirectory')}
               </div>
               <div style={{ color: '#666', fontSize: '0.75rem' }}>
                 {new Date(s.created_at * 1000).toLocaleString()}
@@ -173,7 +175,7 @@ export function SessionListPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm('Delete this session?')) {
+                if (window.confirm(t('deleteSessionConfirm'))) {
                   handleDelete(s.id);
                 }
               }}
@@ -185,7 +187,7 @@ export function SessionListPage() {
                 fontSize: '1rem',
                 opacity: 0.5,
               }}
-              title="Delete session"
+              title={t('deleteSessionTitle')}
             >
               ✕
             </button>

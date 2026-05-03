@@ -1,8 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useI18n } from '../i18n';
 
 export function LoginPage() {
+  const { locale, setLocale, t } = useI18n();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const login = useAuthStore((s) => s.login);
@@ -56,7 +58,7 @@ export function LoginPage() {
             textAlign: 'center',
           }}
         >
-          Remote Claude
+          {t('appName')}
         </h1>
         <p
           style={{
@@ -66,8 +68,40 @@ export function LoginPage() {
             marginBottom: '1.5rem',
           }}
         >
-          Sign in to your account
+          {t('signInSubtitle')}
         </p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.35rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setLocale('en')}
+            style={{
+              background: 'none',
+              border: '1px solid #16213e',
+              color: locale === 'en' ? '#e94560' : '#888',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              padding: '0.15rem 0.45rem',
+            }}
+          >
+            {t('languageEnglish')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocale('zh')}
+            style={{
+              background: 'none',
+              border: '1px solid #16213e',
+              color: locale === 'zh' ? '#e94560' : '#888',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              padding: '0.15rem 0.45rem',
+            }}
+          >
+            {t('languageChinese')}
+          </button>
+        </div>
 
         {error && (
           <div
@@ -94,7 +128,7 @@ export function LoginPage() {
               marginBottom: '0.3rem',
             }}
           >
-            Username
+            {t('username')}
           </label>
           <input
             type="text"
@@ -125,7 +159,7 @@ export function LoginPage() {
               marginBottom: '0.3rem',
             }}
           >
-            Password
+            {t('password')}
           </label>
           <input
             type="password"
@@ -161,7 +195,7 @@ export function LoginPage() {
             transition: 'background 0.2s',
           }}
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? t('signingIn') : t('signIn')}
         </button>
       </form>
     </div>

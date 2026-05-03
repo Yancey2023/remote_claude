@@ -1,4 +1,5 @@
 import React from 'react';
+import { translate } from '../i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -36,9 +37,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
           background: '#1a1a2e',
           color: '#e0e0e0',
         }}>
-          <h1 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>Something went wrong</h1>
+          <h1 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>{translate('errorBoundaryTitle')}</h1>
           <p style={{ marginBottom: '2rem', color: '#a0a0a0' }}>
-            {this.state.error?.message || 'An unexpected error occurred'}
+            {this.state.error?.message || translate('unexpectedError')}
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -52,7 +53,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               fontSize: '1rem',
             }}
           >
-            Reload
+            {translate('reload')}
           </button>
         </div>
       );
