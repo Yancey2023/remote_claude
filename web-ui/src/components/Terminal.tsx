@@ -40,7 +40,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
       let disposed = false;
 
       const term = new XTerm({
-        cursorBlink: true,
+        cursorBlink: false,
         cursorStyle: 'block',
         fontSize: 14,
         // Use a resilient cross-platform monospace stack to avoid blocked local font lookups
@@ -50,7 +50,8 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
         theme: {
           background: '#1a1a2e',
           foreground: '#e0e0e0',
-          cursor: '#e94560',
+          cursor: 'transparent',
+          cursorAccent: 'transparent',
           selectionBackground: '#4a4a8a',
           black: '#1a1a2e',
           red: '#e74c3c',
