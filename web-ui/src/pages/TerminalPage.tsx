@@ -19,6 +19,8 @@ export function TerminalPage() {
   const { connect, sendRawInput, sendResize, disconnect, connected, ws, error, sessionId: activeSessionId } = store;
   const terminalRef = useRef<TerminalHandle>(null);
   const terminalSizeRef = useRef<{ cols: number; rows: number } | null>(null);
+  const suppressInputRef = useRef(false);
+  const replayReleaseTimerRef = useRef<number | null>(null);
   const displayedSessionId = activeSessionId ?? sessionId;
 
   // (Re)attach on session change; store handles same-device fast switching.
@@ -38,6 +40,9 @@ export function TerminalPage() {
   // Close WS only when leaving terminal page.
   useEffect(() => {
     return () => {
+      if (replayReleaseTimerRef.current !== null) {
+        window.clearTimeout(replayReleaseTimerRef.current);
+      }
       disconnect();
     };
   }, [disconnect]);
@@ -46,13 +51,32 @@ export function TerminalPage() {
   useEffect(() => {
     if (!ws) return;
     const unsub = ws.on('result_chunk', (payload) => {
-      const chunk = payload.chunk as string;
+      let chunk = payload.chunk as string;
       const done = payload.done as boolean;
       const sid = payload.session_id as string;
+      const replay = Boolean(payload.replay);
       if (sid !== displayedSessionId) return;
       const term = terminalRef.current;
       if (term && chunk) {
+        if (replay) {
+          // Replay can include historical CSI queries (e.g. ESC[6n) that would cause
+          // xterm to emit automatic replies like ESC[4;1R into onData.
+          // Strip these query sequences and suppress transient emulator replies.
+          suppressInputRef.current = true;
+          chunk = chunk
+            .split('\x1b[6n').join('')
+            .split('\x1b[?6n').join('');
+        }
         term.write(chunk);
+        if (replay) {
+          if (replayReleaseTimerRef.current !== null) {
+            window.clearTimeout(replayReleaseTimerRef.current);
+          }
+          replayReleaseTimerRef.current = window.setTimeout(() => {
+            suppressInputRef.current = false;
+            replayReleaseTimerRef.current = null;
+          }, 80);
+        }
       }
       if (done) {
         terminalRef.current?.writeln(`\r\n\x1b[1;33m${t('terminalSessionEnded')}\x1b[0m`);
@@ -72,6 +96,7 @@ export function TerminalPage() {
 
   const handleData = useCallback(
     (data: string) => {
+      if (suppressInputRef.current) return;
       if (!connected) return;
       sendRawInput(data);
     },
