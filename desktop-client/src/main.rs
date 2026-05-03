@@ -1,6 +1,7 @@
 mod claude_runner;
 mod config;
 mod protocol;
+mod pty_session;
 mod ws_client;
 
 use std::time::Duration;

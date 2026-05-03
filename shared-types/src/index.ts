@@ -93,3 +93,19 @@ export interface ErrorPayload {
   code: string;
   message: string;
 }
+
+// Terminal forwarding (PTY)
+export interface TerminalInputPayload {
+  session_id: string;
+  data: string;
+}
+
+export interface TerminalResizePayload {
+  session_id: string;
+  cols: number;
+  rows: number;
+}
+
+export interface SessionClosedPayload {
+  session_id: string;
+}

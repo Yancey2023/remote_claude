@@ -11,6 +11,12 @@ pub enum ServerMessage {
     Registered { payload: RegisteredPayload },
     #[serde(rename = "command")]
     Command { payload: CommandPayload },
+    #[serde(rename = "terminal_input")]
+    TerminalInput { payload: TerminalInputPayload },
+    #[serde(rename = "terminal_resize")]
+    TerminalResize { payload: TerminalResizePayload },
+    #[serde(rename = "session_closed")]
+    SessionClosed { payload: SessionClosedPayload },
 }
 
 #[derive(Debug, Deserialize)]
@@ -22,6 +28,24 @@ pub struct RegisteredPayload {
 pub struct CommandPayload {
     pub session_id: String,
     pub command: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TerminalInputPayload {
+    pub session_id: String,
+    pub data: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TerminalResizePayload {
+    pub session_id: String,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SessionClosedPayload {
+    pub session_id: String,
 }
 
 /// Messages sent to the server.
@@ -152,5 +176,44 @@ mod tests {
         let json = r#"{"type":"ping"}"#;
         let msg: ServerMessage = serde_json::from_str(json).unwrap();
         assert!(matches!(msg, ServerMessage::Ping));
+    }
+
+    #[test]
+    fn test_deserialize_terminal_input() {
+        let json = r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"hello"}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::TerminalInput { payload } => {
+                assert_eq!(payload.session_id, "s1");
+                assert_eq!(payload.data, "hello");
+            }
+            _ => panic!("expected TerminalInput variant"),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_terminal_resize() {
+        let json = r#"{"type":"terminal_resize","payload":{"session_id":"s1","cols":120,"rows":40}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::TerminalResize { payload } => {
+                assert_eq!(payload.session_id, "s1");
+                assert_eq!(payload.cols, 120);
+                assert_eq!(payload.rows, 40);
+            }
+            _ => panic!("expected TerminalResize variant"),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_session_closed() {
+        let json = r#"{"type":"session_closed","payload":{"session_id":"s1"}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::SessionClosed { payload } => {
+                assert_eq!(payload.session_id, "s1");
+            }
+            _ => panic!("expected SessionClosed variant"),
+        }
     }
 }
