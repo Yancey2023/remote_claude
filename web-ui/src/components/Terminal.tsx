@@ -63,7 +63,11 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
       term.loadAddon(fitAddon);
 
       term.open(terminalRef.current);
-      fitAddon.fit();
+
+      // Delay fit to let xterm.js fully initialize the renderer
+      requestAnimationFrame(() => {
+        try { fitAddon.fit(); } catch { /* ignore */ }
+      });
 
       term.writeln('\x1b[1;36mRemote Claude Terminal\x1b[0m');
       term.writeln('Starting interactive Claude session...');
@@ -75,7 +79,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
       });
 
       const handleResize = () => {
-        fitAddon.fit();
+        try { fitAddon.fit(); } catch { /* ignore */ }
         onResizeRef.current?.(term.cols, term.rows);
       };
       window.addEventListener('resize', handleResize);
