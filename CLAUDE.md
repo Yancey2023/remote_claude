@@ -6,7 +6,11 @@
 
 ```
 ├── relay-server/       Rust 中转服务器 (axum + tokio)
+│   ├── Dockerfile      多阶段构建镜像
+│   └── .dockerignore
 ├── desktop-client/     Rust 电脑客户端 (tokio-tungstenite)
+│   ├── Dockerfile      多阶段构建镜像
+│   └── .dockerignore
 ├── web-ui/            React 前端 (Vite + TypeScript + xterm.js)
 ├── shared-types/      共享 TypeScript 类型定义
 ├── pnpm-workspace.yaml
@@ -217,6 +221,51 @@ pnpm build        # 生产构建 → dist/
 配置加载优先级：`/config.json` > `VITE_*` 环境变量（构建时） > 硬编码默认值。
 
 开发环境通过 Vite proxy 将 `/api` 和 `/ws` 转发到 `localhost:8080`。
+
+## Docker 部署
+
+所有后端程序支持 Docker 构建，使用最新 `rust:latest` 多阶段构建，最小化最终镜像体积。
+
+### 中转服务器
+
+```bash
+# 构建镜像
+docker build -t relay-server relay-server/
+
+# 首次运行（通过环境变量生成配置文件）
+docker run -d --name relay-server -p 8080:8080 \
+  -e ADMIN_USER=admin \
+  -e ADMIN_PASS=admin123 \
+  -e JWT_SECRET=change-me \
+  -v relay-config:/app/config \
+  -v relay-data:/app/data \
+  relay-server
+
+# 后续运行（配置文件已持久化到 volume 中）
+docker start relay-server
+```
+
+### 电脑客户端
+
+```bash
+# 构建镜像
+docker build -t desktop-client desktop-client/
+
+# 运行（必须提供 REGISTER_TOKEN 和 SERVER_URL）
+docker run -d --name desktop-client \
+  -e REGISTER_TOKEN=<token> \
+  -e SERVER_URL=ws://host.docker.internal:8080/ws/client \
+  -v client-config:/app/config \
+  desktop-client
+```
+
+> **注意**: desktop-client 容器内需要访问 Claude CLI。建议将宿主机的 `claude` 二进制文件挂载到容器中，并通过 `CLAUDE_BINARY` 环境变量指定路径。
+> **注意**: 容器内配置路径默认为 `/app/config/*.toml`（通过 `CONFIG_PATH` 环境变量设置）。所有配置项也可通过环境变量传入。
+
+| 项目 | 构建命令 | 基础镜像 |
+|------|----------|----------|
+| relay-server | `docker build -t relay-server relay-server/` | `debian:bookworm-slim` |
+| desktop-client | `docker build -t desktop-client desktop-client/` | `debian:bookworm-slim` |
 
 ## 迁移说明
 
