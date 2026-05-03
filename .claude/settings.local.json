@@ -22,7 +22,8 @@
       "WebFetch(domain:docs.rs)",
       "WebFetch(domain:lib.rs)",
       "WebFetch(domain:github.com)",
-      "Bash(cargo search *)"
+      "Bash(cargo search *)",
+      "Bash(cargo add *)"
     ]
   }
 }

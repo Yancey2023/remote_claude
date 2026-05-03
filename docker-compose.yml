@@ -43,9 +43,16 @@ services:
       dockerfile: web-ui/Dockerfile
     ports:
       - "80:80"
+      # Enable for TLS termination at nginx:
+      # - "443:443"
     depends_on:
       - relay-server
     restart: unless-stopped
+    # Uncomment for TLS (mount certs and use nginx.ssl.conf):
+    # volumes:
+    #   - ./certs/cert.pem:/etc/nginx/ssl/cert.pem
+    #   - ./certs/key.pem:/etc/nginx/ssl/key.pem
+    #   - ./web-ui/nginx.ssl.conf:/etc/nginx/conf.d/default.conf
 
 volumes:
   relay-config:

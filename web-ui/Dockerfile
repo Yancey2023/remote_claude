@@ -17,6 +17,6 @@ FROM nginx:alpine
 COPY --from=builder /app/web-ui/dist /usr/share/nginx/html
 COPY web-ui/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]

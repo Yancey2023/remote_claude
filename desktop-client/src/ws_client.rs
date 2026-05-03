@@ -11,6 +11,22 @@ use crate::pty_session::PtySessionManager;
 /// Connect to the relay server and run the message loop.
 /// Returns when the connection is closed (for reconnection).
 pub async fn connect_and_run(config: &Config) -> Result<(), String> {
+    // Warn about unencrypted connections to non-localhost servers
+    if let Ok(parsed) = url::Url::parse(&config.server_url) {
+        if parsed.scheme() == "ws" {
+            if let Some(host) = parsed.host_str() {
+                let is_local = host == "127.0.0.1" || host == "localhost" || host == "::1";
+                if !is_local {
+                    warn!(
+                        host = %host,
+                        "connecting via plain WS (not WSS) — traffic is NOT encrypted. \
+                         Set SERVER_URL to wss://... or use a TLS reverse proxy (nginx/caddy) in production"
+                    );
+                }
+            }
+        }
+    }
+
     info!(server = %config.server_url, "connecting to relay server");
 
     let (ws_stream, _) = connect_async(&config.server_url)
