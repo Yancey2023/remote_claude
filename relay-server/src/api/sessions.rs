@@ -92,6 +92,13 @@ async fn close_session(
         return Err(AppError::Forbidden("not your session".into()));
     }
 
+    // Notify device to kill PTY session
+    let close_msg = serde_json::json!({
+        "type": "session_closed",
+        "payload": { "session_id": &session.id }
+    });
+    let _ = state.client_hub.send_to_device(&session.device_id, &close_msg.to_string()).await;
+
     state.web_hub.session_registry.unregister(&id).await;
     state
         .store

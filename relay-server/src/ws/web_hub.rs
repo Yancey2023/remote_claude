@@ -122,6 +122,18 @@ pub async fn handle_web_ws(
     });
 
     recv_handle.await.ok();
+
+    // Notify devices to kill PTY sessions belonging to this user
+    let user_sessions = hub.session_registry.get_sessions_for_user(&user_id).await;
+    for session in &user_sessions {
+        let close_msg = serde_json::json!({
+            "type": "session_closed",
+            "payload": { "session_id": &session.id }
+        });
+        let _ = client_hub.send_to_device(&session.device_id, &close_msg.to_string()).await;
+        hub.session_registry.unregister(&session.id).await;
+    }
+
     hub.unregister(&user_id).await;
     info!(user_id = %user_id, "web UI disconnected");
 }
@@ -168,16 +180,12 @@ async fn handle_web_message(
         .ok_or("missing type")?;
 
     match msg_type {
-        "command" => {
+        "command" | "terminal_input" | "terminal_resize" => {
             let payload = parsed.get("payload").ok_or("missing payload")?;
             let session_id = payload
                 .get("session_id")
                 .and_then(|s| s.as_str())
                 .ok_or("missing session_id")?;
-            let command = payload
-                .get("command")
-                .and_then(|c| c.as_str())
-                .ok_or("missing command")?;
 
             let session = hub
                 .session_registry
@@ -190,11 +198,8 @@ async fn handle_web_message(
             }
 
             let msg = serde_json::json!({
-                "type": "command",
-                "payload": {
-                    "session_id": session_id,
-                    "command": command
-                }
+                "type": msg_type,
+                "payload": payload,
             });
 
             client_hub
@@ -235,6 +240,16 @@ async fn handle_web_message(
                 .get("session_id")
                 .and_then(|s| s.as_str())
                 .ok_or("missing session_id")?;
+
+            if let Some(session) = hub.session_registry.get(session_id).await {
+                if session.user_id == user_id {
+                    let close_msg = serde_json::json!({
+                        "type": "session_closed",
+                        "payload": { "session_id": session_id }
+                    });
+                    let _ = client_hub.send_to_device(&session.device_id, &close_msg.to_string()).await;
+                }
+            }
 
             hub.session_registry.unregister(session_id).await;
         }

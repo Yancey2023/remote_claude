@@ -47,4 +47,13 @@ impl SessionRegistry {
         self.sessions.read().await.get(id).cloned()
     }
 
+    pub async fn get_sessions_for_user(&self, user_id: &str) -> Vec<SessionActor> {
+        self.sessions
+            .read()
+            .await
+            .values()
+            .filter(|s| s.user_id == user_id)
+            .cloned()
+            .collect()
+    }
 }
