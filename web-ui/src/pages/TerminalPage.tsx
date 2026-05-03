@@ -27,6 +27,14 @@ export function TerminalPage() {
     connect(deviceId, token, sessionId!, cwd);
   }, [deviceId, sessionId, token, cwd, connect]);
 
+  // New-session flow: once server assigns real session id, sync URL via React Router.
+  useEffect(() => {
+    if (!deviceId || !sessionId || !activeSessionId) return;
+    if (sessionId !== 'new') return;
+    const qs = cwd ? `?cwd=${encodeURIComponent(cwd)}` : '';
+    navigate(`/devices/${deviceId}/sessions/${activeSessionId}${qs}`, { replace: true });
+  }, [deviceId, sessionId, activeSessionId, cwd, navigate]);
+
   // Close WS only when leaving terminal page.
   useEffect(() => {
     return () => {

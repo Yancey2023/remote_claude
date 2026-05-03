@@ -75,9 +75,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
           cwd: serverCwd,
         });
         set({ sessionId: sid, connected: true });
-        // Navigate to the real session URL
-        const qs = serverCwd ? `?cwd=${encodeURIComponent(serverCwd)}` : '';
-        window.history.replaceState(null, '', `/devices/${deviceId}/sessions/${sid}${qs}`);
+        // Router path sync is handled in TerminalPage via navigate(...),
+        // so side bar active-state stays in sync with React Router.
         // Trigger PTY spawn with \r
         ws.send('terminal_input', { session_id: sid, data: '\r', cwd: serverCwd ?? null });
       });
