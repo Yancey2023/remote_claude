@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useSessionStore } from '../stores/sessionStore';
+import { useDeviceStore } from '../stores/deviceStore';
 import { ToastContainer } from './Toast';
 import { ConnectionOverlay } from './ConnectionOverlay';
 import { useI18n } from '../i18n';
@@ -18,98 +19,216 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'system-ui, sans-serif',
   },
   sidebar: {
-    width: '220px',
+    width: '252px',
     background: '#1a1a2e',
     borderRight: '1px solid #16213e',
     display: 'flex',
     flexDirection: 'column',
-    padding: '1rem',
+    padding: '0.85rem',
     flexShrink: 0,
     overflow: 'hidden',
   },
-  logo: {
-    fontSize: '1.1rem',
+  brandCard: {
+    background: 'linear-gradient(150deg, rgba(22,33,62,0.95), rgba(15,15,35,0.9))',
+    border: '1px solid #1d2b50',
+    borderRadius: '10px',
+    padding: '0.75rem 0.8rem',
+    marginBottom: '0.85rem',
+  },
+  brandTitle: {
+    fontSize: '1.05rem',
     fontWeight: 700,
     color: '#e94560',
-    marginBottom: '1rem',
-    padding: '0 0.5rem',
+    marginBottom: '0.25rem',
+  },
+  brandMeta: {
+    fontSize: '0.75rem',
+    color: '#8d95b8',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   nav: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem',
+    gap: '0.4rem',
   },
   link: {
-    padding: '0.5rem',
-    borderRadius: '6px',
+    padding: '0.6rem 0.65rem',
+    borderRadius: '8px',
     textDecoration: 'none',
     color: '#a0a0a0',
-    fontSize: '0.9rem',
-    transition: 'background 0.2s',
+    fontSize: '0.87rem',
+    transition: 'background 0.2s, color 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    border: '1px solid transparent',
+  },
+  linkIcon: {
+    display: 'inline-flex',
+    width: '18px',
+    height: '18px',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '5px',
+    background: 'rgba(233,69,96,0.12)',
+    color: '#f06a80',
+    fontSize: '0.74rem',
+    flexShrink: 0,
   },
   activeLink: {
-    background: '#16213e',
+    background: '#182545',
     color: '#e94560',
+    borderColor: '#233765',
   },
   sessionsSection: {
     flex: 1,
-    overflow: 'auto',
-    marginTop: '1rem',
+    minHeight: 0,
+    overflow: 'hidden',
+    marginTop: '0.85rem',
     borderTop: '1px solid #16213e',
-    paddingTop: '0.75rem',
+    paddingTop: '0.8rem',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  sessionList: {
+    overflowY: 'auto',
+    paddingRight: '0.15rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.35rem',
   },
   sessionItem: {
-    padding: '0.4rem 0.5rem',
-    borderRadius: '4px',
+    padding: '0.5rem 0.55rem',
+    borderRadius: '8px',
     textDecoration: 'none',
-    color: '#a0a0a0',
-    fontSize: '0.8rem',
+    color: '#b3b8d0',
+    fontSize: '0.78rem',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    transition: 'background 0.2s',
-    marginBottom: '0.2rem',
+    alignItems: 'flex-start',
+    transition: 'background 0.2s, color 0.2s',
+    border: '1px solid transparent',
+    gap: '0.45rem',
+  },
+  sessionItemText: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+    color: 'inherit',
+  },
+  sessionItemMeta: {
+    color: '#65719c',
+    fontSize: '0.67rem',
+    marginTop: '0.18rem',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  sessionDeleteBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#e74c3c',
+    cursor: 'pointer',
+    fontSize: '0.83rem',
+    opacity: 0.45,
+    padding: '0.05rem 0.18rem',
+    flexShrink: 0,
+    marginLeft: '0.2rem',
   },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: '0.5rem',
-    padding: '0 0.5rem',
+    marginBottom: '0.55rem',
+    padding: '0 0.15rem',
   },
   sectionTitle: {
-    fontSize: '0.75rem',
-    color: '#666',
+    fontSize: '0.72rem',
+    color: '#727ea6',
+    letterSpacing: '0.04em',
+  },
+  sectionCount: {
+    color: '#9ca3c8',
+    background: '#192544',
+    border: '1px solid #25355f',
+    borderRadius: '999px',
+    fontSize: '0.66rem',
+    padding: '0.08rem 0.42rem',
+    marginLeft: '0.4rem',
   },
   newSessionBtn: {
-    background: 'none',
-    border: '1px solid #16213e',
-    color: '#e94560',
-    borderRadius: '4px',
-    padding: '0.1rem 0.45rem',
-    fontSize: '0.7rem',
+    background: '#1d2a4b',
+    border: '1px solid #2f4778',
+    color: '#f17a8e',
+    borderRadius: '999px',
+    padding: '0.18rem 0.6rem',
+    fontSize: '0.68rem',
+    fontWeight: 600,
     cursor: 'pointer',
-    lineHeight: 1.2,
+    lineHeight: 1.1,
   },
   languageRow: {
     display: 'flex',
-    gap: '0.35rem',
-    marginTop: '0.35rem',
+    gap: '0.4rem',
+    marginTop: '0.5rem',
   },
   langBtn: {
-    background: 'none',
-    border: '1px solid #16213e',
-    borderRadius: '4px',
+    background: '#141f3a',
+    border: '1px solid #25355f',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '0.72rem',
-    padding: '0.12rem 0.4rem',
+    padding: '0.2rem 0.55rem',
+    flex: 1,
   },
   footer: {
-    padding: '0.5rem',
+    padding: '0.72rem',
     fontSize: '0.8rem',
-    color: '#666',
+    color: '#8791b9',
     borderTop: '1px solid #16213e',
-    marginTop: '0.5rem',
+    marginTop: '0.6rem',
+    background: '#131d36',
+    borderRadius: '10px',
+  },
+  userRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  userAvatar: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    background: '#1f2c50',
+    border: '1px solid #2d4273',
+    color: '#d1d8f8',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  userName: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: '#d7dcf3',
+    fontSize: '0.8rem',
+  },
+  logoutBtn: {
+    width: '100%',
+    marginTop: '0.55rem',
+    background: '#2a1b34',
+    border: '1px solid #5d2f4f',
+    color: '#ff8694',
+    cursor: 'pointer',
+    borderRadius: '6px',
+    padding: '0.35rem 0.5rem',
+    fontSize: '0.78rem',
   },
   main: {
     flex: 1,
@@ -118,35 +237,75 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  mobileTopbar: {
-    minHeight: '50px',
+  topbar: {
+    minHeight: '56px',
     borderBottom: '1px solid #16213e',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.35rem 0.75rem',
-    background: '#141429',
+    justifyContent: 'space-between',
+    gap: '0.7rem',
+    padding: '0.4rem 0.8rem',
+    background: 'rgba(20,20,41,0.95)',
     flexShrink: 0,
     paddingTop: 'max(0.35rem, env(safe-area-inset-top))',
   },
-  mobileMenuBtn: {
+  topbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.55rem',
+    minWidth: 0,
+    flex: 1,
+  },
+  menuBtn: {
     background: 'none',
     border: '1px solid #16213e',
     color: '#e0e0e0',
     borderRadius: '6px',
-    width: '32px',
-    height: '32px',
+    width: '34px',
+    height: '34px',
     cursor: 'pointer',
     fontSize: '1rem',
     lineHeight: 1,
     padding: 0,
+    flexShrink: 0,
   },
-  mobileTitle: {
+  topbarTitleWrap: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.1rem',
+  },
+  topbarTitle: {
     color: '#e0e0e0',
-    fontSize: '0.85rem',
+    fontSize: '0.9rem',
+    fontWeight: 600,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  topbarSubtitle: {
+    color: '#7f86ad',
+    fontSize: '0.72rem',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  topbarActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    flexShrink: 0,
+  },
+  topbarActionBtn: {
+    background: '#1e2b4d',
+    border: '1px solid #324b7f',
+    color: '#ef6f85',
+    borderRadius: '999px',
+    height: '30px',
+    padding: '0 0.65rem',
+    cursor: 'pointer',
+    fontSize: '0.74rem',
+    fontWeight: 600,
   },
   content: {
     flex: 1,
@@ -164,11 +323,37 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { id: deviceId, sessionId: activeSessionId } = useParams<{ id: string; sessionId: string }>();
+  const devices = useDeviceStore((s) => s.devices);
   const sessions = useSessionStore((s) => s.sessions);
   const deleteSession = useSessionStore((s) => s.deleteSession);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const isMobile = useIsMobile(900);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const currentDevice = devices.find((d) => d.id === deviceId);
+  const sessionsForDevice = useMemo(
+    () => sessions.filter((s) => s.device_id === deviceId).sort((a, b) => b.created_at - a.created_at),
+    [sessions, deviceId],
+  );
+  const activeSession = sessionsForDevice.find((s) => s.id === activeSessionId);
+
+  const sessionLabel = (cwd: string | null | undefined, fallback: string) => {
+    if (!cwd) return fallback;
+    const tail = cwd.split(/[\\/]/).pop();
+    return tail && tail.trim().length > 0 ? tail : cwd;
+  };
+  const currentSessionLabel = activeSessionId
+    ? sessionLabel(activeSession?.cwd, activeSessionId.slice(0, 8))
+    : '';
+
+  const topTitle = activeSessionId
+    ? currentSessionLabel
+    : (currentDevice?.name || deviceId || t('devices'));
+  const topSubtitle = activeSessionId
+    ? `${t('sessions')} · ${activeSessionId.slice(0, 8)}`
+    : deviceId
+      ? `${t('sessions')} · ${sessionsForDevice.length}`
+      : t('appName');
+  const userInitial = (user?.username?.trim().charAt(0) || 'U').toUpperCase();
 
   useEffect(() => {
     fetchSessions();
@@ -190,6 +375,15 @@ export function Layout() {
     return () => {
       document.body.style.overflow = '';
     };
+  }, [isMobile, sidebarOpen]);
+
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [isMobile, sidebarOpen]);
 
   const handleLogout = () => {
@@ -239,7 +433,12 @@ export function Layout() {
           zIndex: 40,
         }}
       >
-        <div style={styles.logo}>{t('appName')}</div>
+        <div style={styles.brandCard}>
+          <div style={styles.brandTitle}>{t('appName')}</div>
+          <div style={styles.brandMeta}>
+            {deviceId ? (currentDevice?.name || deviceId) : t('devices')}
+          </div>
+        </div>
         <nav style={styles.nav}>
           <NavLink
             to="/devices"
@@ -250,6 +449,7 @@ export function Layout() {
               ...(isActive ? styles.activeLink : {}),
             })}
           >
+            <span style={styles.linkIcon}>●</span>
             {t('devices')}
           </NavLink>
         </nav>
@@ -257,7 +457,10 @@ export function Layout() {
         {deviceId && (
           <div style={styles.sessionsSection}>
             <div style={styles.sectionHeader}>
-              <span style={styles.sectionTitle}>{t('sessions')}</span>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={styles.sectionTitle}>{t('sessions')}</span>
+                <span style={styles.sectionCount}>{sessionsForDevice.length}</span>
+              </div>
               <button
                 style={styles.newSessionBtn}
                 onClick={() => {
@@ -269,69 +472,58 @@ export function Layout() {
                 {t('new')}
               </button>
             </div>
-            {sessions
-              .filter((s) => s.device_id === deviceId)
-              .map((s) => (
+            <div style={styles.sessionList}>
+              {sessionsForDevice.map((s) => (
                 <NavLink
                   key={s.id}
                   to={`/devices/${deviceId}/sessions/${s.id}`}
                   onClick={() => setSidebarOpen(false)}
                   style={({ isActive }) => ({
                     ...styles.sessionItem,
-                    ...(isActive ? { background: '#16213e', color: '#e94560' } : {}),
+                    ...(isActive ? { background: '#1b2a4d', color: '#f06b81', borderColor: '#2d4575' } : {}),
                   })}
                 >
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {s.cwd ? s.cwd.split(/[\\/]/).pop() || s.cwd : '~'}
-                  </span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={styles.sessionItemText}>{sessionLabel(s.cwd, '~')}</div>
+                    <div style={styles.sessionItemMeta}>
+                      {new Date(s.created_at * 1000).toLocaleString()}
+                    </div>
+                  </div>
                   <button
                     onClick={(e) => { void handleDeleteSession(e, s.id); }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#e74c3c',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      opacity: 0.4,
-                      padding: '0 2px',
-                      flexShrink: 0,
-                      marginLeft: '4px',
-                    }}
+                    style={styles.sessionDeleteBtn}
                     title={t('closeSessionTitle')}
                   >
                     ✕
                   </button>
                 </NavLink>
               ))}
+            </div>
           </div>
         )}
 
         <div style={styles.footer}>
-          <div style={{ marginBottom: '0.25rem' }}>{user?.username}</div>
+          <div style={styles.userRow}>
+            <span style={styles.userAvatar}>{userInitial}</span>
+            <span style={styles.userName}>{user?.username}</span>
+          </div>
           <div style={styles.languageRow}>
             <button
               onClick={() => setLocale('en')}
-              style={{ ...styles.langBtn, color: locale === 'en' ? '#e94560' : '#888' }}
+              style={{ ...styles.langBtn, color: locale === 'en' ? '#ef6f85' : '#8b92b5' }}
             >
               {t('languageEnglish')}
             </button>
             <button
               onClick={() => setLocale('zh')}
-              style={{ ...styles.langBtn, color: locale === 'zh' ? '#e94560' : '#888' }}
+              style={{ ...styles.langBtn, color: locale === 'zh' ? '#ef6f85' : '#8b92b5' }}
             >
               {t('languageChinese')}
             </button>
           </div>
           <button
             onClick={handleLogout}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#e74c3c',
-              cursor: 'pointer',
-              padding: 0,
-              fontSize: '0.8rem',
-            }}
+            style={styles.logoutBtn}
           >
             {t('logout')}
           </button>
@@ -339,11 +531,27 @@ export function Layout() {
       </div>
       <div style={styles.main}>
         {isMobile && (
-          <div style={styles.mobileTopbar}>
-            <button style={styles.mobileMenuBtn} onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-              ☰
-            </button>
-            <div style={styles.mobileTitle}>{t('appName')}</div>
+          <div style={styles.topbar}>
+            <div style={styles.topbarLeft}>
+              <button style={styles.menuBtn} onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+                ☰
+              </button>
+              <div style={styles.topbarTitleWrap}>
+                <div style={styles.topbarTitle}>{topTitle}</div>
+                <div style={styles.topbarSubtitle}>{topSubtitle}</div>
+              </div>
+            </div>
+            {deviceId && (
+              <div style={styles.topbarActions}>
+                <button
+                  style={styles.topbarActionBtn}
+                  onClick={() => navigate(`/devices/${deviceId}?new=1`)}
+                  title={t('newSessionTitle')}
+                >
+                  {t('new')}
+                </button>
+              </div>
+            )}
           </div>
         )}
         <ConnectionOverlay />
