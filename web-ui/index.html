@@ -9,12 +9,19 @@
       html, body, #root { height: 100%; overflow: hidden; }
       body { background: #0f0f23; }
       button {
+        appearance: none;
+        -webkit-appearance: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        line-height: 1.2;
+        vertical-align: middle;
+        line-height: 1;
         font: inherit;
+      }
+      button::-moz-focus-inner {
+        border: 0;
+        padding: 0;
       }
     </style>
   </head>
