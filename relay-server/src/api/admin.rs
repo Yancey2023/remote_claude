@@ -164,13 +164,19 @@ pub struct TokenResponse {
 
 /// Generate a one-time registration token for a desktop client.
 async fn generate_token(
-    _state: axum::extract::State<Arc<RwLock<AppState>>>,
+    state: axum::extract::State<Arc<RwLock<AppState>>>,
     user: AuthUser,
 ) -> Result<Json<TokenResponse>, AppError> {
     require_admin(&user)?;
 
     let token = Uuid::new_v4().to_string();
-    // In a production system you'd store this and validate during registration.
-    // For now we accept any valid UUID as token.
+
+    let state = state.read().await;
+    state
+        .store
+        .create_registration_token(&token)
+        .await
+        .map_err(|e| AppError::Internal(e))?;
+
     Ok(Json(TokenResponse { token }))
 }

@@ -68,6 +68,17 @@ impl SqliteStore {
             .execute(&self.pool)
             .await;
 
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS registration_tokens (
+                token TEXT PRIMARY KEY NOT NULL,
+                created_at INTEGER NOT NULL,
+                is_used INTEGER NOT NULL DEFAULT 0,
+                used_by_device_id TEXT
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+
         Ok(())
     }
 
@@ -283,6 +294,44 @@ impl SqliteStore {
         .ok()?
         .map(row_to_session)
     }
+    // ── Registration Tokens ──
+
+    pub async fn create_registration_token(&self, token: &str) -> Result<(), String> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            "INSERT INTO registration_tokens (token, created_at, is_used) VALUES (?, ?, 0)",
+        )
+        .bind(token)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("database error: {}", e))?;
+        Ok(())
+    }
+
+    pub async fn validate_registration_token(&self, token: &str) -> bool {
+        let result: Option<bool> = sqlx::query(
+            "SELECT COUNT(*) > 0 FROM registration_tokens WHERE token = ? AND is_used = 0",
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten()
+        .map(|row| row.get::<i32, _>(0) != 0);
+
+        result.unwrap_or(false)
+    }
+
+    pub async fn mark_token_used(&self, token: &str, device_id: &str) {
+        let _ = sqlx::query(
+            "UPDATE registration_tokens SET is_used = 1, used_by_device_id = ? WHERE token = ?",
+        )
+        .bind(device_id)
+        .bind(token)
+        .execute(&self.pool)
+        .await;
+    }
 }
 
 // ── Row mappers ──
@@ -430,5 +479,60 @@ mod tests {
         assert_eq!(list_dev.len(), 2);
         let s = store.get_session("s1").await.unwrap();
         assert_eq!(s.id, "s1");
+    }
+
+    // ── Registration Token Tests ──
+
+    #[tokio::test]
+    async fn test_create_and_validate_token() {
+        let store = test_store().await;
+        store.create_registration_token("test-token-1").await.unwrap();
+        assert!(store.validate_registration_token("test-token-1").await);
+    }
+
+    #[tokio::test]
+    async fn test_validate_nonexistent_token() {
+        let store = test_store().await;
+        assert!(!store.validate_registration_token("nonexistent").await);
+    }
+
+    #[tokio::test]
+    async fn test_mark_token_used() {
+        let store = test_store().await;
+        store.create_registration_token("test-token-2").await.unwrap();
+        assert!(store.validate_registration_token("test-token-2").await);
+
+        store.mark_token_used("test-token-2", "dev-1").await;
+        assert!(!store.validate_registration_token("test-token-2").await);
+    }
+
+    #[tokio::test]
+    async fn test_token_cannot_be_reused() {
+        let store = test_store().await;
+        store.create_registration_token("single-use").await.unwrap();
+        store.mark_token_used("single-use", "dev-1").await;
+        assert!(!store.validate_registration_token("single-use").await);
+
+        // A second device trying to use the same token should fail
+        store.mark_token_used("single-use", "dev-2").await;
+        assert!(!store.validate_registration_token("single-use").await);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_tokens_independent() {
+        let store = test_store().await;
+        store.create_registration_token("token-a").await.unwrap();
+        store.create_registration_token("token-b").await.unwrap();
+        store.create_registration_token("token-c").await.unwrap();
+
+        assert!(store.validate_registration_token("token-a").await);
+        assert!(store.validate_registration_token("token-b").await);
+        assert!(store.validate_registration_token("token-c").await);
+
+        store.mark_token_used("token-b", "dev-1").await;
+
+        assert!(store.validate_registration_token("token-a").await);
+        assert!(!store.validate_registration_token("token-b").await);
+        assert!(store.validate_registration_token("token-c").await);
     }
 }

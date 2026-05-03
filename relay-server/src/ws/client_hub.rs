@@ -145,6 +145,18 @@ pub async fn handle_client_ws(
         }
     };
 
+    // Validate registration token against database
+    if !store.validate_registration_token(&token).await {
+        warn!(token = %token, "invalid registration token, rejecting connection");
+        let err = serde_json::json!({
+            "type": "error",
+            "payload": { "code": "ERR_INVALID_TOKEN", "message": "invalid registration token" }
+        });
+        let _ = ws_sender.send(Message::Text(err.to_string().into())).await;
+        let _ = ws_sender.close().await;
+        return;
+    }
+
     // Check if token already registered — kick old connection
     if let Some(old) = hub.get_by_token(&token).await {
         warn!(token = %token, "duplicate registration, replacing old connection");
@@ -170,6 +182,7 @@ pub async fn handle_client_ws(
     let device = Device::new(entry.id.clone(), name.clone(), version.clone());
     store.upsert_device(device).await;
     store.set_device_online(&entry.id, true).await;
+    store.mark_token_used(&token, &entry.id).await;
 
     let device_id = entry.id.clone();
     let last_pong = entry.last_pong.clone();
