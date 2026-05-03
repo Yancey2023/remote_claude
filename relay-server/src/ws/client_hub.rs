@@ -176,34 +176,28 @@ pub async fn handle_client_ws(
     let heartbeat_interval = Duration::from_secs(config.heartbeat_interval_secs);
     let heartbeat_timeout = Duration::from_secs(config.heartbeat_timeout_secs);
 
-    // Clone for the heartbeat task
-    let device_id_hb = device_id.clone();
-    let last_pong_hb = last_pong.clone();
-    let hub_hb = hub.clone();
-    let token_hb = token.clone();
-    let store_hb = store.clone();
-
-    // Spawn heartbeat checker
-    let heartbeat_handle = tokio::spawn(async move {
-        loop {
-            tokio::time::sleep(heartbeat_interval).await;
-            let elapsed = last_pong_hb.read().await.elapsed();
-            if elapsed > heartbeat_timeout {
-                warn!(device_id = %device_id_hb, "heartbeat timeout, marking offline");
-                hub_hb.unregister(&token_hb).await;
-                store_hb.set_device_online(&device_id_hb, false).await;
-                break;
-            }
-        }
-    });
-
     // Main loop: relay messages from server → client and client → server
     let device_id_fwd = device_id.clone();
     let last_pong_fwd = last_pong.clone();
     let web_hub_fwd = web_hub.clone();
     let forward_handle = tokio::spawn(async move {
+        let mut ping_timer = tokio::time::interval(heartbeat_interval);
+        ping_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
         loop {
             tokio::select! {
+                // Periodic heartbeat: check timeout and send ping
+                _ = ping_timer.tick() => {
+                    let elapsed = last_pong_fwd.read().await.elapsed();
+                    if elapsed > heartbeat_timeout {
+                        warn!(device_id = %device_id_fwd, elapsed_secs = %elapsed.as_secs(), "heartbeat timeout, marking offline");
+                        break;
+                    }
+                    // Send WebSocket ping; client's tungstenite auto-replies with Pong
+                    if ws_sender.send(Message::Ping(vec![].into())).await.is_err() {
+                        break;
+                    }
+                }
                 // Messages from web (relayed through server) → client
                 Some(msg) = rx.recv() => {
                     if msg == "__kick__" {
@@ -219,13 +213,10 @@ pub async fn handle_client_ws(
                 msg = ws_receiver.next() => {
                     match msg {
                         Some(Ok(Message::Text(text))) => {
+                            *last_pong_fwd.write().await = Instant::now();
                             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                                 let msg_type = parsed.get("type").and_then(|t| t.as_str());
                                 match msg_type {
-                                    Some("pong") => {
-                                        *last_pong_fwd.write().await = Instant::now();
-                                        continue;
-                                    }
                                     Some("result_chunk") => {
                                         // Forward result_chunk to the web user who owns this session
                                         if let Some(session_id) = parsed["payload"]["session_id"].as_str() {
@@ -246,6 +237,10 @@ pub async fn handle_client_ws(
                             }
                             tracing::debug!(device_id = %device_id_fwd, msg = %text, "unhandled client message");
                         }
+                        Some(Ok(Message::Pong(_))) => {
+                            // Client auto-replied to our Ping, update heartbeat
+                            *last_pong_fwd.write().await = Instant::now();
+                        }
                         Some(Ok(Message::Close(_))) => {
                             info!(device_id = %device_id_fwd, "client disconnected");
                             break;
@@ -263,16 +258,14 @@ pub async fn handle_client_ws(
                 }
             }
         }
+
+        // Cleanup on exit
+        hub.unregister(&token).await;
+        store.set_device_online(&device_id_fwd, false).await;
     });
 
-    // Wait for either handle to finish
-    tokio::select! {
-        _ = heartbeat_handle => {},
-        _ = forward_handle => {},
-    }
-
-    hub.unregister(&token).await;
-    store.set_device_online(&device_id, false).await;
+    // Wait for forward handle to finish
+    let _ = forward_handle.await;
     info!(device_id = %device_id, "client session ended");
 }
 
