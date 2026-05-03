@@ -5,7 +5,6 @@ import { apiClient, ApiClientError } from '../api/client';
 vi.mock('../api/client', () => {
   const mockApiClient = {
     login: vi.fn(),
-    setToken: vi.fn(),
     logout: vi.fn().mockResolvedValue(undefined),
     verify: vi.fn(),
   };
@@ -18,17 +17,10 @@ beforeEach(() => {
 });
 
 describe('authStore', () => {
-  it('starts with no token from empty localStorage', () => {
+  it('starts with no token', () => {
     const state = useAuthStore.getState();
     expect(state.token).toBeNull();
     expect(state.user).toBeNull();
-  });
-
-  it('reads token from localStorage on init', () => {
-    localStorage.setItem('token', 'saved-token');
-    useAuthStore.setState({ token: 'saved-token' });
-    const state = useAuthStore.getState();
-    expect(state.token).toBe('saved-token');
   });
 
   it('sets token and user on successful login', async () => {
@@ -42,7 +34,8 @@ describe('authStore', () => {
     expect(state.user?.username).toBe('alice');
     expect(state.loading).toBe(false);
     expect(state.error).toBeNull();
-    expect(localStorage.getItem('token')).toBe('jwt-123');
+    // Token is NOT persisted to localStorage
+    expect(localStorage.getItem('token')).toBeNull();
   });
 
   it('sets error on login failure', async () => {
@@ -64,29 +57,32 @@ describe('authStore', () => {
     const state = useAuthStore.getState();
     expect(state.token).toBeNull();
     expect(state.user).toBeNull();
-    expect(localStorage.getItem('token')).toBeNull();
   });
 
-  it('returns false from checkAuth when no token', async () => {
+  it('returns false from checkAuth when verify fails', async () => {
+    vi.mocked(apiClient.verify).mockRejectedValueOnce(new Error('not authenticated'));
     const valid = await useAuthStore.getState().checkAuth();
     expect(valid).toBe(false);
   });
 
-  it('returns true from checkAuth when token is valid', async () => {
-    useAuthStore.setState({ token: 'valid-token' });
-    vi.mocked(apiClient.verify).mockResolvedValueOnce({ valid: true, user_id: 'u1', username: 'a', role: 'User' });
+  it('returns true from checkAuth when verify succeeds and sets token', async () => {
+    vi.mocked(apiClient.verify).mockResolvedValueOnce({
+      valid: true, user_id: 'u1', username: 'a', role: 'User', token: 'session-token',
+    });
 
     const valid = await useAuthStore.getState().checkAuth();
     expect(valid).toBe(true);
     expect(useAuthStore.getState().user?.username).toBe('a');
+    expect(useAuthStore.getState().token).toBe('session-token');
   });
 
-  it('logs out on checkAuth when token is invalid', async () => {
-    useAuthStore.setState({ token: 'bad-token' });
+  it('clears state on checkAuth when verify fails', async () => {
+    useAuthStore.setState({ token: 'bad-token', user: { user_id: 'u1', username: 'a', role: 'User' } });
     vi.mocked(apiClient.verify).mockRejectedValueOnce(new Error('invalid'));
 
     const valid = await useAuthStore.getState().checkAuth();
     expect(valid).toBe(false);
     expect(useAuthStore.getState().token).toBeNull();
+    expect(useAuthStore.getState().user).toBeNull();
   });
 });

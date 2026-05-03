@@ -42,23 +42,43 @@ impl FromRequestParts<Arc<RwLock<AppState>>> for AuthUser {
             state.config.jwt_secret.clone()
         };
 
-        let auth_header = parts
-            .headers
-            .get("Authorization")
-            .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| AuthError {
-                code: "ERR_MISSING_TOKEN".into(),
-                message: "missing Authorization header".into(),
-            }.into_response())?;
+        let token_str: String = {
+            // Try Authorization: Bearer <token> first
+            if let Some(token) = parts
+                .headers
+                .get("Authorization")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.strip_prefix("Bearer "))
+            {
+                token.to_string()
+            }
+            // Fall back to Cookie: token=<jwt>
+            else if let Some(token) = parts
+                .headers
+                .get("Cookie")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|cookie_str| {
+                    cookie_str.split(';').find_map(|pair| {
+                        let mut split = pair.splitn(2, '=');
+                        let name = split.next()?.trim();
+                        let value = split.next()?;
+                        if name.eq_ignore_ascii_case("token") {
+                            Some(value.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                }) {
+                token
+            } else {
+                return Err(AuthError {
+                    code: "ERR_MISSING_TOKEN".into(),
+                    message: "missing authentication token".into(),
+                }.into_response());
+            }
+        };
 
-        let token = auth_header
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| AuthError {
-                code: "ERR_INVALID_TOKEN_FORMAT".into(),
-                message: "invalid Authorization header format".into(),
-            }.into_response())?;
-
-        let claims: Claims = verify_token(token, &jwt_secret)
+        let claims: Claims = verify_token(&token_str, &jwt_secret)
             .map_err(|e| AuthError {
                 code: "ERR_INVALID_TOKEN".into(),
                 message: format!("invalid token: {}", e),

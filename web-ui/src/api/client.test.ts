@@ -6,7 +6,6 @@ globalThis.fetch = mockFetch;
 
 beforeEach(() => {
   mockFetch.mockReset();
-  apiClient.setToken(null);
 });
 
 function mockResponse(status: number, body: unknown) {
@@ -55,34 +54,6 @@ describe('apiClient', () => {
     });
   });
 
-  describe('authorized requests', () => {
-    it('includes Bearer token when set', async () => {
-      apiClient.setToken('my-token');
-      mockFetch.mockResolvedValueOnce(mockResponse(200, []));
-
-      await apiClient.listDevices();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/devices',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer my-token',
-          }),
-        }),
-      );
-    });
-
-    it('omits Authorization header when no token', async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(200, []));
-      apiClient.setToken(null);
-
-      await apiClient.listDevices();
-
-      const headers = mockFetch.mock.calls[0][1].headers;
-      expect(headers.Authorization).toBeUndefined();
-    });
-  });
-
   describe('listDevices', () => {
     it('returns device list', async () => {
       const mockDevices = [
@@ -125,20 +96,19 @@ describe('apiClient', () => {
   });
 
   describe('verify', () => {
-    it('returns verification result', async () => {
-      apiClient.setToken('my-token');
+    it('returns verification result with token', async () => {
       mockFetch.mockResolvedValueOnce(
-        mockResponse(200, { valid: true, user_id: 'u1', username: 'alice', role: 'User' }),
+        mockResponse(200, { valid: true, user_id: 'u1', username: 'alice', role: 'User', token: 'jwt-token' }),
       );
 
       const res = await apiClient.verify();
       expect(res.valid).toBe(true);
+      expect(res.token).toBe('jwt-token');
     });
   });
 
   describe('logout', () => {
     it('sends POST to /api/auth/logout', async () => {
-      apiClient.setToken('t');
       mockFetch.mockResolvedValueOnce(mockResponse(200, { message: 'logged out' }));
 
       await apiClient.logout();

@@ -8,12 +8,6 @@ import type {
 import { getConfig } from '../config';
 
 class ApiClient {
-  private token: string | null = null;
-
-  setToken(token: string | null) {
-    this.token = token;
-  }
-
   private async request<T>(
     method: string,
     path: string,
@@ -22,9 +16,7 @@ class ApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
+    // Auth via HttpOnly cookie (auto-sent by browser)
 
     const baseUrl = getConfig().apiBaseUrl;
     const res = await fetch(`${baseUrl}${path}`, {
@@ -55,7 +47,7 @@ class ApiClient {
   }
 
   async verify() {
-    return this.request<{ valid: boolean; user_id: string; username: string; role: string }>(
+    return this.request<{ valid: boolean; user_id: string; username: string; role: string; token: string }>(
       'POST',
       '/api/auth/verify',
     );

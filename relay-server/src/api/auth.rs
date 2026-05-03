@@ -1,4 +1,5 @@
-use axum::{http::HeaderMap, routing::post, Json, Router};
+use axum::http::{header, HeaderMap, HeaderValue};
+use axum::{routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
@@ -36,7 +37,7 @@ async fn login(
     state: axum::extract::State<Arc<RwLock<AppState>>>,
     headers: HeaderMap,
     Json(req): Json<LoginRequest>,
-) -> Result<Json<LoginResponse>, AppError> {
+) -> Result<(HeaderMap, Json<LoginResponse>), AppError> {
     if req.username.trim().is_empty() || req.password.trim().is_empty() {
         return Err(AppError::BadRequest("username and password required".into()));
     }
@@ -86,12 +87,24 @@ async fn login(
 
         state.login_rate_limiter.clear(client_ip);
 
-        return Ok(Json(LoginResponse {
+        let cookie = format!(
+            "token={}; HttpOnly; SameSite=Strict; Path=/; Max-Age={}",
+            token,
+            config.jwt_expiry_hours * 3600,
+        );
+        let mut resp_headers = HeaderMap::new();
+        resp_headers.insert(
+            header::SET_COOKIE,
+            HeaderValue::from_str(&cookie)
+                .map_err(|_| AppError::Internal("invalid cookie value".into()))?,
+        );
+
+        return Ok((resp_headers, Json(LoginResponse {
             token,
             user_id: "admin".into(),
             username: req.username,
             role: "Admin".into(),
-        }));
+        })));
     }
 
     // Check regular users from store
@@ -123,12 +136,24 @@ async fn login(
 
     state.login_rate_limiter.clear(client_ip);
 
-    Ok(Json(LoginResponse {
+    let cookie = format!(
+        "token={}; HttpOnly; SameSite=Strict; Path=/; Max-Age={}",
+        token,
+        config.jwt_expiry_hours * 3600,
+    );
+    let mut resp_headers = HeaderMap::new();
+    resp_headers.insert(
+        header::SET_COOKIE,
+        HeaderValue::from_str(&cookie)
+            .map_err(|_| AppError::Internal("invalid cookie value".into()))?,
+    );
+
+    Ok((resp_headers, Json(LoginResponse {
         token,
         user_id: user.id,
         username: user.username,
         role: format!("{:?}", user.role),
-    }))
+    })))
 }
 
 #[derive(Serialize)]
@@ -138,10 +163,15 @@ struct LogoutResponse {
 
 async fn logout(
     _user: AuthUser,
-) -> Json<LogoutResponse> {
-    Json(LogoutResponse {
+) -> (HeaderMap, Json<LogoutResponse>) {
+    let mut resp_headers = HeaderMap::new();
+    resp_headers.insert(
+        header::SET_COOKIE,
+        HeaderValue::from_static("token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"),
+    );
+    (resp_headers, Json(LogoutResponse {
         message: "logged out".into(),
-    })
+    }))
 }
 
 #[derive(Serialize)]
@@ -150,18 +180,51 @@ struct VerifyResponse {
     user_id: String,
     username: String,
     role: String,
+    token: String,
 }
 
 async fn verify(
     _state: axum::extract::State<Arc<RwLock<AppState>>>,
+    headers: HeaderMap,
     user: AuthUser,
 ) -> Json<VerifyResponse> {
+    // Extract the raw JWT from Authorization header or Cookie for WS auth use
+    let token = extract_token_from_headers(&headers);
     Json(VerifyResponse {
         valid: true,
         user_id: user.user_id,
         username: user.username,
         role: user.role,
+        token,
     })
+}
+
+/// Helper: try Authorization: Bearer first, then Cookie: token=<jwt>
+fn extract_token_from_headers(headers: &HeaderMap) -> String {
+    if let Some(token) = headers
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+    {
+        return token.to_string();
+    }
+    if let Some(token) = headers.get("Cookie").and_then(|v| v.to_str().ok()).and_then(
+        |cookie_str| {
+            cookie_str.split(';').find_map(|pair| {
+                let mut split = pair.splitn(2, '=');
+                let name = split.next()?.trim();
+                let value = split.next()?;
+                if name.eq_ignore_ascii_case("token") {
+                    Some(value.to_string())
+                } else {
+                    None
+                }
+            })
+        },
+    ) {
+        return token;
+    }
+    String::new()
 }
 
 #[cfg(test)]
@@ -207,11 +270,13 @@ mod tests {
             user_id: "uid".into(),
             username: "user".into(),
             role: "Admin".into(),
+            token: "jwt-token".into(),
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["valid"], true);
         assert_eq!(json["user_id"], "uid");
         assert_eq!(json["username"], "user");
         assert_eq!(json["role"], "Admin");
+        assert_eq!(json["token"], "jwt-token");
     }
 }

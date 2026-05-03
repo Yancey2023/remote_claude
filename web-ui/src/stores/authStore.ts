@@ -18,13 +18,8 @@ interface AuthState {
   checkAuth: () => Promise<boolean>;
 }
 
-const storedToken = localStorage.getItem('token');
-if (storedToken) {
-  apiClient.setToken(storedToken);
-}
-
-export const useAuthStore = create<AuthState>((set, get) => ({
-  token: storedToken,
+export const useAuthStore = create<AuthState>((set) => ({
+  token: null,
   user: null,
   loading: false,
   error: null,
@@ -33,8 +28,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await apiClient.login({ username, password });
-      apiClient.setToken(res.token);
-      localStorage.setItem('token', res.token);
+      // Token kept in memory for WS auth; server also sets HttpOnly cookie for REST API
       set({
         token: res.token,
         user: { user_id: res.user_id, username: res.username, role: res.role },
@@ -48,22 +42,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    apiClient.setToken(null);
-    localStorage.removeItem('token');
-    apiClient.logout().catch(() => {});
     set({ token: null, user: null });
+    apiClient.logout().catch(() => {});
   },
 
   checkAuth: async () => {
-    const token = get().token;
-    if (!token) return false;
-    apiClient.setToken(token);
     try {
       const res = await apiClient.verify();
-      set({ user: { user_id: res.user_id, username: res.username, role: res.role } });
+      // verify returns the JWT token as well (for WebSocket auth on page reload)
+      set({
+        token: res.token,
+        user: { user_id: res.user_id, username: res.username, role: res.role },
+      });
       return true;
     } catch {
-      get().logout();
+      set({ token: null, user: null });
       return false;
     }
   },

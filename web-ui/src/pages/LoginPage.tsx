@@ -4,10 +4,24 @@ import { useAuthStore } from '../stores/authStore';
 import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 
+function useHttpsWarning(): string | null {
+  const { t } = useI18n();
+  const [show] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (window.location.protocol === 'https:') return false;
+    // Allow localhost dev without warning
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+    return true;
+  });
+  return show ? t('httpsWarning') : null;
+}
+
 export function LoginPage() {
   const { locale, setLocale, t } = useI18n();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const httpsWarning = useHttpsWarning();
   const isMobile = useIsMobile(900);
   const login = useAuthStore((s) => s.login);
   const token = useAuthStore((s) => s.token);
@@ -105,6 +119,23 @@ export function LoginPage() {
             <span className="btn-label">{t('languageChinese')}</span>
           </button>
         </div>
+
+        {httpsWarning && (
+          <div
+            style={{
+              background: 'rgba(241, 196, 15, 0.15)',
+              color: '#f1c40f',
+              padding: '0.5rem',
+              borderRadius: '6px',
+              fontSize: '0.78rem',
+              marginBottom: '1rem',
+              textAlign: 'center',
+              border: '1px solid rgba(241, 196, 15, 0.3)',
+            }}
+          >
+            {httpsWarning}
+          </div>
+        )}
 
         {error && (
           <div

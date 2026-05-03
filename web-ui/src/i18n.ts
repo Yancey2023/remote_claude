@@ -69,6 +69,7 @@ const translations = {
     createSessionFailed: 'failed to create session',
     deleteSessionFailed: 'failed to delete session',
     connectFailed: 'failed to connect',
+    httpsWarning: 'Connection is not secure. Use HTTPS in production.',
   },
   zh: {
     appName: 'Remote Claude',
@@ -134,6 +135,7 @@ const translations = {
     createSessionFailed: '创建会话失败',
     deleteSessionFailed: '删除会话失败',
     connectFailed: '连接失败',
+    httpsWarning: '连接不安全。生产环境请使用 HTTPS。',
   },
 } as const;
 
