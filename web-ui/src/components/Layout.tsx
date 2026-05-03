@@ -66,6 +66,27 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'background 0.2s',
     marginBottom: '0.2rem',
   },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '0.5rem',
+    padding: '0 0.5rem',
+  },
+  sectionTitle: {
+    fontSize: '0.75rem',
+    color: '#666',
+  },
+  newSessionBtn: {
+    background: 'none',
+    border: '1px solid #16213e',
+    color: '#e94560',
+    borderRadius: '4px',
+    padding: '0.1rem 0.45rem',
+    fontSize: '0.7rem',
+    cursor: 'pointer',
+    lineHeight: 1.2,
+  },
   footer: {
     padding: '0.5rem',
     fontSize: '0.8rem',
@@ -123,8 +144,15 @@ export function Layout() {
 
         {deviceId && (
           <div style={styles.sessionsSection}>
-            <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.5rem', padding: '0 0.5rem' }}>
-              SESSIONS
+            <div style={styles.sectionHeader}>
+              <span style={styles.sectionTitle}>SESSIONS</span>
+              <button
+                style={styles.newSessionBtn}
+                onClick={() => navigate(`/devices/${deviceId}/sessions/new`)}
+                title="New session"
+              >
+                + New
+              </button>
             </div>
             {sessions
               .filter((s) => s.device_id === deviceId)
