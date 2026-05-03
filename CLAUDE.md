@@ -12,8 +12,11 @@
 │   ├── Dockerfile      多阶段构建镜像
 │   └── .dockerignore
 ├── web-ui/            React 前端 (Vite + TypeScript + xterm.js)
+│   ├── Dockerfile      多阶段构建镜像（node:latest → nginx:alpine）
+│   └── nginx.conf      API/WS 反向代理配置
 ├── shared-types/      共享 TypeScript 类型定义
 ├── docker-compose.yml 后端 Docker Compose 编排
+├── .dockerignore      根级别构建上下文过滤
 ├── pnpm-workspace.yaml
 └── CLAUDE.md
 ```
@@ -225,7 +228,17 @@ pnpm build        # 生产构建 → dist/
 
 ## Docker 部署
 
-所有后端程序支持 Docker 构建，使用最新 `rust:latest` 多阶段构建，最小化最终镜像体积。
+所有程序支持 Docker 构建，使用最新的 Rust/Node 基础镜像多阶段构建，最小化最终镜像体积。
+
+### 单独构建
+
+| 项目 | 构建命令 | 运行镜像 |
+|------|----------|----------|
+| relay-server | `docker build -t relay-server relay-server/` | `debian:bookworm-slim` |
+| desktop-client | `docker build -t desktop-client desktop-client/` | `debian:bookworm-slim` |
+| web-ui | `docker build -t web-ui -f web-ui/Dockerfile .` | `nginx:alpine` |
+
+> web-ui 构建需要 monorepo 上下文（共享 shared-types），因此 context 为项目根目录。
 
 ### 中转服务器
 
@@ -263,14 +276,20 @@ docker run -d --name desktop-client \
 > **注意**: desktop-client 容器内需要访问 Claude CLI。建议将宿主机的 `claude` 二进制文件挂载到容器中，并通过 `CLAUDE_BINARY` 环境变量指定路径。
 > **注意**: 容器内配置路径默认为 `/app/config/*.toml`（通过 `CONFIG_PATH` 环境变量设置）。所有配置项也可通过环境变量传入。
 
-| 项目 | 构建命令 | 基础镜像 |
-|------|----------|----------|
-| relay-server | `docker build -t relay-server relay-server/` | `debian:bookworm-slim` |
-| desktop-client | `docker build -t desktop-client desktop-client/` | `debian:bookworm-slim` |
+### 网页前端
+
+```bash
+# 构建（注意 context 为项目根目录）
+docker build -t web-ui -f web-ui/Dockerfile .
+# 运行
+docker run -d --name web-ui -p 80:80 web-ui
+```
+
+> nginx 自动代理 `/api/` 和 `/ws` 到 relay-server 容器（需同 Docker 网络）。
 
 ### Docker Compose
 
-一键启动所有后端服务：
+一键启动所有服务：
 
 ```bash
 # 1. 先在中转服务器上生成一个注册令牌（通过 API）
