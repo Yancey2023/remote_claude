@@ -45,6 +45,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       const unsub = ws.on('session_created', (payload) => {
         const sid = payload.session_id as string;
         set({ sessionId: sid, connected: true });
+        // Trigger lazy PTY spawn immediately so claude loads before user types
+        ws.send('terminal_input', { session_id: sid, data: '\r' });
       });
 
       // Handle errors

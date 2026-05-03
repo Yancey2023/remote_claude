@@ -11,7 +11,7 @@ pub struct PtySessionManager {
 
 struct PtyHandle {
     input_tx: mpsc::Sender<String>,
-    child_killer: Box<dyn ChildKiller + Send>,
+    child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>>,
 }
 
 impl PtySessionManager {
@@ -26,6 +26,8 @@ impl PtySessionManager {
     }
 
     /// Spawn interactive `claude` in a PTY for the given session.
+    /// The handle (input channel) is stored synchronously before the thread starts,
+    /// so `write_input` works immediately after this returns.
     pub fn spawn(
         &self,
         session_id: &str,
@@ -36,9 +38,21 @@ impl PtySessionManager {
         let binary = claude_binary.to_string();
 
         let (input_tx, input_rx) = mpsc::channel::<String>();
+        let child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>> = Arc::new(Mutex::new(None));
+
+        // Store handle synchronously so write_input works immediately
+        {
+            let mut sessions = self.sessions.lock().unwrap();
+            sessions.insert(
+                sid.clone(),
+                PtyHandle {
+                    input_tx: input_tx.clone(),
+                    child_killer: child_killer.clone(),
+                },
+            );
+        }
 
         let sessions = self.sessions.clone();
-        let sid_clone = sid.clone();
         let sid_output = sid.clone();
 
         std::thread::spawn(move || {
@@ -58,6 +72,7 @@ impl PtySessionManager {
                         format!("\r\n\x1b[1;31mPTY open error: {}\x1b[0m\r\n", e),
                         true,
                     ));
+                    sessions.lock().unwrap().remove(&sid_output);
                     return;
                 }
             };
@@ -71,6 +86,7 @@ impl PtySessionManager {
                         format!("\r\n\x1b[1;31mCannot start {}: {}\x1b[0m\r\n", binary, e),
                         true,
                     ));
+                    sessions.lock().unwrap().remove(&sid_output);
                     return;
                 }
             };
@@ -83,6 +99,7 @@ impl PtySessionManager {
                         format!("\r\n\x1b[1;31mPTY reader error: {}\x1b[0m\r\n", e),
                         true,
                     ));
+                    sessions.lock().unwrap().remove(&sid_output);
                     return;
                 }
             };
@@ -95,28 +112,18 @@ impl PtySessionManager {
                         format!("\r\n\x1b[1;31mPTY writer error: {}\x1b[0m\r\n", e),
                         true,
                     ));
+                    sessions.lock().unwrap().remove(&sid_output);
                     return;
                 }
             };
 
-            let child_killer = child.clone_killer();
+            // Set the child_killer now that the process is running
+            *child_killer.lock().unwrap() = Some(child.clone_killer());
 
-            // Store the handle so we can write input later
-            {
-                let mut sessions = sessions.lock().unwrap();
-                sessions.insert(
-                    sid_clone.clone(),
-                    PtyHandle {
-                        input_tx: input_tx.clone(),
-                        child_killer,
-                    },
-                );
-            }
-
-            info!(session_id = %sid_clone, "PTY session started");
+            info!(session_id = %sid_output, "PTY session started");
 
             // Spawn stdout reader thread
-            let sid_read = sid_clone.clone();
+            let sid_read = sid_output.clone();
             let tx_read = result_tx.clone();
             std::thread::spawn(move || {
                 let mut buf = [0u8; 4096];
@@ -150,16 +157,12 @@ impl PtySessionManager {
             }
 
             // Cleanup
-            info!(session_id = %sid_clone, "PTY session writer loop ended");
+            info!(session_id = %sid_output, "PTY session writer loop ended");
             let _ = child.kill();
             let _ = child.wait();
 
-            {
-                let mut sessions = sessions.lock().unwrap();
-                sessions.remove(&sid_clone);
-            }
-
-            let _ = result_tx.send((sid_clone, String::new(), true));
+            sessions.lock().unwrap().remove(&sid_output);
+            let _ = result_tx.send((sid_output, String::new(), true));
         });
 
         Ok(())
@@ -175,30 +178,28 @@ impl PtySessionManager {
         }
     }
 
-    /// Resize the PTY for a session. (portable-pty master handle is consumed on spawn,
-    /// so resize is not supported after spawn without storing the master.)
-    /// For now this is a no-op; resize support requires storing the master handle.
     #[allow(unused)]
-    pub fn resize(&self, session_id: &str, cols: u16, rows: u16) {
-        // Resize requires storing Box<dyn MasterPty> alongside the handle.
-        // Deferred to a follow-up improvement.
-    }
+    pub fn resize(&self, _session_id: &str, _cols: u16, _rows: u16) {}
 
     /// Kill a specific PTY session.
     pub fn kill(&self, session_id: &str) {
         let mut sessions = self.sessions.lock().unwrap();
-        if let Some(mut handle) = sessions.remove(session_id) {
+        if let Some(handle) = sessions.remove(session_id) {
             info!(session_id = %session_id, "killing PTY session");
-            let _ = handle.child_killer.kill();
+            if let Some(mut killer) = handle.child_killer.lock().unwrap().take() {
+                let _ = killer.kill();
+            }
         }
     }
 
     /// Kill all active PTY sessions (on WS disconnect).
     pub fn kill_all(&self) {
         let mut sessions = self.sessions.lock().unwrap();
-        for (sid, mut handle) in sessions.drain() {
+        for (sid, handle) in sessions.drain() {
             info!(session_id = %sid, "killing PTY session");
-            let _ = handle.child_killer.kill();
+            if let Some(mut killer) = handle.child_killer.lock().unwrap().take() {
+                let _ = killer.kill();
+            }
         }
     }
 }
