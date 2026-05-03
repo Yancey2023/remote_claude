@@ -232,6 +232,10 @@ pub async fn handle_client_ws(
                                         }
                                         continue;
                                     }
+                                    Some("pong") | Some("status_update") => {
+                                        // heartbeat already updated above; nothing to forward
+                                        continue;
+                                    }
                                     _ => {}
                                 }
                             }
