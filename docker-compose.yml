@@ -1,0 +1,38 @@
+services:
+  relay-server:
+    build: relay-server
+    ports:
+      - "8080:8080"
+    volumes:
+      - relay-config:/app/config
+      - relay-data:/app/data
+    environment:
+      # Override via .env file or shell variables:
+      #   RELAY_ADMIN_USER, RELAY_ADMIN_PASS, RELAY_JWT_SECRET
+      - ADMIN_USER=${RELAY_ADMIN_USER:-admin}
+      - ADMIN_PASS=${RELAY_ADMIN_PASS:-admin123}
+      - JWT_SECRET=${RELAY_JWT_SECRET:-change-me}
+    restart: unless-stopped
+
+  desktop-client:
+    build: desktop-client
+    depends_on:
+      - relay-server
+    volumes:
+      - client-config:/app/config
+    environment:
+      # REGISTER_TOKEN is required — set via .env or export CLIENT_REGISTER_TOKEN=<token>
+      - REGISTER_TOKEN=${CLIENT_REGISTER_TOKEN:?error}
+      - SERVER_URL=ws://relay-server:8080/ws/client
+      - DEVICE_NAME=${CLIENT_DEVICE_NAME:-docker-client}
+    restart: unless-stopped
+    # If Claude CLI is installed on the host, mount it:
+    # volumes:
+    #   - /usr/local/bin/claude:/usr/local/bin/claude
+    # environment:
+    #   - CLAUDE_BINARY=/usr/local/bin/claude
+
+volumes:
+  relay-config:
+  relay-data:
+  client-config:

@@ -13,6 +13,7 @@
 │   └── .dockerignore
 ├── web-ui/            React 前端 (Vite + TypeScript + xterm.js)
 ├── shared-types/      共享 TypeScript 类型定义
+├── docker-compose.yml 后端 Docker Compose 编排
 ├── pnpm-workspace.yaml
 └── CLAUDE.md
 ```
@@ -266,6 +267,37 @@ docker run -d --name desktop-client \
 |------|----------|----------|
 | relay-server | `docker build -t relay-server relay-server/` | `debian:bookworm-slim` |
 | desktop-client | `docker build -t desktop-client desktop-client/` | `debian:bookworm-slim` |
+
+### Docker Compose
+
+一键启动所有后端服务：
+
+```bash
+# 1. 先在中转服务器上生成一个注册令牌（通过 API）
+#    然后在项目根目录创建 .env 文件：
+echo "CLIENT_REGISTER_TOKEN=<生成的令牌>" > .env
+
+# 2. 启动所有服务
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 停止
+docker compose down
+```
+
+环境变量（通过 `.env` 文件或 shell 设置）：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `RELAY_ADMIN_USER` | `admin` | 中转服务器管理员用户名 |
+| `RELAY_ADMIN_PASS` | `admin123` | 中转服务器管理员密码 |
+| `RELAY_JWT_SECRET` | `change-me` | JWT 签名密钥 |
+| `CLIENT_REGISTER_TOKEN` | **(必填)** | 客户端注册令牌 |
+| `CLIENT_DEVICE_NAME` | `docker-client` | 客户端设备名称 |
+
+> `desktop-client` 容器通过 Docker DNS 自动连接 `relay-server`，无需手动指定 `SERVER_URL`。
 
 ## 迁移说明
 
