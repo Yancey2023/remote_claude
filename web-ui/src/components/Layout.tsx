@@ -7,6 +7,7 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     height: '100vh',
+    overflow: 'hidden',
     background: '#0f0f23',
     color: '#e0e0e0',
     fontFamily: 'system-ui, sans-serif',
