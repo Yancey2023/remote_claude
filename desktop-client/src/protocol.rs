@@ -34,6 +34,7 @@ pub struct CommandPayload {
 pub struct TerminalInputPayload {
     pub session_id: String,
     pub data: String,
+    pub cwd: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -180,12 +181,13 @@ mod tests {
 
     #[test]
     fn test_deserialize_terminal_input() {
-        let json = r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"hello"}}"#;
+        let json = r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"hello","cwd":"/tmp"}}"#;
         let msg: ServerMessage = serde_json::from_str(json).unwrap();
         match msg {
             ServerMessage::TerminalInput { payload } => {
                 assert_eq!(payload.session_id, "s1");
                 assert_eq!(payload.data, "hello");
+                assert_eq!(payload.cwd, Some("/tmp".to_string()));
             }
             _ => panic!("expected TerminalInput variant"),
         }

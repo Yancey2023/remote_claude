@@ -156,7 +156,8 @@ async fn handle_server_message(
             ServerMessage::TerminalInput { payload } => {
                 let sid = payload.session_id;
                 if !pty_mgr.has_session(&sid) {
-                    pty_mgr.spawn(&sid, &config.claude_binary, result_tx.clone())
+                    let cwd = payload.cwd.clone();
+                    pty_mgr.spawn(&sid, &config.claude_binary, result_tx.clone(), cwd.as_deref())
                         .map_err(|e| format!("PTY spawn: {}", e))?;
                     let _ = outbound_tx.send(ClientMessage::status_update(true, true));
                 }
@@ -174,7 +175,7 @@ async fn handle_server_message(
                 let _ = outbound_tx.send(ClientMessage::status_update(true, true));
                 let sid = payload.session_id;
                 if !pty_mgr.has_session(&sid) {
-                    pty_mgr.spawn(&sid, &config.claude_binary, result_tx.clone())?;
+                    pty_mgr.spawn(&sid, &config.claude_binary, result_tx.clone(), None)?;
                 }
                 let input = payload.command + "\r";
                 pty_mgr.write_input(&sid, &input);
@@ -246,13 +247,11 @@ mod tests {
         let pty_mgr = test_pty_mgr();
 
         let result = handle_server_message(
-            r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"h"}}"#,
+            r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"h","cwd":"/tmp"}}"#,
             &out_tx, &res_tx, &config, &pty_mgr,
         )
         .await;
         assert!(result.is_ok());
-        // PTY spawn is attempted but will fail (no claude binary in test)
-        // The important thing is the message is parsed and handled without panicking
     }
 
     #[tokio::test]

@@ -33,9 +33,11 @@ impl PtySessionManager {
         session_id: &str,
         claude_binary: &str,
         result_tx: UnboundedSender<(String, String, bool)>,
+        cwd: Option<&str>,
     ) -> Result<(), String> {
         let sid = session_id.to_string();
         let binary = claude_binary.to_string();
+        let cwd_owned = cwd.map(|s| s.to_string());
 
         let (input_tx, input_rx) = mpsc::channel::<String>();
         let child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>> = Arc::new(Mutex::new(None));
@@ -77,7 +79,10 @@ impl PtySessionManager {
                 }
             };
 
-            let cmd = CommandBuilder::new(&binary);
+            let mut cmd = CommandBuilder::new(&binary);
+            if let Some(ref dir) = cwd_owned {
+                cmd.cwd(dir);
+            }
             let mut child = match pair.slave.spawn_command(cmd) {
                 Ok(c) => c,
                 Err(e) => {
