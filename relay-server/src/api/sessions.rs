@@ -83,18 +83,29 @@ async fn list_sessions(
 ) -> Json<Vec<SessionInfo>> {
     let state = state.read().await;
     let sessions = state.store.list_sessions(&user.user_id).await;
-    Json(
-        sessions
-            .into_iter()
-            .map(|s| SessionInfo {
-                id: s.id,
-                device_id: s.device_id,
-                user_id: s.user_id,
-                created_at: s.created_at,
-                cwd: s.cwd,
-            })
-            .collect(),
-    )
+
+    // Auto-clean stale sessions that are no longer present in active WS registry.
+    let mut stale_ids = Vec::new();
+    let mut visible = Vec::new();
+    for s in sessions {
+        if state.web_hub.session_registry.get(&s.id).await.is_none() {
+            stale_ids.push(s.id);
+            continue;
+        }
+        visible.push(SessionInfo {
+            id: s.id,
+            device_id: s.device_id,
+            user_id: s.user_id,
+            created_at: s.created_at,
+            cwd: s.cwd,
+        });
+    }
+
+    for id in stale_ids {
+        let _ = state.store.close_session(&id).await;
+    }
+
+    Json(visible)
 }
 
 async fn get_session(

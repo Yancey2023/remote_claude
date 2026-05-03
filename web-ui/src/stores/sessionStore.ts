@@ -11,6 +11,7 @@ interface SessionState {
   createSession: (deviceId: string, cwd?: string) => Promise<SessionInfo | null>;
   deleteSession: (sessionId: string) => Promise<void>;
   addSessionFromWs: (info: { session_id: string; device_id: string; cwd?: string }) => void;
+  removeSessionFromWs: (sessionId: string) => void;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -64,5 +65,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       cwd: info.cwd ?? null,
     };
     set({ sessions: [...get().sessions, newSession] });
+  },
+
+  removeSessionFromWs: (sessionId: string) => {
+    set({ sessions: get().sessions.filter((s) => s.id !== sessionId) });
   },
 }));

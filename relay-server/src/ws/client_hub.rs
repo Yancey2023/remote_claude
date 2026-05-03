@@ -230,6 +230,19 @@ pub async fn handle_client_ws(
                                                 if let Err(e) = web_hub_fwd.send_to_user(&session.user_id, &text).await {
                                                     warn!(session_id = %session_id, user_id = %session.user_id, error = %e, "failed to forward to web user");
                                                 }
+
+                                                // PTY process exited: auto-close stale/invalid session.
+                                                if parsed["payload"]["done"].as_bool().unwrap_or(false) {
+                                                    web_hub_fwd.session_registry.unregister(session_id).await;
+                                                    let _ = store.close_session(session_id).await;
+                                                    let closed_msg = serde_json::json!({
+                                                        "type": "session_closed",
+                                                        "payload": { "session_id": session_id }
+                                                    });
+                                                    let _ = web_hub_fwd
+                                                        .send_to_user(&session.user_id, &closed_msg.to_string())
+                                                        .await;
+                                                }
                                             } else {
                                                 warn!(session_id = %session_id, "result_chunk for unknown session");
                                             }

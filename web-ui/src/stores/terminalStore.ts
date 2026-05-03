@@ -88,6 +88,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         set({ error: msg });
       });
 
+      const unsubClosed = ws.on('session_closed', (payload) => {
+        const sid = payload.session_id as string | undefined;
+        if (sid) {
+          useSessionStore.getState().removeSessionFromWs(sid);
+        }
+      });
+
       ws.onStatus((connected) => {
         set({ wsConnected: connected });
       });
