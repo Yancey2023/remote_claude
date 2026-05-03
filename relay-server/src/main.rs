@@ -13,7 +13,7 @@ use axum::extract::ws::WebSocketUpgrade;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::routing::get;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 
@@ -99,12 +99,24 @@ async fn main() {
     let app = api::router()
         .route("/ws/{*path}", get(ws_upgrade))
         .route("/", get(|| async { "Relay Server" }))
-        .layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any),
-        )
+        .layer({
+            use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+            use axum::http::Method;
+
+            let cors = CorsLayer::new()
+                .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH])
+                .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
+            if config.allowed_origin.is_empty() {
+                cors
+            } else {
+                cors.allow_origin(
+                    config.allowed_origin
+                        .parse::<axum::http::HeaderValue>()
+                        .map(AllowOrigin::exact)
+                        .unwrap_or(AllowOrigin::any()),
+                )
+            }
+        })
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

@@ -13,6 +13,7 @@ pub struct Config {
     pub jwt_expiry_hours: i64,
     pub heartbeat_interval_secs: u64,
     pub heartbeat_timeout_secs: u64,
+    pub allowed_origin: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -26,6 +27,7 @@ struct ConfigFile {
     jwt_expiry_hours: Option<i64>,
     heartbeat_interval_secs: Option<u64>,
     heartbeat_timeout_secs: Option<u64>,
+    allowed_origin: Option<String>,
 }
 
 impl Config {
@@ -85,6 +87,7 @@ impl Config {
                 30,
                 u64
             ),
+            allowed_origin: field_str!(allowed_origin, "ALLOWED_ORIGIN", ""),
         };
 
         if modified {
@@ -160,6 +163,7 @@ impl From<ConfigFile> for Config {
             jwt_expiry_hours: f.jwt_expiry_hours.unwrap_or(24),
             heartbeat_interval_secs: f.heartbeat_interval_secs.unwrap_or(15),
             heartbeat_timeout_secs: f.heartbeat_timeout_secs.unwrap_or(30),
+            allowed_origin: f.allowed_origin.unwrap_or_default(),
         }
     }
 }
@@ -180,6 +184,7 @@ mod tests {
             jwt_expiry_hours: 24,
             heartbeat_interval_secs: 15,
             heartbeat_timeout_secs: 30,
+            allowed_origin: "".into(),
         };
         assert_eq!(config.admin_user, "admin");
         assert_eq!(config.admin_pass, "admin123");
@@ -225,6 +230,7 @@ mod tests {
             jwt_expiry_hours: Some(48),
             heartbeat_interval_secs: Some(10),
             heartbeat_timeout_secs: Some(20),
+            allowed_origin: Some("http://localhost:5173".into()),
         };
         let config: Config = file_config.into();
         assert_eq!(config.admin_user, "admin");
@@ -232,6 +238,7 @@ mod tests {
         assert_eq!(config.jwt_expiry_hours, 48);
         assert_eq!(config.heartbeat_interval_secs, 10);
         assert_eq!(config.heartbeat_timeout_secs, 20);
+        assert_eq!(config.allowed_origin, "http://localhost:5173");
     }
 
     #[test]
@@ -241,5 +248,6 @@ mod tests {
         assert_eq!(config.admin_user, "admin");
         assert_eq!(config.port, 8080);
         assert_eq!(config.jwt_expiry_hours, 24);
+        assert_eq!(config.allowed_origin, "");
     }
 }
