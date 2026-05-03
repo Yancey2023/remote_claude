@@ -14,9 +14,10 @@ export function TerminalPage() {
   const devices = useDeviceStore((s) => s.devices);
   const device = devices.find((d) => d.id === deviceId);
   const store = useTerminalStore();
-  const { connect, sendRawInput, sendResize, disconnect, connected, ws, error } = store;
+  const { connect, sendRawInput, sendResize, disconnect, connected, ws, error, sessionId: activeSessionId } = store;
   const initRef = useRef(false);
   const terminalRef = useRef<TerminalHandle>(null);
+  const terminalSizeRef = useRef<{ cols: number; rows: number } | null>(null);
 
   // Connection setup
   useEffect(() => {
@@ -38,8 +39,10 @@ export function TerminalPage() {
       const chunk = payload.chunk as string;
       const done = payload.done as boolean;
       const sid = payload.session_id as string;
-      // Only show output for THIS session
-      if (sid !== sessionId) return;
+      // For /sessions/new, router param stays "new" until refresh.
+      // Use store sessionId once server creates the real session.
+      const expectedSessionId = activeSessionId ?? sessionId;
+      if (sid !== expectedSessionId) return;
       const term = terminalRef.current;
       if (term && chunk) {
         term.write(chunk);
@@ -58,7 +61,7 @@ export function TerminalPage() {
       unsub();
       unsubErr();
     };
-  }, [ws, sessionId]);
+  }, [ws, sessionId, activeSessionId]);
 
   const handleData = useCallback(
     (data: string) => {
@@ -70,11 +73,21 @@ export function TerminalPage() {
 
   const handleResize = useCallback(
     (cols: number, rows: number) => {
-      if (!connected) return;
-      sendResize(cols, rows);
+      terminalSizeRef.current = { cols, rows };
+      if (connected) {
+        sendResize(cols, rows);
+      }
     },
     [connected, sendResize],
   );
+
+  // Once session connects, push the latest known terminal size to PTY.
+  useEffect(() => {
+    if (!connected) return;
+    const size = terminalSizeRef.current;
+    if (!size) return;
+    sendResize(size.cols, size.rows);
+  }, [connected, sendResize]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0 }}>
@@ -107,7 +120,7 @@ export function TerminalPage() {
           {device?.name || deviceId || ''}
         </span>
         <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {sessionId?.slice(0, 8)}...
+          {(activeSessionId ?? sessionId)?.slice(0, 8)}...
         </span>
         <span
           style={{

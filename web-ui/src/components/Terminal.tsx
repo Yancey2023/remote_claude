@@ -36,6 +36,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
 
     useEffect(() => {
       if (!terminalRef.current) return;
+      let disposed = false;
 
       const term = new XTerm({
         cursorBlink: true,
@@ -64,9 +65,15 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
 
       term.open(terminalRef.current);
 
+      const reportSize = () => {
+        onResizeRef.current?.(term.cols, term.rows);
+      };
+
       // Delay fit to let xterm.js fully initialize the renderer
-      requestAnimationFrame(() => {
+      const fitRaf = requestAnimationFrame(() => {
+        if (disposed) return;
         try { fitAddon.fit(); } catch { /* ignore */ }
+        reportSize();
       });
 
       term.writeln('\x1b[1;36mRemote Claude Terminal\x1b[0m');
@@ -80,15 +87,22 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
 
       const handleResize = () => {
         try { fitAddon.fit(); } catch { /* ignore */ }
-        onResizeRef.current?.(term.cols, term.rows);
+        reportSize();
       };
       window.addEventListener('resize', handleResize);
+      const resizeObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => handleResize())
+        : null;
+      resizeObserver?.observe(terminalRef.current);
 
       xtermRef.current = term;
       fitAddonRef.current = fitAddon;
 
       return () => {
+        disposed = true;
+        cancelAnimationFrame(fitRaf);
         window.removeEventListener('resize', handleResize);
+        resizeObserver?.disconnect();
         term.dispose();
         xtermRef.current = null;
         fitAddonRef.current = null;
@@ -107,8 +121,3 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
     );
   },
 );
-
-// Helper to get terminal API from other components (kept for backward compat)
-export function getTerminal() {
-  return (window as unknown as Record<string, TerminalHandle | undefined>)['__terminal_api'];
-}

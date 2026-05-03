@@ -38,7 +38,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
     try {
       const cfg = getConfig();
-      const wsUrl = cfg.wsBaseUrl || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`;
+      const wsUrl = cfg.wsBaseUrl || (
+        import.meta.env.DEV && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+          ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8080/ws/web`
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`
+      );
       const ws = new WebSocketClient(wsUrl, token);
 
       // Handle session creation from server

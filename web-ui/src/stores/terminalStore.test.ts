@@ -73,7 +73,7 @@ describe('terminalStore', () => {
   });
 
   it('sets deviceId and ws on connect', async () => {
-    await useTerminalStore.getState().connect('d1', 'fake-token');
+    await useTerminalStore.getState().connect('d1', 'fake-token', 'new');
 
     const s = useTerminalStore.getState();
     expect(s.deviceId).toBe('d1');

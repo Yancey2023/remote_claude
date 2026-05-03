@@ -1,9 +1,9 @@
-use portable_pty::{CommandBuilder, PtySize, PtySystem, ChildKiller, native_pty_system};
+use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex, mpsc};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 pub struct PtySessionManager {
     sessions: Arc<Mutex<HashMap<String, PtyHandle>>>,
@@ -11,6 +11,7 @@ pub struct PtySessionManager {
 
 struct PtyHandle {
     input_tx: mpsc::Sender<String>,
+    resize_tx: mpsc::Sender<PtySize>,
     child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>>,
 }
 
@@ -40,6 +41,7 @@ impl PtySessionManager {
         let cwd_owned = cwd.map(|s| s.to_string());
 
         let (input_tx, input_rx) = mpsc::channel::<String>();
+        let (resize_tx, resize_rx) = mpsc::channel::<PtySize>();
         let child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>> = Arc::new(Mutex::new(None));
 
         // Store handle synchronously so write_input works immediately
@@ -49,6 +51,7 @@ impl PtySessionManager {
                 sid.clone(),
                 PtyHandle {
                     input_tx: input_tx.clone(),
+                    resize_tx: resize_tx.clone(),
                     child_killer: child_killer.clone(),
                 },
             );
@@ -96,7 +99,9 @@ impl PtySessionManager {
                 }
             };
 
-            let mut reader = match pair.master.try_clone_reader() {
+            let master: Box<dyn MasterPty + Send> = pair.master;
+
+            let mut reader = match master.try_clone_reader() {
                 Ok(r) => r,
                 Err(e) => {
                     let _ = result_tx.send((
@@ -109,7 +114,7 @@ impl PtySessionManager {
                 }
             };
 
-            let mut writer = match pair.master.take_writer() {
+            let mut writer = match master.take_writer() {
                 Ok(w) => w,
                 Err(e) => {
                     let _ = result_tx.send((
@@ -121,6 +126,22 @@ impl PtySessionManager {
                     return;
                 }
             };
+
+            // Resize worker: applies terminal size updates to PTY.
+            let sid_resize = sid_output.clone();
+            std::thread::spawn(move || {
+                for new_size in resize_rx {
+                    if let Err(e) = master.resize(new_size) {
+                        warn!(
+                            session_id = %sid_resize,
+                            cols = new_size.cols,
+                            rows = new_size.rows,
+                            error = %e,
+                            "PTY resize failed"
+                        );
+                    }
+                }
+            });
 
             // Set the child_killer now that the process is running
             *child_killer.lock().unwrap() = Some(child.clone_killer());
@@ -183,8 +204,24 @@ impl PtySessionManager {
         }
     }
 
-    #[allow(unused)]
-    pub fn resize(&self, _session_id: &str, _cols: u16, _rows: u16) {}
+    pub fn resize(&self, session_id: &str, cols: u16, rows: u16) {
+        let resize_tx = {
+            let sessions = self.sessions.lock().unwrap();
+            sessions.get(session_id).map(|h| h.resize_tx.clone())
+        };
+
+        if let Some(tx) = resize_tx {
+            let size = PtySize {
+                cols: cols.max(1),
+                rows: rows.max(1),
+                pixel_width: 0,
+                pixel_height: 0,
+            };
+            if tx.send(size).is_err() {
+                warn!(session_id = %session_id, "PTY resize channel closed");
+            }
+        }
+    }
 
     /// Kill a specific PTY session.
     pub fn kill(&self, session_id: &str) {

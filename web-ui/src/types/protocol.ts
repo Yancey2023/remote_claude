@@ -9,6 +9,7 @@ export type {
   LoginResponse,
   DeviceResponse,
   SessionResponse,
+  SessionInfo,
   CreateUserRequest,
   UserResponse,
   ApiError,

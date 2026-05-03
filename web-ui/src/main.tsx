@@ -11,12 +11,10 @@ if (!root) throw new Error('root element not found');
 // Load runtime config before rendering
 loadConfig().then(() => {
   ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </ErrorBoundary>
-    </React.StrictMode>,
+    <ErrorBoundary>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ErrorBoundary>,
   );
 });
