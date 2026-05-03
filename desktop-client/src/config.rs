@@ -11,6 +11,7 @@ pub struct Config {
     pub client_version: String,
     pub max_retry_delay_secs: u64,
     pub device_id: String,
+    pub claude_binary: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -21,6 +22,7 @@ struct ConfigFile {
     client_version: Option<String>,
     max_retry_delay_secs: Option<u64>,
     device_id: Option<String>,
+    claude_binary: Option<String>,
 }
 
 impl Config {
@@ -92,6 +94,7 @@ impl Config {
             client_version: field_str!(client_version, "CLIENT_VERSION", "0.1.0"),
             max_retry_delay_secs: field_num!(max_retry_delay_secs, "MAX_RETRY_DELAY_SECS", 60, u64),
             device_id,
+            claude_binary: field_str!(claude_binary, "CLAUDE_BINARY", "claude"),
         };
 
         if modified {
@@ -154,6 +157,7 @@ mod tests {
             client_version: "1.0.0".into(),
             max_retry_delay_secs: 30,
             device_id: "dev-123".into(),
+            claude_binary: "claude".into(),
         };
         assert_eq!(config.server_url, "ws://test:8080/ws/client");
         assert_eq!(config.register_token, "test-token");
@@ -161,6 +165,7 @@ mod tests {
         assert_eq!(config.client_version, "1.0.0");
         assert_eq!(config.max_retry_delay_secs, 30);
         assert_eq!(config.device_id, "dev-123");
+        assert_eq!(config.claude_binary, "claude");
     }
 
     #[test]
@@ -172,10 +177,12 @@ mod tests {
             client_version: "0.1.0".into(),
             max_retry_delay_secs: 60,
             device_id: "dev-456".into(),
+            claude_binary: "claude".into(),
         };
         assert_eq!(config.client_version, "0.1.0");
         assert_eq!(config.max_retry_delay_secs, 60);
         assert_eq!(config.device_id, "dev-456");
+        assert_eq!(config.claude_binary, "claude");
     }
 
     #[test]

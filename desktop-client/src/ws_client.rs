@@ -67,7 +67,7 @@ pub async fn connect_and_run(config: &Config) -> Result<(), String> {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
                         if let Err(e) = handle_server_message(
-                            &text, &outbound_tx, &result_tx
+                            &text, &outbound_tx, &result_tx, config
                         ).await {
                             warn!(error = %e, "handling server message");
                         }
@@ -137,6 +137,7 @@ async fn handle_server_message(
     text: &str,
     outbound_tx: &mpsc::UnboundedSender<String>,
     result_tx: &mpsc::UnboundedSender<(String, String, bool)>,
+    config: &Config,
 ) -> Result<(), String> {
     // Handle "__kick__" text message
     if text == "__kick__" {
@@ -154,8 +155,9 @@ async fn handle_server_message(
                 let tx = result_tx.clone();
                 let cmd = payload.command;
                 let sid = payload.session_id;
+                let claude_binary = config.claude_binary.clone();
                 tokio::spawn(async move {
-                    claude_runner::run_claude(&cmd, sid, tx).await;
+                    claude_runner::run_claude(&cmd, sid, tx, &claude_binary).await;
                 });
             }
             ServerMessage::Ping => {
@@ -173,13 +175,27 @@ async fn handle_server_message(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Config;
+
+    fn test_config() -> Config {
+        Config {
+            server_url: "ws://test:8080/ws/client".into(),
+            register_token: "test-token".into(),
+            device_name: "test-pc".into(),
+            client_version: "1.0.0".into(),
+            max_retry_delay_secs: 30,
+            device_id: "dev-test".into(),
+            claude_binary: "claude".into(),
+        }
+    }
 
     #[tokio::test]
     async fn test_kick_message() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
+        let config = test_config();
 
-        let result = handle_server_message("__kick__", &out_tx, &res_tx).await;
+        let result = handle_server_message("__kick__", &out_tx, &res_tx, &config).await;
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "kicked");
     }
@@ -188,8 +204,9 @@ mod tests {
     async fn test_ping_message() {
         let (out_tx, mut out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
+        let config = test_config();
 
-        let result = handle_server_message(r#"{"type":"ping","payload":{}}"#, &out_tx, &res_tx).await;
+        let result = handle_server_message(r#"{"type":"ping","payload":{}}"#, &out_tx, &res_tx, &config).await;
         assert!(result.is_ok());
 
         // Check pong was sent
@@ -201,10 +218,11 @@ mod tests {
     async fn test_command_message() {
         let (out_tx, mut out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
+        let config = test_config();
 
         let result = handle_server_message(
             r#"{"type":"command","payload":{"session_id":"s1","command":"test cmd"}}"#,
-            &out_tx, &res_tx,
+            &out_tx, &res_tx, &config,
         )
         .await;
         assert!(result.is_ok());
@@ -219,10 +237,11 @@ mod tests {
     async fn test_unknown_message() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
+        let config = test_config();
 
         let result = handle_server_message(
             r#"{"type":"unknown","payload":{}}"#,
-            &out_tx, &res_tx,
+            &out_tx, &res_tx, &config,
         )
         .await;
         assert!(result.is_ok()); // unknown types are ignored, not errors
@@ -232,8 +251,9 @@ mod tests {
     async fn test_invalid_json() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
+        let config = test_config();
 
-        let result = handle_server_message("not json", &out_tx, &res_tx).await;
+        let result = handle_server_message("not json", &out_tx, &res_tx, &config).await;
         assert!(result.is_ok()); // invalid JSON is silently ignored
     }
 }

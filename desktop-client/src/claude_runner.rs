@@ -5,15 +5,16 @@ use tokio::sync::mpsc;
 use tracing::{error, info};
 
 /// Run a prompt through the local Claude CLI in `--print` mode.
-/// Returns a receiver that yields lines of output, then closes when done.
+/// `claude_binary` is the path/name of the Claude CLI executable.
 pub async fn run_claude(
     prompt: &str,
     session_id: String,
     result_tx: mpsc::UnboundedSender<(String, String, bool)>,
+    claude_binary: &str,
 ) {
-    info!(session_id = %session_id, prompt_len = %prompt.len(), "running claude command");
+    info!(session_id = %session_id, prompt_len = %prompt.len(), claude_binary = %claude_binary, "running claude command");
 
-    let mut child = match Command::new("claude")
+    let mut child = match Command::new(claude_binary)
         .args(["--print", prompt])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -21,8 +22,8 @@ pub async fn run_claude(
     {
         Ok(child) => child,
         Err(e) => {
-            error!(error = %e, "failed to spawn claude process");
-            let _ = result_tx.send((session_id, format!("Error: cannot start claude: {}", e), true));
+            error!(error = %e, binary = %claude_binary, "failed to spawn claude process");
+            let _ = result_tx.send((session_id, format!("Error: cannot start {}: {}", claude_binary, e), true));
             return;
         }
     };
