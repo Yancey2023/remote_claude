@@ -15,7 +15,7 @@ pub async fn run_claude(
     info!(session_id = %session_id, prompt_len = %prompt.len(), claude_binary = %claude_binary, "running claude command");
 
     let mut child = match Command::new(claude_binary)
-        .args(["--print", prompt])
+        .args(["-p", prompt])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
