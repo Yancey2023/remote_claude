@@ -217,6 +217,15 @@ async fn handle_web_message(
 
             let session_id = hub.session_registry.register(session).await;
 
+            // Persist to database
+            let db_session = crate::models::Session::new(
+                session_id.clone(),
+                device_id.to_string(),
+                user_id.to_string(),
+                cwd.clone(),
+            );
+            let _ = _store.create_session(db_session).await;
+
             // Notify the web about the new session
             let msg = serde_json::json!({
                 "type": "session_created",

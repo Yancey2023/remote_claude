@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTerminalStore } from '../stores/terminalStore';
 import { useAuthStore } from '../stores/authStore';
 import { useDeviceStore } from '../stores/deviceStore';
@@ -7,6 +7,8 @@ import { Terminal, type TerminalHandle } from '../components/Terminal';
 
 export function TerminalPage() {
   const { id: deviceId, sessionId } = useParams<{ id: string; sessionId: string }>();
+  const [searchParams] = useSearchParams();
+  const cwd = searchParams.get('cwd') || undefined;
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
   const devices = useDeviceStore((s) => s.devices);
@@ -21,7 +23,7 @@ export function TerminalPage() {
     if (!deviceId || !sessionId || !token || initRef.current) return;
     initRef.current = true;
 
-    connect(deviceId, token, sessionId);
+    connect(deviceId, token, sessionId!, cwd);
 
     return () => {
       initRef.current = false;

@@ -11,7 +11,7 @@ interface TerminalState {
   ws: WebSocketClient | null;
   output: string;
   error: string | null;
-  connect: (deviceId: string, token: string, existingSessionId?: string) => Promise<void>;
+  connect: (deviceId: string, token: string, existingSessionId: string, cwd?: string) => Promise<void>;
   sendCommand: (cmd: string) => void;
   sendRawInput: (data: string) => void;
   sendResize: (cols: number, rows: number) => void;
@@ -29,36 +29,30 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   output: '',
   error: null,
 
-  connect: async (deviceId: string, token: string, existingSessionId?: string) => {
+  connect: async (deviceId: string, token: string, existingSessionId: string, cwd?: string) => {
     const existingWs = get().ws;
     if (existingWs) {
       existingWs.disconnect();
     }
+
+    const isNew = existingSessionId === 'new';
 
     try {
       const cfg = getConfig();
       const wsUrl = cfg.wsBaseUrl || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`;
       const ws = new WebSocketClient(wsUrl, token);
 
-      if (existingSessionId) {
-        // Reconnecting to an existing session — set sessionId immediately
-        set({ sessionId: existingSessionId });
-
-        // When connected, we just need to connect WS (PTY is already running)
-        // The result_chunk messages for this session will start flowing
-        ws.on('session_created', (_payload) => {
-          // Ignore — we already have a session
-        });
-      } else {
-        // New session — wait for server to create it
-        const unsub = ws.on('session_created', (payload) => {
-          const sid = payload.session_id as string;
-          const cwd = payload.cwd as string | undefined;
-          set({ sessionId: sid, connected: true });
-          // Trigger PTY spawn with cwd, then send Enter to start claude
-          ws.send('terminal_input', { session_id: sid, data: '\r', cwd: cwd ?? null });
-        });
-      }
+      // Handle session creation from server
+      const unsubCreated = ws.on('session_created', (payload) => {
+        const sid = payload.session_id as string;
+        const serverCwd = payload.cwd as string | undefined;
+        set({ sessionId: sid, connected: true });
+        // Navigate to the real session URL
+        const qs = serverCwd ? `?cwd=${encodeURIComponent(serverCwd)}` : '';
+        window.history.replaceState(null, '', `/devices/${deviceId}/sessions/${sid}${qs}`);
+        // Trigger PTY spawn with \r
+        ws.send('terminal_input', { session_id: sid, data: '\r', cwd: serverCwd ?? null });
+      });
 
       // Handle errors
       const unsubErr = ws.on('error', (payload) => {
@@ -68,20 +62,15 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
       ws.onStatus((connected) => {
         set({ wsConnected: connected });
-        if (!connected) {
-          // Auto-retry: user will see connection overlay
-        }
       });
 
-      // Connect and send create_session or just connect
       ws.connect(() => {
-        if (existingSessionId) {
-          // Reconnecting to existing session — set connected immediately
-          set({ connected: true });
-          // Send empty input to wake up any pending reads
-          ws.send('terminal_input', { session_id: existingSessionId, data: '', cwd: null });
+        if (isNew) {
+          // Create session over WS
+          ws.send('create_session', { device_id: deviceId, cwd: cwd ?? null });
         } else {
-          ws.send('create_session', { device_id: deviceId });
+          // Reconnect to existing session
+          set({ sessionId: existingSessionId, connected: true });
         }
       });
 
@@ -107,7 +96,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   sendRawInput: (data: string) => {
     const { ws, sessionId, connected } = get();
     if (!ws || !sessionId || !connected) return;
-    ws.send('terminal_input', { session_id: sessionId, data });
+    ws.send('terminal_input', { session_id: sessionId, data, cwd: null });
   },
 
   sendResize: (cols: number, rows: number) => {

@@ -16,13 +16,13 @@ export function SessionListPage() {
     fetchSessions();
   }, [fetchSessions]);
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!deviceId) return;
-    const s = await createSession(deviceId, cwd || undefined);
-    if (s) {
-      setShowNew(false);
-      navigate(`/devices/${deviceId}/sessions/${s.id}`);
-    }
+    setShowNew(false);
+    const params = new URLSearchParams();
+    if (cwd) params.set('cwd', cwd);
+    const qs = params.toString();
+    navigate(`/devices/${deviceId}/sessions/new${qs ? '?' + qs : ''}`);
   };
 
   const handleDelete = async (sessionId: string) => {
