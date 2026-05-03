@@ -11,7 +11,7 @@ interface TerminalState {
   ws: WebSocketClient | null;
   output: string;
   error: string | null;
-  connect: (deviceId: string, token: string) => Promise<void>;
+  connect: (deviceId: string, token: string, existingSessionId?: string) => Promise<void>;
   sendCommand: (cmd: string) => void;
   sendRawInput: (data: string) => void;
   sendResize: (cols: number, rows: number) => void;
@@ -29,25 +29,36 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   output: '',
   error: null,
 
-  connect: async (deviceId: string, token: string) => {
+  connect: async (deviceId: string, token: string, existingSessionId?: string) => {
     const existingWs = get().ws;
     if (existingWs) {
       existingWs.disconnect();
     }
 
     try {
-      // Connect WebSocket first, then create session over WS
       const cfg = getConfig();
       const wsUrl = cfg.wsBaseUrl || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/web`;
       const ws = new WebSocketClient(wsUrl, token);
 
-      // Handle session creation from server
-      const unsub = ws.on('session_created', (payload) => {
-        const sid = payload.session_id as string;
-        set({ sessionId: sid, connected: true });
-        // Trigger lazy PTY spawn immediately so claude loads before user types
-        ws.send('terminal_input', { session_id: sid, data: '\r' });
-      });
+      if (existingSessionId) {
+        // Reconnecting to an existing session — set sessionId immediately
+        set({ sessionId: existingSessionId });
+
+        // When connected, we just need to connect WS (PTY is already running)
+        // The result_chunk messages for this session will start flowing
+        ws.on('session_created', (_payload) => {
+          // Ignore — we already have a session
+        });
+      } else {
+        // New session — wait for server to create it
+        const unsub = ws.on('session_created', (payload) => {
+          const sid = payload.session_id as string;
+          const cwd = payload.cwd as string | undefined;
+          set({ sessionId: sid, connected: true });
+          // Trigger PTY spawn with cwd, then send Enter to start claude
+          ws.send('terminal_input', { session_id: sid, data: '\r', cwd: cwd ?? null });
+        });
+      }
 
       // Handle errors
       const unsubErr = ws.on('error', (payload) => {
@@ -62,9 +73,16 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         }
       });
 
-      // Connect and send create_session once WS is open + auth sent
+      // Connect and send create_session or just connect
       ws.connect(() => {
-        ws.send('create_session', { device_id: deviceId });
+        if (existingSessionId) {
+          // Reconnecting to existing session — set connected immediately
+          set({ connected: true });
+          // Send empty input to wake up any pending reads
+          ws.send('terminal_input', { session_id: existingSessionId, data: '', cwd: null });
+        } else {
+          ws.send('create_session', { device_id: deviceId });
+        }
       });
 
       set({
@@ -76,7 +94,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         error: null,
       });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'failed to create session' });
+      set({ error: e instanceof Error ? e.message : 'failed to connect' });
     }
   },
 

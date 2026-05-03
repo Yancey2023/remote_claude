@@ -59,6 +59,14 @@ export interface SessionResponse {
   ws_url: string;
 }
 
+export interface SessionInfo {
+  id: string;
+  device_id: string;
+  user_id: string;
+  created_at: number;
+  cwd: string | null;
+}
+
 export interface CreateUserRequest {
   username: string;
   password: string;
@@ -81,6 +89,7 @@ export interface ApiError {
 export interface SessionCreatedPayload {
   session_id: string;
   device_id: string;
+  cwd?: string;
 }
 
 export interface DeviceStatusPayload {

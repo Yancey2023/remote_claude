@@ -6,7 +6,7 @@ import { useDeviceStore } from '../stores/deviceStore';
 import { Terminal, type TerminalHandle } from '../components/Terminal';
 
 export function TerminalPage() {
-  const { id: deviceId } = useParams<{ id: string }>();
+  const { id: deviceId, sessionId } = useParams<{ id: string; sessionId: string }>();
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
   const devices = useDeviceStore((s) => s.devices);
@@ -18,16 +18,16 @@ export function TerminalPage() {
 
   // Connection setup
   useEffect(() => {
-    if (!deviceId || !token || initRef.current) return;
+    if (!deviceId || !sessionId || !token || initRef.current) return;
     initRef.current = true;
 
-    connect(deviceId, token);
+    connect(deviceId, token, sessionId);
 
     return () => {
       initRef.current = false;
       disconnect();
     };
-  }, [deviceId, token, connect, disconnect]);
+  }, [deviceId, sessionId, token, connect, disconnect]);
 
   // Listen for result_chunks and write to terminal
   useEffect(() => {
@@ -35,6 +35,9 @@ export function TerminalPage() {
     const unsub = ws.on('result_chunk', (payload) => {
       const chunk = payload.chunk as string;
       const done = payload.done as boolean;
+      const sid = payload.session_id as string;
+      // Only show output for THIS session
+      if (sid !== sessionId) return;
       const term = terminalRef.current;
       if (term && chunk) {
         term.write(chunk);
@@ -53,7 +56,7 @@ export function TerminalPage() {
       unsub();
       unsubErr();
     };
-  }, [ws]);
+  }, [ws, sessionId]);
 
   const handleData = useCallback(
     (data: string) => {
@@ -73,7 +76,6 @@ export function TerminalPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0 }}>
-      {/* Header bar */}
       <div
         style={{
           display: 'flex',
@@ -86,7 +88,7 @@ export function TerminalPage() {
         }}
       >
         <button
-          onClick={() => navigate('/devices')}
+          onClick={() => navigate(`/devices/${deviceId}`)}
           style={{
             background: 'none',
             border: '1px solid #16213e',
@@ -100,7 +102,10 @@ export function TerminalPage() {
           &larr; Back
         </button>
         <span style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-          {device?.name || deviceId || 'Unknown Device'}
+          {device?.name || deviceId || ''}
+        </span>
+        <span style={{ color: '#666', fontSize: '0.8rem' }}>
+          {sessionId?.slice(0, 8)}...
         </span>
         <span
           style={{
@@ -116,7 +121,6 @@ export function TerminalPage() {
         </span>
       </div>
 
-      {/* Terminal area */}
       <div style={{ flex: 1, padding: '0.5rem', overflow: 'hidden' }}>
         <Terminal
           ref={terminalRef}

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DeviceListPage } from './pages/DeviceListPage';
+import { SessionListPage } from './pages/SessionListPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { useAuthStore } from './stores/authStore';
 
@@ -24,7 +25,8 @@ export default function App() {
         }
       >
         <Route index element={<DeviceListPage />} />
-        <Route path=":id" element={<TerminalPage />} />
+        <Route path=":id" element={<SessionListPage />} />
+        <Route path=":id/sessions/:sessionId" element={<TerminalPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/devices" replace />} />
     </Routes>

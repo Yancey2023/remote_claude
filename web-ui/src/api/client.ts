@@ -71,8 +71,16 @@ class ApiClient {
   }
 
   // Sessions
-  async createSession(deviceId: string) {
-    return this.request<SessionResponse>('POST', '/api/sessions', { device_id: deviceId });
+  async createSession(deviceId: string, cwd?: string) {
+    return this.request<import('../types/protocol').SessionResponse>('POST', '/api/sessions', { device_id: deviceId, cwd: cwd ?? null });
+  }
+
+  async listSessions() {
+    return this.request<import('../types/protocol').SessionInfo[]>('GET', '/api/sessions');
+  }
+
+  async getSession(sessionId: string) {
+    return this.request<import('../types/protocol').SessionInfo>('GET', `/api/sessions/${sessionId}`);
   }
 
   async closeSession(sessionId: string) {

@@ -1,5 +1,6 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useSessionStore } from '../stores/sessionStore';
 import { ToastContainer } from './Toast';
 import { ConnectionOverlay } from './ConnectionOverlay';
 
@@ -20,19 +21,19 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     padding: '1rem',
     flexShrink: 0,
+    overflow: 'hidden',
   },
   logo: {
     fontSize: '1.1rem',
     fontWeight: 700,
     color: '#e94560',
-    marginBottom: '2rem',
+    marginBottom: '1rem',
     padding: '0 0.5rem',
   },
   nav: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
-    flex: 1,
   },
   link: {
     padding: '0.5rem',
@@ -46,12 +47,31 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#16213e',
     color: '#e94560',
   },
+  sessionsSection: {
+    flex: 1,
+    overflow: 'auto',
+    marginTop: '1rem',
+    borderTop: '1px solid #16213e',
+    paddingTop: '0.75rem',
+  },
+  sessionItem: {
+    padding: '0.4rem 0.5rem',
+    borderRadius: '4px',
+    textDecoration: 'none',
+    color: '#a0a0a0',
+    fontSize: '0.8rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    transition: 'background 0.2s',
+    marginBottom: '0.2rem',
+  },
   footer: {
     padding: '0.5rem',
     fontSize: '0.8rem',
     color: '#666',
     borderTop: '1px solid #16213e',
-    marginTop: 'auto',
+    marginTop: '0.5rem',
   },
   main: {
     flex: 1,
@@ -65,10 +85,23 @@ export function Layout() {
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const { id: deviceId, sessionId: activeSessionId } = useParams<{ id: string; sessionId: string }>();
+  const sessions = useSessionStore((s) => s.sessions);
+  const deleteSession = useSessionStore((s) => s.deleteSession);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleDeleteSession = (e: React.MouseEvent, sid: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm('Delete this session?')) return;
+    deleteSession(sid);
+    if (sid === activeSessionId) {
+      navigate(`/devices/${deviceId || ''}`);
+    }
   };
 
   return (
@@ -78,6 +111,7 @@ export function Layout() {
         <nav style={styles.nav}>
           <NavLink
             to="/devices"
+            end
             style={({ isActive }) => ({
               ...styles.link,
               ...(isActive ? styles.activeLink : {}),
@@ -86,6 +120,48 @@ export function Layout() {
             Devices
           </NavLink>
         </nav>
+
+        {deviceId && (
+          <div style={styles.sessionsSection}>
+            <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.5rem', padding: '0 0.5rem' }}>
+              SESSIONS
+            </div>
+            {sessions
+              .filter((s) => s.device_id === deviceId)
+              .map((s) => (
+                <NavLink
+                  key={s.id}
+                  to={`/devices/${deviceId}/sessions/${s.id}`}
+                  style={({ isActive }) => ({
+                    ...styles.sessionItem,
+                    ...(isActive ? { background: '#16213e', color: '#e94560' } : {}),
+                  })}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    {s.cwd ? s.cwd.split(/[\\/]/).pop() || s.cwd : '~'}
+                  </span>
+                  <button
+                    onClick={(e) => handleDeleteSession(e, s.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#e74c3c',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      opacity: 0.4,
+                      padding: '0 2px',
+                      flexShrink: 0,
+                      marginLeft: '4px',
+                    }}
+                    title="Close session"
+                  >
+                    ✕
+                  </button>
+                </NavLink>
+              ))}
+          </div>
+        )}
+
         <div style={styles.footer}>
           <div style={{ marginBottom: '0.25rem' }}>{user?.username}</div>
           <button

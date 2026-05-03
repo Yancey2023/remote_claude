@@ -108,7 +108,7 @@ describe('apiClient', () => {
         '/api/sessions',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ device_id: 'd1' }),
+          body: JSON.stringify({ device_id: 'd1', cwd: null }),
         }),
       );
     });
