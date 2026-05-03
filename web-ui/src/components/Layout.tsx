@@ -139,14 +139,16 @@ export function Layout() {
     navigate('/login');
   };
 
-  const handleDeleteSession = (e: React.MouseEvent, sid: string) => {
+  const handleDeleteSession = async (e: React.MouseEvent, sid: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (!window.confirm(t('deleteSessionConfirm'))) return;
-    deleteSession(sid);
-    if (sid === activeSessionId) {
-      navigate(`/devices/${deviceId || ''}`);
+    const isCurrentSession = sid === activeSessionId;
+    if (isCurrentSession && deviceId) {
+      // Leave terminal route first, then delete in background.
+      navigate(`/devices/${deviceId}`, { replace: true });
     }
+    await deleteSession(sid);
   };
 
   return (
@@ -172,7 +174,7 @@ export function Layout() {
               <span style={styles.sectionTitle}>{t('sessions')}</span>
               <button
                 style={styles.newSessionBtn}
-                onClick={() => navigate(`/devices/${deviceId}/sessions/new`)}
+                onClick={() => navigate(`/devices/${deviceId}?new=1`)}
                 title={t('newSessionTitle')}
               >
                 {t('new')}
@@ -193,7 +195,7 @@ export function Layout() {
                     {s.cwd ? s.cwd.split(/[\\/]/).pop() || s.cwd : '~'}
                   </span>
                   <button
-                    onClick={(e) => handleDeleteSession(e, s.id)}
+                    onClick={(e) => { void handleDeleteSession(e, s.id); }}
                     style={{
                       background: 'none',
                       border: 'none',

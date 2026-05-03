@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useI18n } from '../i18n';
@@ -7,6 +7,7 @@ import { useI18n } from '../i18n';
 export function SessionListPage() {
   const { t } = useI18n();
   const { id: deviceId } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const devices = useDeviceStore((s) => s.devices);
   const device = devices.find((d) => d.id === deviceId);
@@ -18,6 +19,22 @@ export function SessionListPage() {
     fetchSessions();
   }, [fetchSessions]);
 
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setShowNew(true);
+    }
+  }, [searchParams]);
+
+  const setNewFlag = (enabled: boolean) => {
+    const next = new URLSearchParams(searchParams);
+    if (enabled) {
+      next.set('new', '1');
+    } else {
+      next.delete('new');
+    }
+    setSearchParams(next, { replace: true });
+  };
+
   const handleCreate = () => {
     if (!deviceId) return;
     setShowNew(false);
@@ -25,6 +42,11 @@ export function SessionListPage() {
     if (cwd) params.set('cwd', cwd);
     const qs = params.toString();
     navigate(`/devices/${deviceId}/sessions/new${qs ? '?' + qs : ''}`);
+  };
+
+  const handleCancelNew = () => {
+    setShowNew(false);
+    setNewFlag(false);
   };
 
   const handleDelete = async (sessionId: string) => {
@@ -55,7 +77,10 @@ export function SessionListPage() {
 
       {!showNew && (
         <button
-          onClick={() => setShowNew(true)}
+          onClick={() => {
+            setShowNew(true);
+            setNewFlag(true);
+          }}
           style={{
             padding: '0.5rem 1rem',
             background: '#e94560',
@@ -118,7 +143,7 @@ export function SessionListPage() {
               {t('start')}
             </button>
             <button
-              onClick={() => setShowNew(false)}
+              onClick={handleCancelNew}
               style={{
                 padding: '0.4rem 1rem',
                 background: 'none',
