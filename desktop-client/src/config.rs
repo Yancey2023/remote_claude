@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -9,6 +10,7 @@ pub struct Config {
     pub device_name: String,
     pub client_version: String,
     pub max_retry_delay_secs: u64,
+    pub device_id: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -18,6 +20,7 @@ struct ConfigFile {
     device_name: Option<String>,
     client_version: Option<String>,
     max_retry_delay_secs: Option<u64>,
+    device_id: Option<String>,
 }
 
 impl Config {
@@ -68,6 +71,16 @@ impl Config {
             file_config.register_token = Some(register_token.clone());
         }
 
+        // DEVICE_ID: generate once on first launch, persist in config file
+        let device_id = file_config
+            .device_id
+            .clone()
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        if file_config.device_id.is_none() {
+            modified = true;
+            file_config.device_id = Some(device_id.clone());
+        }
+
         let config = Config {
             server_url: field_str!(
                 server_url,
@@ -78,6 +91,7 @@ impl Config {
             device_name: field_str!(device_name, "DEVICE_NAME", hostname()),
             client_version: field_str!(client_version, "CLIENT_VERSION", "0.1.0"),
             max_retry_delay_secs: field_num!(max_retry_delay_secs, "MAX_RETRY_DELAY_SECS", 60, u64),
+            device_id,
         };
 
         if modified {
@@ -139,12 +153,14 @@ mod tests {
             device_name: "test-pc".into(),
             client_version: "1.0.0".into(),
             max_retry_delay_secs: 30,
+            device_id: "dev-123".into(),
         };
         assert_eq!(config.server_url, "ws://test:8080/ws/client");
         assert_eq!(config.register_token, "test-token");
         assert_eq!(config.device_name, "test-pc");
         assert_eq!(config.client_version, "1.0.0");
         assert_eq!(config.max_retry_delay_secs, 30);
+        assert_eq!(config.device_id, "dev-123");
     }
 
     #[test]
@@ -155,9 +171,11 @@ mod tests {
             device_name: "test-pc".into(),
             client_version: "0.1.0".into(),
             max_retry_delay_secs: 60,
+            device_id: "dev-456".into(),
         };
         assert_eq!(config.client_version, "0.1.0");
         assert_eq!(config.max_retry_delay_secs, 60);
+        assert_eq!(config.device_id, "dev-456");
     }
 
     #[test]

@@ -42,6 +42,7 @@ pub async fn connect_and_run(config: &Config) -> Result<(), String> {
         &config.register_token,
         &config.device_name,
         &config.client_version,
+        &config.device_id,
     );
     outbound_tx
         .send(reg_msg)

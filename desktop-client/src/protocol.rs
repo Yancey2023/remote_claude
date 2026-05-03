@@ -33,13 +33,14 @@ pub struct ClientMessage {
 }
 
 impl ClientMessage {
-    pub fn register(token: &str, name: &str, version: &str) -> String {
+    pub fn register(token: &str, name: &str, version: &str, device_id: &str) -> String {
         serde_json::json!({
             "type": "register",
             "payload": {
                 "token": token,
                 "name": name,
-                "version": version
+                "version": version,
+                "device_id": device_id
             }
         })
         .to_string()
@@ -79,12 +80,13 @@ mod tests {
 
     #[test]
     fn test_register_message() {
-        let msg = ClientMessage::register("token-123", "my-pc", "1.0.0");
+        let msg = ClientMessage::register("token-123", "my-pc", "1.0.0", "dev-abc");
         let parsed: serde_json::Value = serde_json::from_str(&msg).unwrap();
         assert_eq!(parsed["type"], "register");
         assert_eq!(parsed["payload"]["token"], "token-123");
         assert_eq!(parsed["payload"]["name"], "my-pc");
         assert_eq!(parsed["payload"]["version"], "1.0.0");
+        assert_eq!(parsed["payload"]["device_id"], "dev-abc");
     }
 
     #[test]
