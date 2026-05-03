@@ -226,10 +226,16 @@ export function SessionListPage() {
                 cursor: 'pointer',
                 fontSize: '1rem',
                 opacity: 0.5,
+                alignSelf: 'center',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '1.3rem',
+                minHeight: '1.3rem',
               }}
               title={t('deleteSessionTitle')}
             >
-              <span className="btn-label">✕</span>
+              <span className="btn-icon-label">✕</span>
             </button>
           </div>
         ))}

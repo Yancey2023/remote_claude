@@ -137,6 +137,12 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.05rem 0.18rem',
     flexShrink: 0,
     marginLeft: '0.2rem',
+    alignSelf: 'center',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '1.2rem',
+    minHeight: '1.2rem',
   },
   sectionHeader: {
     display: 'flex',
@@ -494,7 +500,7 @@ export function Layout() {
                     style={styles.sessionDeleteBtn}
                     title={t('closeSessionTitle')}
                   >
-                    <span className="btn-label">✕</span>
+                    <span className="btn-icon-label">✕</span>
                   </button>
                 </NavLink>
               ))}
@@ -534,7 +540,7 @@ export function Layout() {
           <div style={styles.topbar}>
             <div style={styles.topbarLeft}>
               <button style={styles.menuBtn} onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-                <span className="btn-label">☰</span>
+                <span className="btn-icon-label">☰</span>
               </button>
               <div style={styles.topbarTitleWrap}>
                 <div style={styles.topbarTitle}>{topTitle}</div>
