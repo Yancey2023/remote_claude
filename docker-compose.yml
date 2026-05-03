@@ -22,12 +22,16 @@ services:
     build: desktop-client
     depends_on:
       - relay-server
+      - web-ui   # connect through nginx for encrypted WS support
     volumes:
       - client-config:/app/config
     environment:
       # REGISTER_TOKEN is required — set via .env or export CLIENT_REGISTER_TOKEN=<token>
       - REGISTER_TOKEN=${CLIENT_REGISTER_TOKEN:?error}
-      - SERVER_URL=ws://relay-server:8080/ws/client
+      # Default: route through nginx (plain WS inside Docker network, TLS at nginx boundary)
+      - SERVER_URL=ws://web-ui:80/ws/client
+      # For TLS: uncomment web-ui port 443, mount certs, use nginx.ssl.conf, and set:
+      # - SERVER_URL=wss://web-ui:443/ws/client
       - DEVICE_NAME=${CLIENT_DEVICE_NAME:-docker-client}
     restart: unless-stopped
     # If Claude CLI is installed on the host, mount it:

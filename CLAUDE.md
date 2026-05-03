@@ -94,8 +94,8 @@ describe('模块名', () => {
 | 项目 | 框架 | 测试数量 | 位置 |
 |------|------|----------|------|
 | relay-server | `cargo test` / `tokio::test` | 66 | `#[cfg(test)]` 内联在源文件中 |
-| desktop-client | `cargo test` / `tokio::test` | 18 | `#[cfg(test)]` 内联在源文件中 |
-| web-ui | `vitest` / `pnpm test` | 55 | `*.test.ts` 和测试文件同目录 |
+| desktop-client | `cargo test` / `tokio::test` | 23 | `#[cfg(test)]` 内联在源文件中 |
+| web-ui | `vitest` / `pnpm test` | 64 | `*.test.ts` 和测试文件同目录 |
 
 ## 配置系统
 
@@ -167,7 +167,9 @@ cargo run
 
 ```bash
 cd desktop-client
-REGISTER_TOKEN=<token> SERVER_URL=ws://127.0.0.1:8080/ws/client cargo run
+REGISTER_TOKEN=<token> cargo run
+# 默认连接 ws://127.0.0.1:8080/ws/client（本地开发）
+# 生产环境：SERVER_URL=wss://your-domain.com/ws/client
 # 自动创建 config/desktop-client.toml（相对于可执行文件路径）
 ```
 
@@ -176,7 +178,6 @@ REGISTER_TOKEN=<token> SERVER_URL=ws://127.0.0.1:8080/ws/client cargo run
 ```toml
 # {exe_dir}/config/desktop-client.toml
 server_url = "ws://127.0.0.1:8080/ws/client"
-register_token = "<token>"
 device_name = "my-pc"
 client_version = "0.1.0"
 max_retry_delay_secs = 60
@@ -191,7 +192,7 @@ cargo run
 
 | 字段 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
-| `server_url` | `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址 |
+| `server_url` | `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址（支持 `wss://`） |
 | `register_token` | `REGISTER_TOKEN` | **(必填)** | 管理员生成的注册令牌 |
 | `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
 | `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
@@ -265,7 +266,15 @@ docker start remote-claude-relay-server
 # 构建镜像
 docker build -t remote-claude/desktop-client desktop-client/
 
-# 运行（必须提供 REGISTER_TOKEN 和 SERVER_URL）
+# 运行（必须提供 REGISTER_TOKEN）
+# 通过 nginx 代理（推荐，支持 WSS 加密）：
+docker run -d --name remote-claude-desktop-client \
+  -e REGISTER_TOKEN=<token> \
+  -e SERVER_URL=wss://your-domain.com/ws/client \
+  -v client-config:/app/config \
+  remote-claude/desktop-client
+
+# 直接连接 relay-server（仅开发测试）：
 docker run -d --name remote-claude-desktop-client \
   -e REGISTER_TOKEN=<token> \
   -e SERVER_URL=ws://host.docker.internal:8080/ws/client \
@@ -275,6 +284,7 @@ docker run -d --name remote-claude-desktop-client \
 
 > **注意**: desktop-client 容器内需要访问 Claude CLI。建议将宿主机的 `claude` 二进制文件挂载到容器中，并通过 `CLAUDE_BINARY` 环境变量指定路径。
 > **注意**: 容器内配置路径默认为 `/app/config/*.toml`（通过 `CONFIG_PATH` 环境变量设置）。所有配置项也可通过环境变量传入。
+> **加密**: desktop-client 支持 `wss://`（通过 native-tls），生产环境应通过 nginx 反向代理终结 TLS。
 
 ### 网页前端
 
@@ -285,7 +295,9 @@ docker build -t remote-claude/web-ui -f web-ui/Dockerfile .
 docker run -d --name remote-claude-web-ui -p 80:80 remote-claude/web-ui
 ```
 
-> nginx 自动代理 `/api/` 和 `/ws` 到 relay-server 容器（需同 Docker 网络）。
+> nginx 代理所有 `/api/` 和 `/ws` 流量（包括 `/ws/client` 和 `/ws/web`）到 relay-server。
+> nginx.conf 包含安全头（X-Content-Type-Options, X-Frame-Options），nginx.ssl.conf 额外包含 HSTS。
+> 所有外部流量统一经过 nginx 终结 TLS，relay-server 不直接对外暴露。
 
 ### Docker Compose
 
@@ -316,7 +328,8 @@ docker compose down
 | `CLIENT_REGISTER_TOKEN` | **(必填)** | 客户端注册令牌 |
 | `CLIENT_DEVICE_NAME` | `docker-client` | 客户端设备名称 |
 
-> `desktop-client` 容器通过 Docker DNS 自动连接 `relay-server`，无需手动指定 `SERVER_URL`。
+> `desktop-client` 容器通过 Docker DNS 自动连接 `web-ui`（nginx），再转发到 `relay-server`。
+> 如需 TLS 加密，取消 web-ui 端口 443 注释、挂载证书并使用 nginx.ssl.conf，然后将 `SERVER_URL` 改为 `wss://web-ui:443/ws/client`。
 
 ## 迁移说明
 
@@ -376,8 +389,8 @@ docker compose down
 ```bash
 # 运行全部
 cd relay-server && cargo test    # 66 tests
-cd desktop-client && cargo test  # 18 tests
-cd web-ui && pnpm test           # 55 tests
+cd desktop-client && cargo test  # 23 tests
+cd web-ui && pnpm test           # 64 tests
 
 # 运行单个测试文件（Rust）
 cd relay-server && cargo test test_config_default_values
@@ -396,7 +409,8 @@ cd web-ui && pnpm test:watch
 - **心跳**: 15s 间隔 ping，30s 超时自动标记离线
 - **重连**: 指数退避 1s→2s→...→60s max
 - **错误边界**: 所有程序有 panic hook 不崩溃，前端 ErrorBoundary 防白屏
-- **JWT**: API 除登录外全部 Bearer token 鉴权
-- **双通道**: 设备长连 WS，网页 REST + WS 控制通道
+- **JWT**: 登录后返回 HttpOnly cookie（REST API 鉴权）+ JSON body 中 token（WebSocket 鉴权）
+- **nginx 统一入口**: 所有外部流量经 nginx（TLS 终结 + 安全头），relay-server 不直接对外暴露
+- **双通道**: 设备长连 WS（通过 nginx 代理 `/ws/client`），网页 REST + WS 控制通道（通过 nginx 代理 `/api/` 和 `/ws/web`）
 - **透传**: 客户端不解析 Claude 输出，只做命令下发和结果收集
 - **存储**: SQLite (sqlx)，三表 users/devices/sessions，自动迁移建表
