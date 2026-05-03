@@ -188,6 +188,7 @@ cargo run
 | `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
 | `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
 | `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
+| `claude_binary` | `CLAUDE_BINARY` | `claude` | Claude CLI 可执行文件路径/名称 |
 
 ### 3. 网页前端
 
