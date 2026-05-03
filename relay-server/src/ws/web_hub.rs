@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::{mpsc, RwLock};
+use tokio::time::timeout;
 use tracing::{error, info, warn};
 
 use crate::auth::jwt::verify_token;
@@ -103,6 +105,13 @@ pub async fn handle_web_ws(
                 msg = ws_receiver.next() => {
                     match msg {
                         Some(Ok(Message::Text(text))) => {
+                            if text.len() > 1_048_576 {
+                                warn!("web ws message too large ({} bytes)", text.len());
+                                let _ = ws_sender.send(Message::Text(
+                                    serde_json::json!({"type":"error","payload":{"code":"ERR_MSG_TOO_LARGE","message":"message too large"}}).to_string().into()
+                                )).await;
+                                continue;
+                            }
                             if let Err(e) = handle_web_message(
                                 &text, &user_id_clone, &hub_clone, &client_hub_clone, &store_clone
                             ).await {
@@ -133,8 +142,13 @@ async fn receive_auth(
     config: &Config,
 ) -> Option<(String, String)> {
     loop {
-        match receiver.next().await? {
+        let msg = timeout(Duration::from_secs(10), receiver.next()).await.ok()??;
+        match msg {
             Ok(Message::Text(text)) => {
+                if text.len() > 1_048_576 {
+                    warn!("web ws auth message too large ({} bytes)", text.len());
+                    return None;
+                }
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                     if parsed.get("type").and_then(|t| t.as_str()) == Some("auth") {
                         let payload = parsed.get("payload")?;

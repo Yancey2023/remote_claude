@@ -3,6 +3,7 @@ pub mod session;
 pub mod web_hub;
 
 use axum::extract::ws::WebSocket;
+use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::Instrument;
@@ -16,12 +17,15 @@ pub struct AppState {
     pub web_hub: web_hub::WebHub,
     pub store: crate::store::SqliteStore,
     pub login_rate_limiter: LoginRateLimiter,
+    pub ws_rate_limiter: Arc<LoginRateLimiter>,
+    pub register_rate_limiter: Arc<LoginRateLimiter>,
 }
 
 /// Handle a raw WebSocket connection, routing by URL path.
 pub async fn ws_handler(
     ws: WebSocket,
     path: String,
+    client_ip: IpAddr,
     state: Arc<RwLock<AppState>>,
 ) {
     let s = state.read().await;
@@ -31,8 +35,9 @@ pub async fn ws_handler(
             let web_hub = s.web_hub.clone();
             let store = s.store.clone();
             let config = s.config.clone();
+            let register_limiter = s.register_rate_limiter.clone();
             drop(s);
-            client_hub::handle_client_ws(ws, client_hub, web_hub, store, config)
+            client_hub::handle_client_ws(ws, client_hub, web_hub, store, config, register_limiter, client_ip)
                 .instrument(tracing::info_span!("client_ws"))
                 .await;
         }

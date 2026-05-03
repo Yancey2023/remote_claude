@@ -1,14 +1,16 @@
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::{mpsc, RwLock};
-use tokio::time::Instant;
+use tokio::time::{timeout, Instant};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+use crate::api::rate_limit::LoginRateLimiter;
 use crate::config::Config;
 use crate::models::Device;
 use crate::store::SqliteStore;
@@ -133,6 +135,8 @@ pub async fn handle_client_ws(
     web_hub: WebHub,
     store: SqliteStore,
     config: Config,
+    register_rate_limiter: Arc<LoginRateLimiter>,
+    client_ip: IpAddr,
 ) {
     let (mut ws_sender, mut ws_receiver) = ws.split();
 
@@ -144,6 +148,18 @@ pub async fn handle_client_ws(
             return;
         }
     };
+
+    // Rate limit registration attempts per IP
+    if !register_rate_limiter.check_and_record(client_ip) {
+        warn!(ip = %client_ip, "registration rate limit exceeded");
+        let err = serde_json::json!({
+            "type": "error",
+            "payload": { "code": "ERR_RATE_LIMITED", "message": "too many registration attempts" }
+        });
+        let _ = ws_sender.send(Message::Text(err.to_string().into())).await;
+        let _ = ws_sender.close().await;
+        return;
+    }
 
     // Validate registration token against database
     if !store.validate_registration_token(&token).await {
@@ -226,6 +242,10 @@ pub async fn handle_client_ws(
                 msg = ws_receiver.next() => {
                     match msg {
                         Some(Ok(Message::Text(text))) => {
+                            if text.len() > 1_048_576 {
+                                warn!(device_id = %device_id_fwd, "client message too large ({} bytes)", text.len());
+                                continue;
+                            }
                             *last_pong_fwd.write().await = Instant::now();
                             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                                 let msg_type = parsed.get("type").and_then(|t| t.as_str());
@@ -309,9 +329,13 @@ async fn receive_register(
     receiver: &mut futures_util::stream::SplitStream<WebSocket>,
 ) -> Option<(String, String, String, String)> {
     loop {
-        let msg = receiver.next().await?;
+        let msg = timeout(Duration::from_secs(10), receiver.next()).await.ok()??;
         match msg {
             Ok(Message::Text(text)) => {
+                if text.len() > 1_048_576 {
+                    warn!("register message too large ({} bytes)", text.len());
+                    return None;
+                }
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                     if parsed.get("type").and_then(|t| t.as_str()) == Some("register") {
                         let payload = parsed.get("payload")?;

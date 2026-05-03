@@ -6,12 +6,15 @@ mod models;
 mod store;
 mod ws;
 
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use axum::extract::ws::WebSocketUpgrade;
 use axum::extract::{Path, State};
-use axum::response::IntoResponse;
+use axum::http::HeaderMap;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -86,6 +89,8 @@ async fn main() {
     let web_hub = WebHub::new();
 
     let login_rate_limiter = api::rate_limit::LoginRateLimiter::new(10, 300); // 10 attempts per 5 min per IP
+    let ws_rate_limiter = Arc::new(api::rate_limit::LoginRateLimiter::new(30, 60));   // 30 WS upgrades per min per IP
+    let register_rate_limiter = Arc::new(api::rate_limit::LoginRateLimiter::new(5, 60)); // 5 registration attempts per min per IP
 
     let state = Arc::new(RwLock::new(AppState {
         config: config.clone(),
@@ -93,6 +98,8 @@ async fn main() {
         web_hub,
         store,
         login_rate_limiter,
+        ws_rate_limiter,
+        register_rate_limiter,
     }));
 
     // Build router
@@ -135,9 +142,35 @@ async fn main() {
 async fn ws_upgrade(
     ws: WebSocketUpgrade,
     Path(path): Path<String>,
+    headers: HeaderMap,
     State(state): State<Arc<RwLock<AppState>>>,
-) -> impl IntoResponse {
+) -> Response {
+    let client_ip = extract_client_ip(&headers);
     let path = format!("/ws/{path}");
+
+    // Rate limit WebSocket upgrades per IP (prevents connection flood)
+    {
+        let s = state.read().await;
+        if !s.ws_rate_limiter.check_and_record(client_ip) {
+            return (StatusCode::TOO_MANY_REQUESTS, "too many connections").into_response();
+        }
+    }
+
     info!(%path, "WebSocket upgrade request");
-    ws.on_upgrade(move |socket| ws::ws_handler(socket, path, state))
+    ws.on_upgrade(move |socket| ws::ws_handler(socket, path, client_ip, state))
+}
+
+fn extract_client_ip(headers: &HeaderMap) -> IpAddr {
+    headers
+        .get("X-Forwarded-For")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next().map(|s| s.trim()))
+        .and_then(|s| s.parse::<IpAddr>().ok())
+        .or_else(|| {
+            headers
+                .get("X-Real-IP")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse::<IpAddr>().ok())
+        })
+        .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)))
 }
