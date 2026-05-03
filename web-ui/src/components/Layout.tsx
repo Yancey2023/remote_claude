@@ -469,7 +469,7 @@ export function Layout() {
                 }}
                 title={t('newSessionTitle')}
               >
-                {t('new')}
+                <span className="btn-label">{t('new')}</span>
               </button>
             </div>
             <div style={styles.sessionList}>
@@ -494,7 +494,7 @@ export function Layout() {
                     style={styles.sessionDeleteBtn}
                     title={t('closeSessionTitle')}
                   >
-                    ✕
+                    <span className="btn-label">✕</span>
                   </button>
                 </NavLink>
               ))}
@@ -512,20 +512,20 @@ export function Layout() {
               onClick={() => setLocale('en')}
               style={{ ...styles.langBtn, color: locale === 'en' ? '#ef6f85' : '#8b92b5' }}
             >
-              {t('languageEnglish')}
+              <span className="btn-label">{t('languageEnglish')}</span>
             </button>
             <button
               onClick={() => setLocale('zh')}
               style={{ ...styles.langBtn, color: locale === 'zh' ? '#ef6f85' : '#8b92b5' }}
             >
-              {t('languageChinese')}
+              <span className="btn-label">{t('languageChinese')}</span>
             </button>
           </div>
           <button
             onClick={handleLogout}
             style={styles.logoutBtn}
           >
-            {t('logout')}
+            <span className="btn-label">{t('logout')}</span>
           </button>
         </div>
       </div>
@@ -534,7 +534,7 @@ export function Layout() {
           <div style={styles.topbar}>
             <div style={styles.topbarLeft}>
               <button style={styles.menuBtn} onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-                ☰
+                <span className="btn-label">☰</span>
               </button>
               <div style={styles.topbarTitleWrap}>
                 <div style={styles.topbarTitle}>{topTitle}</div>
@@ -548,7 +548,7 @@ export function Layout() {
                   onClick={() => navigate(`/devices/${deviceId}?new=1`)}
                   title={t('newSessionTitle')}
                 >
-                  {t('new')}
+                  <span className="btn-label">{t('new')}</span>
                 </button>
               </div>
             )}

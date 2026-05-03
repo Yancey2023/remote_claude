@@ -77,7 +77,7 @@ describe('LoginPage', () => {
         <LoginPage />
       </MemoryRouter>
     );
-    const button = screen.getByText('Sign In');
+    const button = screen.getByRole('button', { name: 'Sign In' });
     expect(button).toBeTruthy();
     // Button starts disabled because fields are empty
     expect((button as HTMLButtonElement).disabled).toBe(true);

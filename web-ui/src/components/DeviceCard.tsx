@@ -83,7 +83,7 @@ export function DeviceCard({ device }: Props) {
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; }}
       >
-        ✕
+        <span className="btn-label">✕</span>
       </button>
     </div>
   );

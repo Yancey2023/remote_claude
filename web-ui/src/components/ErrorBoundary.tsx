@@ -53,7 +53,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               fontSize: '1rem',
             }}
           >
-            {translate('reload')}
+            <span className="btn-label">{translate('reload')}</span>
           </button>
         </div>
       );

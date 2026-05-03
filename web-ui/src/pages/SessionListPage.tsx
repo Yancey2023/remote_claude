@@ -94,7 +94,7 @@ export function SessionListPage() {
             marginBottom: '1.1rem',
           }}
         >
-          {t('plusNewSession')}
+          <span className="btn-label">{t('plusNewSession')}</span>
         </button>
       )}
 
@@ -144,7 +144,7 @@ export function SessionListPage() {
                 width: isMobile ? '100%' : 'auto',
               }}
             >
-              {t('start')}
+              <span className="btn-label">{t('start')}</span>
             </button>
             <button
               onClick={handleCancelNew}
@@ -159,7 +159,7 @@ export function SessionListPage() {
                 width: isMobile ? '100%' : 'auto',
               }}
             >
-              {t('cancel')}
+              <span className="btn-label">{t('cancel')}</span>
             </button>
           </div>
         </div>
@@ -229,7 +229,7 @@ export function SessionListPage() {
               }}
               title={t('deleteSessionTitle')}
             >
-              ✕
+              <span className="btn-label">✕</span>
             </button>
           </div>
         ))}

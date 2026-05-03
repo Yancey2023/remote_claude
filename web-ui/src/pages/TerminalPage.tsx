@@ -150,7 +150,7 @@ export function TerminalPage() {
             flexShrink: 0,
           }}
         >
-          &larr; {t('back')}
+          <span className="btn-label">&larr; {t('back')}</span>
         </button>
         <div
           style={{

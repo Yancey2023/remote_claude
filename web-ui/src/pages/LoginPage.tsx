@@ -87,7 +87,7 @@ export function LoginPage() {
               padding: '0.15rem 0.45rem',
             }}
           >
-            {t('languageEnglish')}
+            <span className="btn-label">{t('languageEnglish')}</span>
           </button>
           <button
             type="button"
@@ -102,7 +102,7 @@ export function LoginPage() {
               padding: '0.15rem 0.45rem',
             }}
           >
-            {t('languageChinese')}
+            <span className="btn-label">{t('languageChinese')}</span>
           </button>
         </div>
 
@@ -198,7 +198,7 @@ export function LoginPage() {
             transition: 'background 0.2s',
           }}
         >
-          {loading ? t('signingIn') : t('signIn')}
+          <span className="btn-label">{loading ? t('signingIn') : t('signIn')}</span>
         </button>
       </form>
     </div>
