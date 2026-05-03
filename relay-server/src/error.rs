@@ -17,6 +17,7 @@ pub enum AppError {
     BadRequest(String),
     Conflict(String),
     Internal(String),
+    TooManyRequests(String),
 }
 
 impl AppError {
@@ -28,6 +29,7 @@ impl AppError {
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
         }
     }
 
@@ -39,6 +41,7 @@ impl AppError {
             AppError::BadRequest(_) => "ERR_BAD_REQUEST",
             AppError::Conflict(_) => "ERR_CONFLICT",
             AppError::Internal(_) => "ERR_INTERNAL",
+            AppError::TooManyRequests(_) => "ERR_TOO_MANY_REQUESTS",
         }
     }
 
@@ -49,7 +52,8 @@ impl AppError {
             | AppError::NotFound(m)
             | AppError::BadRequest(m)
             | AppError::Conflict(m)
-            | AppError::Internal(m) => m,
+            | AppError::Internal(m)
+            | AppError::TooManyRequests(m) => m,
         }
     }
 }
@@ -108,6 +112,12 @@ mod tests {
     }
 
     #[test]
+    fn test_too_many_requests_status_code() {
+        let err = AppError::TooManyRequests("test".into());
+        assert_eq!(err.status_code(), StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[test]
     fn test_code_str_values() {
         assert_eq!(AppError::Unauthorized("".into()).code_str(), "ERR_UNAUTHORIZED");
         assert_eq!(AppError::Forbidden("".into()).code_str(), "ERR_FORBIDDEN");
@@ -115,6 +125,7 @@ mod tests {
         assert_eq!(AppError::BadRequest("".into()).code_str(), "ERR_BAD_REQUEST");
         assert_eq!(AppError::Conflict("".into()).code_str(), "ERR_CONFLICT");
         assert_eq!(AppError::Internal("".into()).code_str(), "ERR_INTERNAL");
+        assert_eq!(AppError::TooManyRequests("".into()).code_str(), "ERR_TOO_MANY_REQUESTS");
     }
 
     #[test]
@@ -125,6 +136,7 @@ mod tests {
         assert_eq!(AppError::BadRequest("bad input".into()).message(), "bad input");
         assert_eq!(AppError::Conflict("conflict".into()).message(), "conflict");
         assert_eq!(AppError::Internal("server error".into()).message(), "server error");
+        assert_eq!(AppError::TooManyRequests("rate limited".into()).message(), "rate limited");
     }
 }
 

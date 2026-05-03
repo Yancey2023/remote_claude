@@ -1,5 +1,6 @@
-use axum::{routing::post, Json, Router};
+use axum::{http::HeaderMap, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -33,6 +34,7 @@ pub struct LoginResponse {
 
 async fn login(
     state: axum::extract::State<Arc<RwLock<AppState>>>,
+    headers: HeaderMap,
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, AppError> {
     if req.username.trim().is_empty() || req.password.trim().is_empty() {
@@ -43,10 +45,32 @@ async fn login(
         return Err(AppError::BadRequest("input too long".into()));
     }
 
+    // Extract client IP from headers (trusted nginx proxy) or fall back to a safe default
+    let client_ip = headers
+        .get("X-Forwarded-For")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next().map(|s| s.trim()))
+        .and_then(|s| s.parse::<IpAddr>().ok())
+        .or_else(|| {
+            headers
+                .get("X-Real-IP")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse::<IpAddr>().ok())
+        })
+        .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+
     let state = state.read().await;
+
+    // Rate limit: check before processing credentials
+    if !state.login_rate_limiter.check_and_record(client_ip) {
+        return Err(AppError::TooManyRequests(
+            "too many login attempts, try again later".into(),
+        ));
+    }
+
     let config = &state.config;
 
-    // Check admin credentials from env vars first
+    // Check admin credentials from config first
     if req.username == config.admin_user {
         if req.password != config.admin_pass {
             return Err(AppError::Unauthorized("invalid credentials".into()));
@@ -59,6 +83,8 @@ async fn login(
             config.jwt_expiry_hours,
         )
         .map_err(|e| AppError::Internal(e))?;
+
+        state.login_rate_limiter.clear(client_ip);
 
         return Ok(Json(LoginResponse {
             token,
@@ -94,6 +120,8 @@ async fn login(
         config.jwt_expiry_hours,
     )
     .map_err(|e| AppError::Internal(e))?;
+
+    state.login_rate_limiter.clear(client_ip);
 
     Ok(Json(LoginResponse {
         token,

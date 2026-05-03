@@ -85,11 +85,14 @@ async fn main() {
     let client_hub = ClientHub::new();
     let web_hub = WebHub::new();
 
+    let login_rate_limiter = api::rate_limit::LoginRateLimiter::new(10, 300); // 10 attempts per 5 min per IP
+
     let state = Arc::new(RwLock::new(AppState {
         config: config.clone(),
         client_hub,
         web_hub,
         store,
+        login_rate_limiter,
     }));
 
     // Build router

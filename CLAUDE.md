@@ -93,7 +93,7 @@ describe('模块名', () => {
 
 | 项目 | 框架 | 测试数量 | 位置 |
 |------|------|----------|------|
-| relay-server | `cargo test` / `tokio::test` | 60 | `#[cfg(test)]` 内联在源文件中 |
+| relay-server | `cargo test` / `tokio::test` | 66 | `#[cfg(test)]` 内联在源文件中 |
 | desktop-client | `cargo test` / `tokio::test` | 18 | `#[cfg(test)]` 内联在源文件中 |
 | web-ui | `vitest` / `pnpm test` | 55 | `*.test.ts` 和测试文件同目录 |
 
@@ -375,7 +375,7 @@ docker compose down
 
 ```bash
 # 运行全部
-cd relay-server && cargo test    # 60 tests
+cd relay-server && cargo test    # 66 tests
 cd desktop-client && cargo test  # 18 tests
 cd web-ui && pnpm test           # 55 tests
 

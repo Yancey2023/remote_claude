@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod auth;
 pub mod devices;
+pub mod rate_limit;
 pub mod sessions;
 
 use axum::{routing::get, Router};

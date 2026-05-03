@@ -7,6 +7,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::Instrument;
 
+use crate::api::rate_limit::LoginRateLimiter;
 use crate::config::Config;
 
 pub struct AppState {
@@ -14,6 +15,7 @@ pub struct AppState {
     pub client_hub: client_hub::ClientHub,
     pub web_hub: web_hub::WebHub,
     pub store: crate::store::SqliteStore,
+    pub login_rate_limiter: LoginRateLimiter,
 }
 
 /// Handle a raw WebSocket connection, routing by URL path.
