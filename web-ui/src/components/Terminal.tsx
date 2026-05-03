@@ -2,7 +2,6 @@ import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-import { translate } from '../i18n';
 
 interface Props {
   onData: (data: string) => void;
@@ -80,10 +79,6 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
         try { fitAddon.fit(); } catch { /* ignore */ }
         reportSize();
       });
-
-      term.writeln(`\x1b[1;36m${translate('terminalBanner')}\x1b[0m`);
-      term.writeln(translate('terminalStarting'));
-      term.writeln('');
 
       term.onData((data: string) => {
         if (readOnlyRef.current) return;
