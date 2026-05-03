@@ -1,3 +1,5 @@
+name: remote-claude
+
 services:
   relay-server:
     build: relay-server
