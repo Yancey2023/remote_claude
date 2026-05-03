@@ -36,22 +36,27 @@ pub async fn run_claude(
 
     // Read stdout line by line
     let stdout_handle = tokio::spawn(async move {
+        let mut count = 0u32;
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
+            count += 1;
             if tx_stdout.send((sid_out.clone(), line, false)).is_err() {
                 break;
             }
         }
+        count
     });
 
     // Read stderr and send as error notes
     let tx_stderr = result_tx.clone();
     let sid_err = session_id.clone();
     let stderr_handle = tokio::spawn(async move {
+        let mut count = 0u32;
         let reader = BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
+            count += 1;
             if tx_stderr
                 .send((sid_err.clone(), format!("[stderr] {}", line), false))
                 .is_err()
@@ -59,15 +64,19 @@ pub async fn run_claude(
                 break;
             }
         }
+        count
     });
 
     // Wait for process and reader tasks
-    let _ = tokio::join!(stdout_handle, stderr_handle);
+    let (stdout_result, stderr_result) = tokio::join!(stdout_handle, stderr_handle);
+
+    let stdout_lines = stdout_result.unwrap_or(0);
+    let stderr_lines = stderr_result.unwrap_or(0);
 
     let status = child.wait().await;
     match status {
         Ok(exit) => {
-            info!(session_id = %session_id, exit_code = %exit, "claude process finished");
+            info!(session_id = %session_id, exit_code = %exit, stdout_lines, stderr_lines, "claude process finished");
         }
         Err(e) => {
             error!(session_id = %session_id, error = %e, "failed to wait for claude");
