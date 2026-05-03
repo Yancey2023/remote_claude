@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { apiClient } from '../api/client';
 import { WebSocketClient } from '../api/ws';
 import { getConfig } from '../config';
 
@@ -106,10 +105,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   disconnect: () => {
-    const { ws, sessionId } = get();
-    if (sessionId) {
-      apiClient.closeSession(sessionId).catch(() => {});
-    }
+    const { ws } = get();
+    // Don't close session via REST — sessions persist
     ws?.disconnect();
     set({
       sessionId: null,

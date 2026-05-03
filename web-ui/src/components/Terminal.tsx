@@ -20,6 +20,13 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<XTerm | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
+    // Keep latest callbacks in refs so effect doesn't re-run on prop changes
+    const onDataRef = useRef(onData);
+    const onResizeRef = useRef(onResize);
+    const readOnlyRef = useRef(readOnly);
+    onDataRef.current = onData;
+    onResizeRef.current = onResize;
+    readOnlyRef.current = readOnly;
 
     useImperativeHandle(ref, () => ({
       write: (data: string) => xtermRef.current?.write(data),
@@ -62,18 +69,14 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
       term.writeln('Starting interactive Claude session...');
       term.writeln('');
 
-      // Forward raw keystrokes to PTY via onData
       term.onData((data: string) => {
-        if (readOnly) return;
-        onData(data);
+        if (readOnlyRef.current) return;
+        onDataRef.current(data);
       });
 
-      // Handle resize
       const handleResize = () => {
         fitAddon.fit();
-        if (onResize) {
-          onResize(term.cols, term.rows);
-        }
+        onResizeRef.current?.(term.cols, term.rows);
       };
       window.addEventListener('resize', handleResize);
 
@@ -86,7 +89,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
         xtermRef.current = null;
         fitAddonRef.current = null;
       };
-    }, [onData, onResize, readOnly]);
+    }, []); // only mount once, use refs for latest callbacks
 
     return (
       <div

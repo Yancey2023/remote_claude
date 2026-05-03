@@ -149,11 +149,8 @@ async fn close_session(
     let _ = state.client_hub.send_to_device(&session.device_id, &close_msg.to_string()).await;
 
     state.web_hub.session_registry.unregister(&id).await;
-    state
-        .store
-        .close_session(&id)
-        .await
-        .map_err(|e| AppError::Internal(e))?;
+    // DB close may fail if session was WS-created before migration; non-fatal
+    let _ = state.store.close_session(&id).await;
 
     Ok(Json(serde_json::json!({ "message": "session closed" })))
 }
