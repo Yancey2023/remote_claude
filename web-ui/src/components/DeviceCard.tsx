@@ -3,6 +3,7 @@ import { useDeviceStore } from '../stores/deviceStore';
 import { showToast } from './Toast';
 import type { DeviceResponse } from '../types/protocol';
 import { useI18n } from '../i18n';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface Props {
   device: DeviceResponse;
@@ -12,6 +13,7 @@ export function DeviceCard({ device }: Props) {
   const { t, tf } = useI18n();
   const navigate = useNavigate();
   const deleteDevice = useDeviceStore((s) => s.deleteDevice);
+  const isMobile = useIsMobile(900);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -30,7 +32,7 @@ export function DeviceCard({ device }: Props) {
       style={{
         background: '#16213e',
         borderRadius: '8px',
-        padding: '1rem',
+        padding: isMobile ? '0.85rem' : '1rem',
         cursor: 'pointer',
         border: '1px solid #0f3460',
         transition: 'border-color 0.2s',
@@ -56,7 +58,7 @@ export function DeviceCard({ device }: Props) {
         />
         <h3 style={{ margin: 0, color: '#e0e0e0', fontSize: '1rem' }}>{device.name}</h3>
       </div>
-      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#888' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem', color: '#888', flexWrap: 'wrap' }}>
         <span>v{device.version}</span>
         <span>{device.busy ? t('busy') : t('idle')}</span>
         <span>{device.online ? t('online') : t('offline')}</span>

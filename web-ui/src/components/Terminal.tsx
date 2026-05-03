@@ -119,7 +119,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
         style={{
           width: '100%',
           height: '100%',
-          minHeight: '400px',
+          minHeight: 0,
         }}
       />
     );

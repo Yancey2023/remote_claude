@@ -2,11 +2,13 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useI18n } from '../i18n';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export function LoginPage() {
   const { locale, setLocale, t } = useI18n();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const isMobile = useIsMobile(900);
   const login = useAuthStore((s) => s.login);
   const token = useAuthStore((s) => s.token);
   const loading = useAuthStore((s) => s.loading);
@@ -34,16 +36,17 @@ export function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '100vh',
+        height: '100dvh',
         background: '#0f0f23',
         fontFamily: 'system-ui, sans-serif',
+        padding: '1rem',
       }}
     >
       <form
         onSubmit={handleSubmit}
         style={{
           background: '#1a1a2e',
-          padding: '2rem',
+          padding: isMobile ? '1.25rem' : '2rem',
           borderRadius: '12px',
           width: '100%',
           maxWidth: '360px',

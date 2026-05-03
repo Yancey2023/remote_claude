@@ -3,6 +3,7 @@ import { useDeviceStore } from '../stores/deviceStore';
 import { DeviceCard } from '../components/DeviceCard';
 import { getConfig } from '../config';
 import { useI18n } from '../i18n';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export function DeviceListPage() {
   const { t } = useI18n();
@@ -10,6 +11,7 @@ export function DeviceListPage() {
   const loading = useDeviceStore((s) => s.loading);
   const error = useDeviceStore((s) => s.error);
   const fetchDevices = useDeviceStore((s) => s.fetchDevices);
+  const isMobile = useIsMobile(900);
 
   useEffect(() => {
     fetchDevices();
@@ -18,8 +20,8 @@ export function DeviceListPage() {
   }, [fetchDevices]);
 
   return (
-    <div style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
-      <h2 style={{ margin: '0 0 1.5rem', fontSize: '1.25rem', color: '#e0e0e0' }}>
+    <div style={{ padding: isMobile ? '0.9rem 0.75rem' : '1.5rem', overflow: 'auto', flex: 1, minWidth: 0 }}>
+      <h2 style={{ margin: '0 0 1.1rem', fontSize: isMobile ? '1.1rem' : '1.25rem', color: '#e0e0e0' }}>
         {t('devices')}
       </h2>
 
@@ -50,8 +52,8 @@ export function DeviceListPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '1rem',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: isMobile ? '0.75rem' : '1rem',
         }}
       >
         {devices.map((d) => (

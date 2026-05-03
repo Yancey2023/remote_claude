@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useI18n } from '../i18n';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export function SessionListPage() {
   const { t } = useI18n();
@@ -14,6 +15,7 @@ export function SessionListPage() {
   const { sessions, loading, fetchSessions, createSession, deleteSession } = useSessionStore();
   const [showNew, setShowNew] = useState(false);
   const [cwd, setCwd] = useState('');
+  const isMobile = useIsMobile(900);
 
   useEffect(() => {
     fetchSessions();
@@ -56,9 +58,9 @@ export function SessionListPage() {
   const deviceSessions = sessions.filter((s) => s.device_id === deviceId);
 
   return (
-    <div style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#e0e0e0' }}>
+    <div style={{ padding: isMobile ? '0.9rem 0.75rem' : '1.5rem', overflow: 'auto', flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
+        <h2 style={{ margin: 0, fontSize: isMobile ? '1.1rem' : '1.25rem', color: '#e0e0e0', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {device?.name || deviceId}
         </h2>
         <span
@@ -82,13 +84,14 @@ export function SessionListPage() {
             setNewFlag(true);
           }}
           style={{
-            padding: '0.5rem 1rem',
+            padding: isMobile ? '0.6rem 0.9rem' : '0.5rem 1rem',
+            width: isMobile ? '100%' : 'auto',
             background: '#e94560',
             color: 'white',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
-            marginBottom: '1.5rem',
+            marginBottom: '1.1rem',
           }}
         >
           {t('plusNewSession')}
@@ -101,8 +104,8 @@ export function SessionListPage() {
             background: '#16213e',
             border: '1px solid #0f3460',
             borderRadius: '8px',
-            padding: '1rem',
-            marginBottom: '1.5rem',
+            padding: isMobile ? '0.85rem' : '1rem',
+            marginBottom: '1.1rem',
           }}
         >
           <div style={{ marginBottom: '0.75rem', color: '#e0e0e0', fontSize: '0.9rem' }}>
@@ -127,17 +130,18 @@ export function SessionListPage() {
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
           />
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
             <button
               onClick={handleCreate}
               style={{
-                padding: '0.4rem 1rem',
+                padding: '0.45rem 1rem',
                 background: '#e94560',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 fontSize: '0.85rem',
+                width: isMobile ? '100%' : 'auto',
               }}
             >
               {t('start')}
@@ -145,13 +149,14 @@ export function SessionListPage() {
             <button
               onClick={handleCancelNew}
               style={{
-                padding: '0.4rem 1rem',
+                padding: '0.45rem 1rem',
                 background: 'none',
                 border: '1px solid #16213e',
                 color: '#888',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 fontSize: '0.85rem',
+                width: isMobile ? '100%' : 'auto',
               }}
             >
               {t('cancel')}
@@ -175,11 +180,12 @@ export function SessionListPage() {
               background: '#16213e',
               border: '1px solid #0f3460',
               borderRadius: '8px',
-              padding: '0.75rem 1rem',
+              padding: isMobile ? '0.7rem 0.8rem' : '0.75rem 1rem',
               cursor: 'pointer',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: isMobile ? 'flex-start' : 'center',
+              gap: '0.6rem',
               transition: 'border-color 0.2s',
             }}
             onMouseEnter={(e) => {
@@ -189,8 +195,17 @@ export function SessionListPage() {
               (e.currentTarget as HTMLElement).style.borderColor = '#0f3460';
             }}
           >
-            <div>
-              <div style={{ color: '#e0e0e0', fontSize: '0.9rem', marginBottom: '0.2rem' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div
+                style={{
+                  color: '#e0e0e0',
+                  fontSize: '0.9rem',
+                  marginBottom: '0.2rem',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
                 {s.cwd || t('defaultDirectory')}
               </div>
               <div style={{ color: '#666', fontSize: '0.75rem' }}>

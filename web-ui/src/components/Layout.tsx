@@ -1,16 +1,17 @@
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { ToastContainer } from './Toast';
 import { ConnectionOverlay } from './ConnectionOverlay';
 import { useI18n } from '../i18n';
 import { getConfig } from '../config';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
-    height: '100vh',
+    height: '100dvh',
     overflow: 'hidden',
     background: '#0f0f23',
     color: '#e0e0e0',
@@ -112,6 +113,44 @@ const styles: Record<string, React.CSSProperties> = {
   },
   main: {
     flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  mobileTopbar: {
+    minHeight: '50px',
+    borderBottom: '1px solid #16213e',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.35rem 0.75rem',
+    background: '#141429',
+    flexShrink: 0,
+    paddingTop: 'max(0.35rem, env(safe-area-inset-top))',
+  },
+  mobileMenuBtn: {
+    background: 'none',
+    border: '1px solid #16213e',
+    color: '#e0e0e0',
+    borderRadius: '6px',
+    width: '32px',
+    height: '32px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    lineHeight: 1,
+    padding: 0,
+  },
+  mobileTitle: {
+    color: '#e0e0e0',
+    fontSize: '0.85rem',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  content: {
+    flex: 1,
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -122,17 +161,36 @@ export function Layout() {
   const { locale, setLocale, t } = useI18n();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
+  const location = useLocation();
   const navigate = useNavigate();
   const { id: deviceId, sessionId: activeSessionId } = useParams<{ id: string; sessionId: string }>();
   const sessions = useSessionStore((s) => s.sessions);
   const deleteSession = useSessionStore((s) => s.deleteSession);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const isMobile = useIsMobile(900);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchSessions();
     const interval = setInterval(fetchSessions, getConfig().devicePollIntervalMs);
     return () => clearInterval(interval);
   }, [fetchSessions]);
+
+  useEffect(() => {
+    if (!isMobile) setSidebarOpen(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [location.pathname, location.search, isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobile, sidebarOpen]);
 
   const handleLogout = () => {
     logout();
@@ -153,12 +211,40 @@ export function Layout() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.sidebar}>
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 30,
+          }}
+        />
+      )}
+      <div
+        style={{
+          ...styles.sidebar,
+          position: isMobile ? 'fixed' : 'relative',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: isMobile ? 'min(82vw, 320px)' : styles.sidebar.width,
+          maxWidth: '100vw',
+          paddingTop: isMobile ? 'max(0.75rem, env(safe-area-inset-top))' : styles.sidebar.padding,
+          paddingBottom: isMobile ? 'max(0.75rem, env(safe-area-inset-bottom))' : styles.sidebar.padding,
+          transform: isMobile ? (sidebarOpen ? 'translateX(0)' : 'translateX(-105%)') : 'none',
+          transition: isMobile ? 'transform 0.2s ease' : undefined,
+          boxShadow: isMobile && sidebarOpen ? '0 10px 40px rgba(0, 0, 0, 0.5)' : undefined,
+          zIndex: 40,
+        }}
+      >
         <div style={styles.logo}>{t('appName')}</div>
         <nav style={styles.nav}>
           <NavLink
             to="/devices"
             end
+            onClick={() => setSidebarOpen(false)}
             style={({ isActive }) => ({
               ...styles.link,
               ...(isActive ? styles.activeLink : {}),
@@ -174,7 +260,10 @@ export function Layout() {
               <span style={styles.sectionTitle}>{t('sessions')}</span>
               <button
                 style={styles.newSessionBtn}
-                onClick={() => navigate(`/devices/${deviceId}?new=1`)}
+                onClick={() => {
+                  navigate(`/devices/${deviceId}?new=1`);
+                  setSidebarOpen(false);
+                }}
                 title={t('newSessionTitle')}
               >
                 {t('new')}
@@ -186,6 +275,7 @@ export function Layout() {
                 <NavLink
                   key={s.id}
                   to={`/devices/${deviceId}/sessions/${s.id}`}
+                  onClick={() => setSidebarOpen(false)}
                   style={({ isActive }) => ({
                     ...styles.sessionItem,
                     ...(isActive ? { background: '#16213e', color: '#e94560' } : {}),
@@ -248,8 +338,18 @@ export function Layout() {
         </div>
       </div>
       <div style={styles.main}>
+        {isMobile && (
+          <div style={styles.mobileTopbar}>
+            <button style={styles.mobileMenuBtn} onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+              ☰
+            </button>
+            <div style={styles.mobileTitle}>{t('appName')}</div>
+          </div>
+        )}
         <ConnectionOverlay />
-        <Outlet />
+        <div style={styles.content}>
+          <Outlet />
+        </div>
       </div>
       <ToastContainer />
     </div>

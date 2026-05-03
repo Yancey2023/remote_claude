@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useDeviceStore } from '../stores/deviceStore';
 import { Terminal, type TerminalHandle } from '../components/Terminal';
 import { useI18n } from '../i18n';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export function TerminalPage() {
   const { t } = useI18n();
@@ -22,6 +23,7 @@ export function TerminalPage() {
   const suppressInputRef = useRef(false);
   const replayReleaseTimerRef = useRef<number | null>(null);
   const displayedSessionId = activeSessionId ?? sessionId;
+  const isMobile = useIsMobile(900);
 
   // (Re)attach on session change; store handles same-device fast switching.
   useEffect(() => {
@@ -122,13 +124,14 @@ export function TerminalPage() {
   }, [connected, sendResize]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, padding: 0 }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem',
-          padding: '0.75rem 1rem',
+          gap: isMobile ? '0.5rem' : '1rem',
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+          padding: isMobile ? '0.65rem 0.75rem' : '0.75rem 1rem',
           background: '#1a1a2e',
           borderBottom: '1px solid #16213e',
           flexShrink: 0,
@@ -143,32 +146,60 @@ export function TerminalPage() {
             padding: '0.3rem 0.75rem',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontSize: '0.8rem',
+            fontSize: '0.78rem',
+            flexShrink: 0,
           }}
         >
           &larr; {t('back')}
         </button>
-        <span style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-          {device?.name || deviceId || ''}
-        </span>
-        <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {displayedSessionId?.slice(0, 8)}...
-        </span>
-        <span
+        <div
           style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: connected ? '#27ae60' : '#e74c3c',
-            display: 'inline-block',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            minWidth: 0,
+            flex: 1,
           }}
-        />
-        <span style={{ color: '#666', fontSize: '0.8rem' }}>
-          {connected ? t('connected') : error ? t('error') : t('disconnected')}
-        </span>
+        >
+          <span style={{ color: '#e0e0e0', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {device?.name || deviceId || ''}
+          </span>
+          {!isMobile && (
+            <span style={{ color: '#666', fontSize: '0.8rem' }}>
+              {displayedSessionId?.slice(0, 8)}...
+            </span>
+          )}
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: connected ? '#27ae60' : '#e74c3c',
+              display: 'inline-block',
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ color: '#666', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+            {connected ? t('connected') : error ? t('error') : t('disconnected')}
+          </span>
+        </div>
+        {isMobile && (
+          <span
+            style={{
+              width: '100%',
+              color: '#666',
+              fontSize: '0.72rem',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {displayedSessionId ?? ''}
+          </span>
+        )}
       </div>
 
-      <div style={{ flex: 1, padding: '0.5rem', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '0.35rem' : '0.5rem', overflow: 'hidden' }}>
         <Terminal
           key={displayedSessionId ?? 'pending'}
           ref={terminalRef}
