@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { WebSocketClient } from '../api/ws';
 import { getConfig } from '../config';
 import { translate } from '../i18n';
+import { useSessionStore } from './sessionStore';
 
 interface TerminalState {
   sessionId: string | null;
@@ -65,7 +66,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       // Handle session creation from server
       const unsubCreated = ws.on('session_created', (payload) => {
         const sid = payload.session_id as string;
+        const createdDeviceId = payload.device_id as string | undefined;
         const serverCwd = payload.cwd as string | undefined;
+        // Keep sidebar session list in sync immediately.
+        useSessionStore.getState().addSessionFromWs({
+          session_id: sid,
+          device_id: createdDeviceId ?? deviceId,
+          cwd: serverCwd,
+        });
         set({ sessionId: sid, connected: true });
         // Navigate to the real session URL
         const qs = serverCwd ? `?cwd=${encodeURIComponent(serverCwd)}` : '';

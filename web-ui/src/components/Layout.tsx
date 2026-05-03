@@ -1,9 +1,11 @@
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { ToastContainer } from './Toast';
 import { ConnectionOverlay } from './ConnectionOverlay';
 import { useI18n } from '../i18n';
+import { getConfig } from '../config';
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -124,6 +126,13 @@ export function Layout() {
   const { id: deviceId, sessionId: activeSessionId } = useParams<{ id: string; sessionId: string }>();
   const sessions = useSessionStore((s) => s.sessions);
   const deleteSession = useSessionStore((s) => s.deleteSession);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+
+  useEffect(() => {
+    fetchSessions();
+    const interval = setInterval(fetchSessions, getConfig().devicePollIntervalMs);
+    return () => clearInterval(interval);
+  }, [fetchSessions]);
 
   const handleLogout = () => {
     logout();
