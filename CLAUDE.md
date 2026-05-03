@@ -234,9 +234,9 @@ pnpm build        # 生产构建 → dist/
 
 | 项目 | 构建命令 | 运行镜像 |
 |------|----------|----------|
-| relay-server | `docker build -t relay-server relay-server/` | `debian:bookworm-slim` |
-| desktop-client | `docker build -t desktop-client desktop-client/` | `debian:bookworm-slim` |
-| web-ui | `docker build -t web-ui -f web-ui/Dockerfile .` | `nginx:alpine` |
+| relay-server | `docker build -t remote-claude/relay-server relay-server/` | `debian:bookworm-slim` |
+| desktop-client | `docker build -t remote-claude/desktop-client desktop-client/` | `debian:bookworm-slim` |
+| web-ui | `docker build -t remote-claude/web-ui -f web-ui/Dockerfile .` | `nginx:alpine` |
 
 > web-ui 构建需要 monorepo 上下文（共享 shared-types），因此 context 为项目根目录。
 
@@ -244,33 +244,33 @@ pnpm build        # 生产构建 → dist/
 
 ```bash
 # 构建镜像
-docker build -t relay-server relay-server/
+docker build -t remote-claude/relay-server relay-server/
 
 # 首次运行（通过环境变量生成配置文件）
-docker run -d --name relay-server -p 8080:8080 \
+docker run -d --name remote-claude-relay-server -p 8080:8080 \
   -e ADMIN_USER=admin \
   -e ADMIN_PASS=admin123 \
   -e JWT_SECRET=change-me \
   -v relay-config:/app/config \
   -v relay-data:/app/data \
-  relay-server
+  remote-claude/relay-server
 
 # 后续运行（配置文件已持久化到 volume 中）
-docker start relay-server
+docker start remote-claude-relay-server
 ```
 
 ### 电脑客户端
 
 ```bash
 # 构建镜像
-docker build -t desktop-client desktop-client/
+docker build -t remote-claude/desktop-client desktop-client/
 
 # 运行（必须提供 REGISTER_TOKEN 和 SERVER_URL）
-docker run -d --name desktop-client \
+docker run -d --name remote-claude-desktop-client \
   -e REGISTER_TOKEN=<token> \
   -e SERVER_URL=ws://host.docker.internal:8080/ws/client \
   -v client-config:/app/config \
-  desktop-client
+  remote-claude/desktop-client
 ```
 
 > **注意**: desktop-client 容器内需要访问 Claude CLI。建议将宿主机的 `claude` 二进制文件挂载到容器中，并通过 `CLAUDE_BINARY` 环境变量指定路径。
@@ -280,9 +280,9 @@ docker run -d --name desktop-client \
 
 ```bash
 # 构建（注意 context 为项目根目录）
-docker build -t web-ui -f web-ui/Dockerfile .
+docker build -t remote-claude/web-ui -f web-ui/Dockerfile .
 # 运行
-docker run -d --name web-ui -p 80:80 web-ui
+docker run -d --name remote-claude-web-ui -p 80:80 remote-claude/web-ui
 ```
 
 > nginx 自动代理 `/api/` 和 `/ws` 到 relay-server 容器（需同 Docker 网络）。

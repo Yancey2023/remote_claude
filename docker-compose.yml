@@ -2,6 +2,7 @@ name: remote-claude
 
 services:
   relay-server:
+    container_name: remote-claude-relay-server
     build: relay-server
     ports:
       - "8080:8080"
@@ -17,6 +18,7 @@ services:
     restart: unless-stopped
 
   desktop-client:
+    container_name: remote-claude-desktop-client
     build: desktop-client
     depends_on:
       - relay-server
@@ -35,6 +37,7 @@ services:
     #   - CLAUDE_BINARY=/usr/local/bin/claude
 
   web-ui:
+    container_name: remote-claude-web-ui
     build:
       context: .
       dockerfile: web-ui/Dockerfile
