@@ -66,6 +66,10 @@ class ApiClient {
     return this.request<DeviceResponse[]>('GET', '/api/devices');
   }
 
+  async deleteDevice(deviceId: string) {
+    return this.request('DELETE', `/api/devices/${deviceId}`);
+  }
+
   // Sessions
   async createSession(deviceId: string) {
     return this.request<SessionResponse>('POST', '/api/sessions', { device_id: deviceId });

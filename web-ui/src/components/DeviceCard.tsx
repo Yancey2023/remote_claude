@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { useDeviceStore } from '../stores/deviceStore';
+import { showToast } from './Toast';
 import type { DeviceResponse } from '../types/protocol';
 
 interface Props {
@@ -7,6 +9,18 @@ interface Props {
 
 export function DeviceCard({ device }: Props) {
   const navigate = useNavigate();
+  const deleteDevice = useDeviceStore((s) => s.deleteDevice);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete device "${device.name}"? This cannot be undone.`)) return;
+    try {
+      await deleteDevice(device.id);
+      showToast(`Device "${device.name}" deleted`, 'success');
+    } catch {
+      showToast('Failed to delete device', 'error');
+    }
+  };
 
   return (
     <div
@@ -18,6 +32,7 @@ export function DeviceCard({ device }: Props) {
         cursor: 'pointer',
         border: '1px solid #0f3460',
         transition: 'border-color 0.2s',
+        position: 'relative',
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.borderColor = '#e94560';
@@ -44,6 +59,28 @@ export function DeviceCard({ device }: Props) {
         <span>{device.busy ? 'Busy' : 'Idle'}</span>
         <span>{device.online ? 'Online' : 'Offline'}</span>
       </div>
+      <button
+        onClick={handleDelete}
+        title={`Delete ${device.name}`}
+        style={{
+          position: 'absolute',
+          top: '6px',
+          right: '8px',
+          background: 'none',
+          border: 'none',
+          color: '#e74c3c',
+          cursor: 'pointer',
+          fontSize: '1.1rem',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          opacity: 0.5,
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; }}
+      >
+        ✕
+      </button>
     </div>
   );
 }

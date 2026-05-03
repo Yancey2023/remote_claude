@@ -78,6 +78,21 @@ impl ClientHub {
         Some(entry)
     }
 
+    /// Kick and unregister a device by its device_id.
+    /// Returns the device token if found, so callers can await cleanup.
+    pub async fn kick_and_unregister(&self, device_id: &str) -> Option<String> {
+        let token = self.device_id_to_token.read().await.get(device_id)?.clone();
+        // Kick the device connection
+        if let Some(entry) = self.online_devices.read().await.get(&token) {
+            let _ = entry.tx.send("__kick__".to_string()).await;
+        }
+        // Remove from maps
+        self.online_devices.write().await.remove(&token);
+        self.device_id_to_token.write().await.remove(device_id);
+        info!(device_id = %device_id, "device kicked and unregistered");
+        Some(token)
+    }
+
     pub async fn get_by_token(&self, token: &str) -> Option<OnlineDeviceEntry> {
         self.online_devices.read().await.get(token).cloned()
     }

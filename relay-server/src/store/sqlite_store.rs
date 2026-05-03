@@ -197,6 +197,20 @@ impl SqliteStore {
             .ok();
     }
 
+    pub async fn delete_device(&self, id: &str) -> Result<(), String> {
+        let affected = sqlx::query("DELETE FROM devices WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("database error: {}", e))?
+            .rows_affected();
+
+        if affected == 0 {
+            return Err("device not found".into());
+        }
+        Ok(())
+    }
+
     // ── Sessions ──
 
     pub async fn create_session(&self, session: Session) -> Result<(), String> {

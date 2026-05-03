@@ -4,10 +4,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::auth::extractor::AuthUser;
+use crate::error::AppError;
 use crate::ws::AppState;
 
 pub fn router() -> Router<Arc<RwLock<AppState>>> {
-    Router::new().route("/", get(list_devices))
+    Router::new()
+        .route("/", get(list_devices))
+        .route("/{id}", axum::routing::delete(delete_device))
 }
 
 #[derive(Serialize)]
@@ -60,4 +63,23 @@ async fn list_devices(
     }
 
     Json(result)
+}
+
+async fn delete_device(
+    state: axum::extract::State<Arc<RwLock<AppState>>>,
+    _user: AuthUser,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let state = state.read().await;
+
+    // If device is online, kick and unregister it from the hub
+    state.client_hub.kick_and_unregister(&id).await;
+
+    state
+        .store
+        .delete_device(&id)
+        .await
+        .map_err(|e| AppError::NotFound(e))?;
+
+    Ok(Json(serde_json::json!({ "message": "device deleted" })))
 }

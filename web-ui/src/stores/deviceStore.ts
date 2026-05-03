@@ -7,6 +7,7 @@ interface DeviceState {
   loading: boolean;
   error: string | null;
   fetchDevices: () => Promise<void>;
+  deleteDevice: (deviceId: string) => Promise<void>;
   updateDeviceStatus: (deviceId: string, online: boolean) => void;
 }
 
@@ -22,6 +23,17 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       set({ devices, loading: false });
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'failed to fetch devices', loading: false });
+    }
+  },
+
+  deleteDevice: async (deviceId: string) => {
+    set({ error: null });
+    try {
+      await apiClient.deleteDevice(deviceId);
+      const devices = get().devices.filter((d) => d.id !== deviceId);
+      set({ devices });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'failed to delete device' });
     }
   },
 
