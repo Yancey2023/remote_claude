@@ -221,6 +221,12 @@ pub async fn handle_client_ws(
                                         // Forward result_chunk to the web user who owns this session
                                         if let Some(session_id) = parsed["payload"]["session_id"].as_str() {
                                             if let Some(session) = web_hub_fwd.session_registry.get(session_id).await {
+                                                if let Some(chunk) = parsed["payload"]["chunk"].as_str() {
+                                                    web_hub_fwd
+                                                        .session_registry
+                                                        .append_history(session_id, chunk)
+                                                        .await;
+                                                }
                                                 if let Err(e) = web_hub_fwd.send_to_user(&session.user_id, &text).await {
                                                     warn!(session_id = %session_id, user_id = %session.user_id, error = %e, "failed to forward to web user");
                                                 }

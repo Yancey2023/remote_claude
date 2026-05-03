@@ -73,6 +73,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
           ws.send('create_session', { device_id: deviceId, cwd: cwd ?? null });
         } else {
           // Reconnect to existing session
+          ws.send('attach_session', { session_id: existingSessionId });
           set({ sessionId: existingSessionId, connected: true });
         }
       });

@@ -170,6 +170,38 @@ async fn handle_web_message(
         .ok_or("missing type")?;
 
     match msg_type {
+        "attach_session" => {
+            let payload = parsed.get("payload").ok_or("missing payload")?;
+            let session_id = payload
+                .get("session_id")
+                .and_then(|s| s.as_str())
+                .ok_or("missing session_id")?;
+
+            let session = hub
+                .session_registry
+                .get(session_id)
+                .await
+                .ok_or("session not found")?;
+
+            if session.user_id != user_id {
+                return Err("not your session".to_string());
+            }
+
+            if let Some(history) = hub.session_registry.get_history(session_id).await {
+                if !history.is_empty() {
+                    let replay_msg = serde_json::json!({
+                        "type": "result_chunk",
+                        "payload": {
+                            "session_id": session_id,
+                            "chunk": history,
+                            "done": false,
+                            "replay": true
+                        }
+                    });
+                    hub.send_to_user(user_id, &replay_msg.to_string()).await?;
+                }
+            }
+        }
         "command" | "terminal_input" | "terminal_resize" => {
             let payload = parsed.get("payload").ok_or("missing payload")?;
             let session_id = payload
