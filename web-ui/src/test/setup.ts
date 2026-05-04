@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
-import { loadConfig } from '../config';
 
 // ── Global mocks ────────────────────────────────────────────
 // jsdom's localStorage requires a valid origin; on CI it may come
@@ -54,16 +53,6 @@ const defaultFetch = vi.fn().mockRejectedValue(
   new Error('network not available — mock fetch in your test'),
 );
 globalThis.fetch = defaultFetch;
-
-// ── Config loading ──────────────────────────────────────────
-// Pre-load config so getConfig() works in ApiClient / WebSocketClient
-// without each test having to call loadConfig() individually.
-// The /config.json fetch → rejected by the mock → falls back to defaults.
-try {
-  await loadConfig();
-} catch (e) {
-  throw new Error(`config loading failed in setup: ${e}`);
-}
 
 // ── Global cleanup ──────────────────────────────────────────
 afterEach(() => {

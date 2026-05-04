@@ -112,7 +112,7 @@ describe('模块名', () => {
 |------|------|
 | relay-server | `{exe_dir}/config/relay-server.toml` |
 | desktop-client | `{exe_dir}/config/desktop-client.toml` |
-| web-ui | `dist/config.json`（部署时手动放置） |
+| web-ui | 构建时 `VITE_BASE_URL` 编译进 bundle |
 
 可通过 `CONFIG_PATH` 环境变量覆盖配置文件路径。
 
@@ -203,27 +203,18 @@ cargo run
 
 ```bash
 cd web-ui
-pnpm dev          # 开发模式（Vite proxy → localhost:8080）
-pnpm build        # 生产构建 → dist/
+pnpm dev          # 开发模式（Vite proxy → localhost:8080），API/WS 无前缀
+pnpm build        # 生产构建 → dist/，部署时通过 VITE_BASE_URL 指定路径前缀
 ```
 
-**运行时配置**（`dist/config.json`）：
+构建时通过 `VITE_BASE_URL` 指定路径前缀，所有 API 和 WS 请求自动拼接到该前缀下：
 
-```json
-{
-  "apiBaseUrl": "",
-  "wsBaseUrl": "",
-  "devicePollIntervalMs": 5000,
-  "wsReconnectDelayMs": 1000,
-  "wsMaxReconnectDelayMs": 30000
-}
-```
+| 构建方式 | VITE_BASE_URL | apiBaseUrl | wsBaseUrl |
+|----------|---------------|------------|-----------|
+| `pnpm dev`（默认） | 空 | `/api` | `/ws` |
+| `VITE_BASE_URL=/remote_claude pnpm build` | `/remote_claude` | `/remote_claude/api` | `/remote_claude/ws` |
 
-- `apiBaseUrl`：API 基础地址，默认空字符串（同源/Vite proxy）
-- `wsBaseUrl`：WebSocket 地址，默认空字符串（自动从 `window.location` 推导）
-- 生产部署时将 `config.json` 放在 `dist/` 目录中，或配置 Web 服务器提供 `/config.json`
-
-配置加载优先级：`/config.json` > `VITE_*` 环境变量（构建时） > 硬编码默认值。
+> 无运行时配置文件，所有配置在构建时直接编译进 bundle。
 
 开发环境通过 Vite proxy 将 `/api` 和 `/ws` 转发到 `localhost:8080`。
 
@@ -336,7 +327,7 @@ docker compose down
 从旧版（纯环境变量）升级：
 
 1. **Rust 程序**：首次运行时设置所需环境变量，程序自动创建配置文件并保存所有值。后续运行无需再设置环境变量。
-2. **网页前端**：生产部署时在 `dist/config.json` 中配置 API 地址。开发环境无需额外配置。
+2. **网页前端**：生产部署时通过 `VITE_BASE_URL` 环境变量指定路径前缀，编译进 bundle。开发环境无需配置。
 
 ## 协议
 
