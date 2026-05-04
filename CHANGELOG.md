@@ -23,6 +23,8 @@
 
 ### Documentation
 
+- Update CHANGELOG.md [skip ci]
+
 - Sync README with current API endpoints and test counts
 
 - Add screenshots and interface preview section to README
@@ -37,6 +39,11 @@
 - Add meaningful artifact names to GitHub release
 
 - Prompt for client token interactively instead of panicking when missing
+
+
+### Miscellaneous
+
+- Simplify release.yml to original + fetch-tags: true
 
 
 ### Refactoring
