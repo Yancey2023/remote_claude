@@ -384,6 +384,28 @@ docker compose down
 | `device_status` | S→C | `{ device_id, online }` |
 | `error` | S→C | `{ code, message }` |
 
+## CI/CD
+
+GitHub Actions 自动构建和发布：
+
+### CI（`.github/workflows/ci.yml`）
+
+| 触发 | 操作 |
+|------|------|
+| `push` main | 构建 + 测试全部三个项目 |
+| `pull_request` main | 同上 |
+
+三个并行 job：`relay-server`（`cargo test`）、`desktop-client`（`cargo test`）、`web-ui`（`pnpm test`）。Rust 使用 cargo 缓存加速，前端使用 pnpm 缓存。
+
+### Docker 发布（`.github/workflows/docker.yml`）
+
+| 触发 | 操作 |
+|------|------|
+| `push` main | 构建并推送镜像，标签：`main`、`<git-sha>` |
+| `push` tag `v*` | 同上 + semver 标签：`vX.Y.Z`、`vX.Y` |
+
+仅 relay-server 发布到 GitHub Container Registry（`ghcr.io/<owner>/<repo>-relay-server`），无需额外注册。使用 `GITHUB_TOKEN` 自动鉴权，BuildKit `type=gha` 缓存加速构建。
+
 ## 运行测试
 
 ```bash

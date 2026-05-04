@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  relay-server:
+    name: relay-server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relay-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            relay-server/target
+          key: ${{ runner.os }}-cargo-relay-${{ hashFiles('relay-server/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --workspace
+
+      - name: Run tests
+        run: cargo test --workspace
+
+  desktop-client:
+    name: desktop-client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop-client/target
+          key: ${{ runner.os }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --workspace
+
+      - name: Run tests
+        run: cargo test --workspace
+
+  web-ui:
+    name: web-ui
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm --filter @remote-claude/web-ui exec tsc --noEmit
+
+      - name: Build
+        run: pnpm --filter @remote-claude/web-ui build
+
+      - name: Run tests
+        run: pnpm --filter @remote-claude/web-ui test
