@@ -142,7 +142,7 @@ const translations = {
 export type I18nKey = keyof typeof translations.en;
 
 function detectInitialLocale(): Locale {
-  const fromStorage = localStorage.getItem(STORAGE_KEY);
+  const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
   if (fromStorage === 'zh' || fromStorage === 'en') return fromStorage;
   const lang = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase();
   return lang.startsWith('zh') ? 'zh' : 'en';
@@ -156,7 +156,9 @@ interface I18nState {
 export const useI18nStore = create<I18nState>((set) => ({
   locale: detectInitialLocale(),
   setLocale: (locale) => {
-    localStorage.setItem(STORAGE_KEY, locale);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, locale);
+    }
     set({ locale });
   },
 }));
