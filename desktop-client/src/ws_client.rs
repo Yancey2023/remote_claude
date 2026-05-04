@@ -55,7 +55,7 @@ pub async fn connect_and_run(config: &Config) -> Result<(), String> {
 
     // Send registration
     let reg_msg = ClientMessage::register(
-        &config.register_token,
+        &config.client_token,
         &config.device_name,
         &config.client_version,
         &config.device_id,
@@ -216,7 +216,7 @@ mod tests {
     fn test_config() -> Config {
         Config {
             server_url: "ws://test:8080/ws/client".into(),
-            register_token: "test-token".into(),
+            client_token: "test-token".into(),
             device_name: "test-pc".into(),
             client_version: "1.0.0".into(),
             max_retry_delay_secs: 30,

@@ -167,7 +167,7 @@ cargo run
 
 ```bash
 cd desktop-client
-REGISTER_TOKEN=<token> cargo run
+CLIENT_TOKEN=<token> cargo run
 # 默认连接 ws://127.0.0.1:8080/ws/client（本地开发）
 # 生产环境：SERVER_URL=wss://your-domain.com/ws/client
 # 自动创建 config/desktop-client.toml（相对于可执行文件路径）
@@ -193,7 +193,7 @@ cargo run
 | 字段 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
 | `server_url` | `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址（支持 `wss://`） |
-| `register_token` | `REGISTER_TOKEN` | **(必填)** | 管理员生成的注册令牌 |
+| `client_token` | `CLIENT_TOKEN` | **(必填)** | 客户端认证凭证 |
 | `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
 | `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
 | `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
@@ -259,17 +259,17 @@ docker start remote-claude-relay-server
 # 构建镜像
 docker build -t remote-claude/desktop-client desktop-client/
 
-# 运行（必须提供 REGISTER_TOKEN）
+# 运行（必须提供 CLIENT_TOKEN）
 # 通过 nginx 代理（推荐，支持 WSS 加密）：
 docker run -d --name remote-claude-desktop-client \
-  -e REGISTER_TOKEN=<token> \
+  -e CLIENT_TOKEN=<token> \
   -e SERVER_URL=wss://your-domain.com/ws/client \
   -v client-config:/app/config \
   remote-claude/desktop-client
 
 # 直接连接 relay-server（仅开发测试）：
 docker run -d --name remote-claude-desktop-client \
-  -e REGISTER_TOKEN=<token> \
+  -e CLIENT_TOKEN=<token> \
   -e SERVER_URL=ws://host.docker.internal:8080/ws/client \
   -v client-config:/app/config \
   remote-claude/desktop-client
@@ -297,9 +297,9 @@ docker run -d --name remote-claude-web-ui -p 80:80 remote-claude/web-ui
 一键启动所有服务：
 
 ```bash
-# 1. 先在中转服务器上生成一个注册令牌（通过 API）
+# 1. 先在中转服务器上生成一个客户端令牌（通过 API）
 #    然后在项目根目录创建 .env 文件：
-echo "CLIENT_REGISTER_TOKEN=<生成的令牌>" > .env
+echo "CLIENT_TOKEN=<令牌>" > .env
 
 # 2. 启动所有服务
 docker compose up -d
@@ -318,7 +318,7 @@ docker compose down
 | `RELAY_ADMIN_USER` | `admin` | 中转服务器管理员用户名 |
 | `RELAY_ADMIN_PASS` | `admin123` | 中转服务器管理员密码 |
 | `RELAY_JWT_SECRET` | `change-me` | JWT 签名密钥 |
-| `CLIENT_REGISTER_TOKEN` | **(必填)** | 客户端注册令牌 |
+| `CLIENT_TOKEN` | **(必填)** | 客户端认证凭证 |
 | `CLIENT_DEVICE_NAME` | `docker-client` | 客户端设备名称 |
 
 > `desktop-client` 容器通过 Docker DNS 自动连接 `web-ui`（nginx），再转发到 `relay-server`。
@@ -347,7 +347,7 @@ docker compose down
 | GET | `/api/admin/users` | Admin | 用户列表 |
 | DELETE | `/api/admin/users/:id` | Admin | 删除用户 |
 | PATCH | `/api/admin/users/:id/status` | Admin | 启用/禁用用户 |
-| POST | `/api/admin/tokens` | Admin | 生成注册令牌 |
+| POST | `/api/admin/tokens` | Admin | 生成客户端令牌 |
 
 ### WebSocket 协议
 

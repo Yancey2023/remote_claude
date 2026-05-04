@@ -160,10 +160,10 @@ mod tests {
         let store = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         // Simulate the first-run logic from main()
-        let reg_token = uuid::Uuid::new_v4().to_string();
-        store.create_client_token(&reg_token, "").await.unwrap();
+        let client_token = uuid::Uuid::new_v4().to_string();
+        store.create_client_token(&client_token, "").await.unwrap();
 
-        assert!(store.validate_client_token(&reg_token).await);
+        assert!(store.validate_client_token(&client_token).await);
     }
 
     /// Verify that a random string is NOT accepted as a client token
@@ -186,10 +186,10 @@ mod tests {
         assert!(!store.has_client_tokens().await);
 
         // Simulate the fallback: generate + persist a token
-        let reg_token = uuid::Uuid::new_v4().to_string();
-        store.create_client_token(&reg_token, "").await.unwrap();
+        let client_token = uuid::Uuid::new_v4().to_string();
+        store.create_client_token(&client_token, "").await.unwrap();
 
         assert!(store.has_client_tokens().await);
-        assert!(store.validate_client_token(&reg_token).await);
+        assert!(store.validate_client_token(&client_token).await);
     }
 }

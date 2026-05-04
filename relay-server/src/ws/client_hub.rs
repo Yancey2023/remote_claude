@@ -162,7 +162,7 @@ pub async fn handle_client_ws(
     }
 
     // Validate registration token against database
-    let reg_token = match store.get_client_token(&token).await {
+    let client_token = match store.get_client_token(&token).await {
         Some(t) => t,
         None => {
             warn!(token = %token, "invalid registration token, rejecting connection");
@@ -198,7 +198,7 @@ pub async fn handle_client_ws(
     }
 
     // Update store — bind device to the token owner
-    let device = Device::new(entry.id.clone(), name.clone(), version.clone(), reg_token.user_id.clone());
+    let device = Device::new(entry.id.clone(), name.clone(), version.clone(), client_token.user_id.clone());
     store.upsert_device(device).await;
     store.set_device_online(&entry.id, true).await;
 

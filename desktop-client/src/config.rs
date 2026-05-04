@@ -6,7 +6,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Config {
     pub server_url: String,
-    pub register_token: String,
+    pub client_token: String,
     pub device_name: String,
     pub client_version: String,
     pub max_retry_delay_secs: u64,
@@ -17,7 +17,7 @@ pub struct Config {
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 struct ConfigFile {
     server_url: Option<String>,
-    register_token: Option<String>,
+    client_token: Option<String>,
     device_name: Option<String>,
     client_version: Option<String>,
     max_retry_delay_secs: Option<u64>,
@@ -62,15 +62,15 @@ impl Config {
             }};
         }
 
-        // REGISTER_TOKEN is required — panic if missing from both file and env
-        let register_token = file_config
-            .register_token
+        // CLIENT_TOKEN is required — panic if missing from both file and env
+        let client_token = file_config
+            .client_token
             .clone()
-            .or_else(|| env::var("REGISTER_TOKEN").ok())
-            .expect("REGISTER_TOKEN must be set in config file or environment variable");
-        if file_config.register_token.is_none() {
+            .or_else(|| env::var("CLIENT_TOKEN").ok())
+            .expect("CLIENT_TOKEN must be set in config file or environment variable");
+        if file_config.client_token.is_none() {
             modified = true;
-            file_config.register_token = Some(register_token.clone());
+            file_config.client_token = Some(client_token.clone());
         }
 
         // DEVICE_ID: generate once on first launch, persist in config file
@@ -89,7 +89,7 @@ impl Config {
                 "SERVER_URL",
                 "ws://127.0.0.1:8080/ws/client"
             ),
-            register_token,
+            client_token,
             device_name: field_str!(device_name, "DEVICE_NAME", hostname()),
             client_version: field_str!(client_version, "CLIENT_VERSION", "0.1.0"),
             max_retry_delay_secs: field_num!(max_retry_delay_secs, "MAX_RETRY_DELAY_SECS", 60, u64),
@@ -152,7 +152,7 @@ mod tests {
     fn test_config_direct() {
         let config = Config {
             server_url: "ws://test:8080/ws/client".into(),
-            register_token: "test-token".into(),
+            client_token: "test-token".into(),
             device_name: "test-pc".into(),
             client_version: "1.0.0".into(),
             max_retry_delay_secs: 30,
@@ -160,7 +160,7 @@ mod tests {
             claude_binary: "claude".into(),
         };
         assert_eq!(config.server_url, "ws://test:8080/ws/client");
-        assert_eq!(config.register_token, "test-token");
+        assert_eq!(config.client_token, "test-token");
         assert_eq!(config.device_name, "test-pc");
         assert_eq!(config.client_version, "1.0.0");
         assert_eq!(config.max_retry_delay_secs, 30);
@@ -172,7 +172,7 @@ mod tests {
     fn test_config_default_version() {
         let config = Config {
             server_url: "ws://test:8080/ws/client".into(),
-            register_token: "test-token".into(),
+            client_token: "test-token".into(),
             device_name: "test-pc".into(),
             client_version: "0.1.0".into(),
             max_retry_delay_secs: 60,
