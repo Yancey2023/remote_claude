@@ -11,6 +11,7 @@ describe('DeviceCard', () => {
     online: true,
     busy: false,
     last_seen: 1000,
+    user_id: 'u1',
   };
 
   it('renders device name and version', () => {

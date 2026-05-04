@@ -13,8 +13,8 @@ beforeEach(() => {
 });
 
 const mockDevices = [
-  { id: 'd1', name: 'pc-1', version: '1.0', online: true, busy: false, last_seen: 1000 },
-  { id: 'd2', name: 'pc-2', version: '1.0', online: false, busy: false, last_seen: 500 },
+  { id: 'd1', name: 'pc-1', version: '1.0', online: true, busy: false, last_seen: 1000, user_id: 'u1' },
+  { id: 'd2', name: 'pc-2', version: '1.0', online: false, busy: false, last_seen: 500, user_id: 'u1' },
 ];
 
 describe('deviceStore', () => {
