@@ -80,7 +80,7 @@ const styles: Record<string, React.CSSProperties> = {
   activeLink: {
     background: '#182545',
     color: '#e94560',
-    borderColor: '#233765',
+    border: '1px solid #233765',
   },
   sessionsSection: {
     flex: 1,
