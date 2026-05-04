@@ -19,6 +19,7 @@ export function AdminPage() {
   const [newPassword, setNewPassword] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -39,10 +40,19 @@ export function AdminPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername.trim() || newPassword.length < 6) return;
+    setValidationError(null);
+    setCreateError(null);
+
+    if (!newUsername.trim()) {
+      setValidationError(t('usernameRequired'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setValidationError(t('passwordMinLength'));
+      return;
+    }
 
     setCreating(true);
-    setCreateError(null);
     try {
       await apiClient.createUser(newUsername.trim(), newPassword);
       setNewUsername('');
@@ -243,12 +253,17 @@ export function AdminPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
+            {validationError && <div style={styles.error}>{validationError}</div>}
             {createError && <div style={styles.error}>{createError}</div>}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 type="submit"
-                style={styles.submitBtn}
-                disabled={creating || !newUsername.trim() || newPassword.length < 6}
+                style={{
+                  ...styles.submitBtn,
+                  opacity: creating ? 0.5 : 1,
+                  cursor: creating ? 'not-allowed' : 'pointer',
+                }}
+                disabled={creating}
               >
                 {creating ? '...' : t('create')}
               </button>
@@ -258,6 +273,7 @@ export function AdminPage() {
                 onClick={() => {
                   setShowForm(false);
                   setCreateError(null);
+                  setValidationError(null);
                   setNewUsername('');
                   setNewPassword('');
                 }}

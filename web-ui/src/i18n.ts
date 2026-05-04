@@ -103,6 +103,8 @@ const translations = {
     enable: 'Enable',
     disable: 'Disable',
     delete: 'Delete',
+    usernameRequired: 'Username is required',
+    passwordMinLength: 'Password must be at least 6 characters',
   },
   zh: {
     appName: 'Remote Claude',
@@ -202,6 +204,8 @@ const translations = {
     enable: '启用',
     disable: '禁用',
     delete: '删除',
+    usernameRequired: '请输入用户名',
+    passwordMinLength: '密码至少需要6个字符',
   },
 } as const;
 

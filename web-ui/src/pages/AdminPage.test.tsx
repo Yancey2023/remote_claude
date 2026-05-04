@@ -168,7 +168,7 @@ describe('AdminPage', () => {
       });
     });
 
-    it('disables create button when inputs are invalid', async () => {
+    it('shows validation error when username is empty', async () => {
       renderPage();
 
       await waitFor(() => {
@@ -177,23 +177,35 @@ describe('AdminPage', () => {
 
       fireEvent.click(screen.getByText('Add User'));
 
-      const createBtn = screen.getByText('Create');
-      expect(createBtn).toBeDisabled();
+      const passwordInput = screen.getByPlaceholderText('Password');
+      fireEvent.change(passwordInput, { target: { value: 'pass123' } });
 
-      // Empty username
+      fireEvent.click(screen.getByText('Create'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Username is required')).toBeTruthy();
+      });
+    });
+
+    it('shows validation error when password is too short', async () => {
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Add User')).toBeTruthy();
+      });
+
+      fireEvent.click(screen.getByText('Add User'));
+
       const usernameInput = screen.getByPlaceholderText('Username');
       const passwordInput = screen.getByPlaceholderText('Password');
-      fireEvent.change(passwordInput, { target: { value: 'abc' } });
-      expect(createBtn).toBeDisabled();
-
-      // Password too short
-      fireEvent.change(usernameInput, { target: { value: 'user' } });
+      fireEvent.change(usernameInput, { target: { value: 'charlie' } });
       fireEvent.change(passwordInput, { target: { value: '12345' } });
-      expect(createBtn).toBeDisabled();
 
-      // Valid
-      fireEvent.change(passwordInput, { target: { value: '123456' } });
-      expect(createBtn).not.toBeDisabled();
+      fireEvent.click(screen.getByText('Create'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Password must be at least 6 characters')).toBeTruthy();
+      });
     });
   });
 
