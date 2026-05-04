@@ -153,10 +153,22 @@ jobs:
       - name: Install git-cliff
         run: pipx install git-cliff
 
+      - name: Fetch all tags
+        run: git fetch --tags origin
+
       - name: Generate changelog
         run: |
-          git cliff -o /tmp/CHANGELOG.md
-          git cliff --current -o /tmp/release-notes.md
+          TAG="${{ github.ref_name }}"
+          echo "Tag: $TAG"
+          echo "HEAD: $(git rev-parse HEAD)"
+          echo "Tags on HEAD:"
+          git tag --points-at HEAD || echo "none"
+          echo "All v* tags:"
+          git tag -l 'v*' || echo "none"
+          # Ensure the tag exists on HEAD (actions/checkout may leave HEAD detached without the tag)
+          git tag -f "$TAG" HEAD
+          git cliff --tag "$TAG" -o /tmp/CHANGELOG.md
+          git cliff --current --tag "$TAG" -o /tmp/release-notes.md
 
       - name: Commit CHANGELOG.md to main
         run: |
