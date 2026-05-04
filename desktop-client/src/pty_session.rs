@@ -2,8 +2,30 @@ use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, Pt
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex, mpsc};
+use std::path::Path;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{info, warn};
+
+/// On Windows, npm installs binary shims as `.cmd` batch files.
+/// `CreateProcessW` cannot run these directly — it requires a PE executable (`.exe`)
+/// or `std::process::Command`-level `.cmd` wrapping. Resolve the correct filename
+/// by appending `.cmd` / `.exe` when the configured path has no extension.
+fn resolve_binary(name: &str) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        let p = Path::new(name);
+        if p.extension().is_some() {
+            return name.to_string();
+        }
+        for ext in &["cmd", "exe", "bat"] {
+            let candidate = p.with_extension(ext);
+            if candidate.exists() {
+                return candidate.to_string_lossy().to_string();
+            }
+        }
+    }
+    name.to_string()
+}
 
 pub struct PtySessionManager {
     sessions: Arc<Mutex<HashMap<String, PtyHandle>>>,
@@ -37,7 +59,7 @@ impl PtySessionManager {
         cwd: Option<&str>,
     ) -> Result<(), String> {
         let sid = session_id.to_string();
-        let binary = claude_binary.to_string();
+        let binary = resolve_binary(claude_binary);
         let cwd_owned = cwd.map(|s| s.to_string());
 
         let (input_tx, input_rx) = mpsc::channel::<String>();
@@ -243,5 +265,25 @@ impl PtySessionManager {
                 let _ = killer.kill();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_binary_keeps_extension() {
+        assert_eq!(resolve_binary("claude.exe"), "claude.exe");
+        assert_eq!(resolve_binary("claude.cmd"), "claude.cmd");
+        assert_eq!(resolve_binary("/usr/bin/claude"), "/usr/bin/claude");
+    }
+
+    #[test]
+    fn test_resolve_binary_fallback_when_not_found() {
+        // A name with no matching file on disk returns as-is.
+        // The binary will fail to launch later, but that's a user configuration issue.
+        let resolved = resolve_binary("nonexistent-binary-name");
+        assert_eq!(resolved, "nonexistent-binary-name");
     }
 }
