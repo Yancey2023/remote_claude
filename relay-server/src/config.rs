@@ -71,7 +71,7 @@ impl Config {
             admin_user: field_str!(admin_user, "ADMIN_USER", "admin"),
             admin_pass: field_str!(admin_pass, "ADMIN_PASS", "admin123"),
             jwt_secret: field_str!(jwt_secret, "JWT_SECRET", ""),
-            database_url: field_str!(database_url, "DATABASE_URL", "sqlite:data.db?mode=rwc"),
+            database_url: field_str!(database_url, "DATABASE_URL", "sqlite:data.db"),
             host: field_str!(host, "HOST", "0.0.0.0"),
             port: field_num!(port, "PORT", 8080, u16),
             jwt_expiry_hours: field_num!(jwt_expiry_hours, "JWT_EXPIRY_HOURS", 24, i64),
@@ -157,7 +157,7 @@ impl From<ConfigFile> for Config {
             jwt_secret: f.jwt_secret.unwrap_or_default(),
             database_url: f
                 .database_url
-                .unwrap_or_else(|| "sqlite:data.db?mode=rwc".into()),
+                .unwrap_or_else(|| "sqlite:data.db".into()),
             host: f.host.unwrap_or_else(|| "0.0.0.0".into()),
             port: f.port.unwrap_or(8080),
             jwt_expiry_hours: f.jwt_expiry_hours.unwrap_or(24),

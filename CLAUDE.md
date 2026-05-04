@@ -135,7 +135,7 @@ ADMIN_USER=admin ADMIN_PASS=admin123 JWT_SECRET=change-me cargo run
 admin_user = "admin"
 admin_pass = "admin123"
 jwt_secret = "change-me"
-database_url = "sqlite:data.db?mode=rwc"
+database_url = "sqlite:data.db"
 host = "0.0.0.0"
 port = 8080
 jwt_expiry_hours = 24
@@ -157,7 +157,7 @@ cargo run
 | `jwt_secret` | `JWT_SECRET` | `dev-secret-...` | JWT 签名密钥 |
 | `host` | `HOST` | `0.0.0.0` | 监听地址 |
 | `port` | `PORT` | `8080` | 监听端口 |
-| `database_url` | `DATABASE_URL` | `sqlite:data.db?mode=rwc` | SQLite 数据库路径 |
+| `database_url` | `DATABASE_URL` | `sqlite:data.db` | SQLite 数据库路径 |
 | `heartbeat_interval_secs` | `HEARTBEAT_INTERVAL_SECS` | `15` | 设备心跳间隔（秒） |
 | `heartbeat_timeout_secs` | `HEARTBEAT_TIMEOUT_SECS` | `30` | 心跳超时断连（秒） |
 
