@@ -173,6 +173,8 @@ CLIENT_TOKEN=<token> cargo run
 # 自动创建 config/desktop-client.toml（相对于可执行文件路径）
 ```
 
+> 如果未提供 `CLIENT_TOKEN`（配置文件和环境变量均缺失），程序会在终端交互式提示输入令牌，输入后自动保存到配置文件，后续启动无需重复填写。
+
 **方式 B** — 直接创建配置文件：
 
 ```toml
@@ -193,7 +195,7 @@ cargo run
 | 字段 | 环境变量 | 默认值 | 说明 |
 |------|----------|--------|------|
 | `server_url` | `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址（支持 `wss://`） |
-| `client_token` | `CLIENT_TOKEN` | **(必填)** | 客户端认证凭证 |
+| `client_token` | `CLIENT_TOKEN` | 启动时交互式输入 | 客户端认证凭证（首次可通过交互式输入设置） |
 | `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
 | `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
 | `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |

@@ -62,12 +62,25 @@ impl Config {
             }};
         }
 
-        // CLIENT_TOKEN is required — panic if missing from both file and env
+        // CLIENT_TOKEN is required — prompt user if missing from both file and env
         let client_token = file_config
             .client_token
             .clone()
             .or_else(|| env::var("CLIENT_TOKEN").ok())
-            .expect("CLIENT_TOKEN must be set in config file or environment variable");
+            .unwrap_or_else(|| {
+                eprintln!("CLIENT_TOKEN is not set in config file or environment variable.");
+                eprint!("Please enter your client token: ");
+                let mut input = String::new();
+                std::io::stdin()
+                    .read_line(&mut input)
+                    .expect("failed to read token from stdin");
+                let trimmed = input.trim().to_string();
+                if trimmed.is_empty() {
+                    eprintln!("Token cannot be empty. Exiting.");
+                    std::process::exit(1);
+                }
+                trimmed
+            });
         if file_config.client_token.is_none() {
             modified = true;
             file_config.client_token = Some(client_token.clone());

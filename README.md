@@ -63,6 +63,8 @@ cd desktop-client
 CLIENT_TOKEN=<上一步生成的令牌> SERVER_URL=ws://127.0.0.1:8080/ws/client cargo run
 ```
 
+> 如果未提供 `CLIENT_TOKEN`（配置文件和环境变量均缺失），程序会交互式提示输入令牌，输入后自动保存到配置文件，后续启动无需重复填写。
+
 ### 4. 启动网页前端
 
 ```bash
