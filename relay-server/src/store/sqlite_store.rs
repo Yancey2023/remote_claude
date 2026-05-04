@@ -1,5 +1,7 @@
-use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
+use std::path::Path;
+use std::str::FromStr;
 use tracing::info;
 
 use crate::models::{Device, Session, User, UserRole};
@@ -11,15 +13,38 @@ pub struct SqliteStore {
 
 impl SqliteStore {
     pub async fn new(database_url: &str) -> Result<Self, sqlx::Error> {
+        let connect_options = SqliteConnectOptions::from_str(database_url)
+            ?
+            .create_if_missing(true);
+
+        Self::ensure_parent_dir(&connect_options)?;
+
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
-            .connect(database_url)
+            .connect_with(connect_options)
             .await?;
 
         let store = Self { pool };
         store.migrate().await?;
         info!("SQLite store initialized: {}", database_url);
         Ok(store)
+    }
+
+    fn ensure_parent_dir(options: &SqliteConnectOptions) -> Result<(), sqlx::Error> {
+        let filename = options.get_filename();
+        if filename == Path::new(":memory:") {
+            return Ok(());
+        }
+
+        if let Some(parent) = filename.parent() {
+            if parent.as_os_str().is_empty() {
+                return Ok(());
+            }
+            std::fs::create_dir_all(parent)
+                .map_err(|e| sqlx::Error::Configuration(Box::new(e)))?;
+        }
+
+        Ok(())
     }
 
     async fn migrate(&self) -> Result<(), sqlx::Error> {
@@ -379,9 +404,30 @@ fn row_to_device(row: sqlx::sqlite::SqliteRow) -> Device {
 mod tests {
     use super::*;
     use crate::models::UserRole;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     async fn test_store() -> SqliteStore {
         SqliteStore::new("sqlite::memory:").await.unwrap()
+    }
+
+    #[test]
+    fn test_ensure_parent_dir_creates_missing_dir() {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("relay-server-store-dir-{nanos}"));
+        let db_path = root.join("nested").join("data.db");
+        let parent = db_path.parent().unwrap();
+        let options = SqliteConnectOptions::new().filename(&db_path);
+
+        assert!(!parent.exists());
+
+        SqliteStore::ensure_parent_dir(&options).unwrap();
+
+        assert!(parent.exists());
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[tokio::test]

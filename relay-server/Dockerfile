@@ -25,8 +25,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+WORKDIR /app
+
 COPY --from=builder /relay-server /app/relay-server
-RUN mkdir -p /app/config /app/data
+RUN mkdir -p /app/config /app/data && chmod 777 /app /app/config /app/data
 
 EXPOSE 8080
 

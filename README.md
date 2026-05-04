@@ -95,6 +95,8 @@ docker compose up -d
 
 通过 `CONFIG_PATH` 环境变量可覆盖配置文件路径。
 
+`relay-server` 启动时会自动创建 SQLite 数据库文件（以及缺失的父目录）。Docker 镜像默认使用 `/app/data/data.db`，并为 `/app/config`、`/app/data` 提供可写权限，便于在非 root 用户下运行。
+
 ## 协议
 
 ### REST API
