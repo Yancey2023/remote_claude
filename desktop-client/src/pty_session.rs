@@ -160,18 +160,22 @@ impl PtySessionManager {
         let (resize_tx, resize_rx) = mpsc::channel::<PtySize>();
         let child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>> = Arc::new(Mutex::new(None));
 
-        // Store handle synchronously so write_input works immediately
+        // Store handle synchronously so write_input works immediately.
+        // Clone input_tx for the handle, then drop the original so the channel
+        // closes as soon as the session handle is removed (unblocking the writer).
+        let handle_input_tx = input_tx.clone();
         {
             let mut sessions = self.sessions.lock().unwrap();
             sessions.insert(
                 sid.clone(),
                 PtyHandle {
-                    input_tx: input_tx.clone(),
+                    input_tx: handle_input_tx,
                     resize_tx: resize_tx.clone(),
                     child_killer: child_killer.clone(),
                 },
             );
         }
+        drop(input_tx);
 
         let sessions = self.sessions.clone();
         let sid_output = sid.clone();
@@ -267,14 +271,37 @@ impl PtySessionManager {
 
             info!(session_id = %sid_output, "PTY session started");
 
+            // Spawn child-watcher thread that waits for the child to exit.
+            // This is essential on Windows where ConPTY may never signal
+            // EOF/error through the reader when the PTY child terminates.
+            let sid_watch = sid_output.clone();
+            let tx_watch = result_tx.clone();
+            let sessions_watch = sessions.clone();
+            std::thread::spawn(move || {
+                if let Err(e) = child.wait() {
+                    warn!(session_id = %sid_watch, error = %e, "waiting for PTY child failed");
+                }
+                info!(session_id = %sid_watch, "PTY child process exited via watcher");
+                // Remove session handle (unblocks writer loop) and signal done.
+                sessions_watch.lock().unwrap().remove(&sid_watch);
+                let _ = tx_watch.send((sid_watch.clone(), String::new(), true));
+            });
+
             // Spawn stdout reader thread
             let sid_read = sid_output.clone();
             let tx_read = result_tx.clone();
+            let sessions_read = sessions.clone();
             std::thread::spawn(move || {
                 let mut buf = [0u8; 4096];
                 loop {
                     match reader.read(&mut buf) {
-                        Ok(0) => break,
+                        Ok(0) => {
+                            // PTY child exited (e.g. /exit) — signal done and remove
+                            // the session handle so the writer loop unblocks too.
+                            let _ = tx_read.send((sid_read.clone(), String::new(), true));
+                            sessions_read.lock().unwrap().remove(&sid_read);
+                            break;
+                        }
                         Ok(n) => {
                             let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
                             if tx_read.send((sid_read.clone(), chunk, false)).is_err() {
@@ -282,11 +309,15 @@ impl PtySessionManager {
                             }
                         }
                         Err(e) => {
+                            // PTY child process likely exited (e.g. ConPTY returns
+                            // ERROR_BROKEN_PIPE on Windows, not Ok(0)). Treat as done
+                            // and remove the session handle to unblock the writer loop.
                             let _ = tx_read.send((
                                 sid_read.clone(),
                                 format!("\r\n\x1b[1;31m[PTY read error: {}]\x1b[0m\r\n", e),
-                                false,
+                                true,
                             ));
+                            sessions_read.lock().unwrap().remove(&sid_read);
                             break;
                         }
                     }
@@ -303,8 +334,7 @@ impl PtySessionManager {
 
             // Cleanup
             info!(session_id = %sid_output, "PTY session writer loop ended");
-            let _ = child.kill();
-            let _ = child.wait();
+            // Child already waited for by watcher thread.
 
             sessions.lock().unwrap().remove(&sid_output);
             let _ = result_tx.send((sid_output, String::new(), true));

@@ -91,6 +91,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         const sid = payload.session_id as string | undefined;
         if (sid) {
           useSessionStore.getState().removeSessionFromWs(sid);
+          const state = get();
+          if (state.sessionId === sid) {
+            set({ connected: false, sessionId: null });
+          }
         }
       });
 
