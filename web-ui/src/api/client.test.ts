@@ -118,4 +118,63 @@ describe('apiClient', () => {
       );
     });
   });
+
+  describe('tokens', () => {
+    it('creates a token via POST /tokens', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(200, { token: 'tk-abc', created_at: 1700000000 }),
+      );
+
+      const res = await apiClient.createToken();
+      expect(res.token).toBe('tk-abc');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/tokens',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('lists tokens via GET /tokens', async () => {
+      const mockTokens = [
+        { token: 'tk-1', created_at: 1700000000 },
+        { token: 'tk-2', created_at: 1700000001 },
+      ];
+      mockFetch.mockResolvedValueOnce(mockResponse(200, mockTokens));
+
+      const list = await apiClient.listTokens();
+      expect(list).toHaveLength(2);
+      expect(list[0].token).toBe('tk-1');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/tokens',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('deletes a token via DELETE /tokens/:token', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(200, { message: 'token revoked' }));
+
+      await apiClient.deleteToken('tk-abc');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/tokens/tk-abc',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('encodes special characters in token path', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(200, { message: 'token revoked' }));
+
+      await apiClient.deleteToken('tk+/=');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/tokens/tk%2B%2F%3D',
+        expect.any(Object),
+      );
+    });
+
+    it('throws on token API error', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(403, { code: 'ERR_FORBIDDEN', message: 'not allowed' }),
+      );
+
+      await expect(apiClient.deleteToken('tk-1')).rejects.toThrow(ApiClientError);
+    });
+  });
 });

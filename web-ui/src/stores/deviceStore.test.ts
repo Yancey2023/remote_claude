@@ -55,6 +55,28 @@ describe('deviceStore', () => {
     expect(useDeviceStore.getState().loading).toBe(false);
   });
 
+  it('does not set loading=true on background poll when devices exist', async () => {
+    useDeviceStore.setState({ devices: mockDevices });
+    vi.mocked(apiClient.listDevices).mockResolvedValueOnce(mockDevices);
+
+    const promise = useDeviceStore.getState().fetchDevices();
+    // loading should remain false since devices already exist
+    expect(useDeviceStore.getState().loading).toBe(false);
+    await promise;
+    expect(useDeviceStore.getState().loading).toBe(false);
+  });
+
+  it('sets loading=true on initial fetch when no devices', async () => {
+    vi.mocked(apiClient.listDevices).mockImplementationOnce(
+      () => new Promise(() => {}),
+    );
+
+    useDeviceStore.getState().fetchDevices();
+    expect(useDeviceStore.getState().loading).toBe(true);
+    vi.mocked(apiClient.listDevices).mockReset();
+    useDeviceStore.setState({ loading: false });
+  });
+
   it('updates single device online status', () => {
     useDeviceStore.setState({ devices: mockDevices });
 

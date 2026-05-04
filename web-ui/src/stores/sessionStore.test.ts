@@ -42,6 +42,27 @@ describe('sessionStore', () => {
     expect(useSessionStore.getState().loading).toBe(false);
   });
 
+  it('does not set loading=true on background poll when sessions exist', async () => {
+    useSessionStore.setState({ sessions: baseSessions });
+    vi.mocked(apiClient.listSessions).mockResolvedValueOnce(baseSessions);
+
+    const promise = useSessionStore.getState().fetchSessions();
+    expect(useSessionStore.getState().loading).toBe(false);
+    await promise;
+    expect(useSessionStore.getState().loading).toBe(false);
+  });
+
+  it('sets loading=true on initial fetch when no sessions', async () => {
+    vi.mocked(apiClient.listSessions).mockImplementationOnce(
+      () => new Promise(() => {}),
+    );
+
+    useSessionStore.getState().fetchSessions();
+    expect(useSessionStore.getState().loading).toBe(true);
+    vi.mocked(apiClient.listSessions).mockReset();
+    useSessionStore.setState({ loading: false });
+  });
+
   it('creates session and refreshes list', async () => {
     vi.mocked(apiClient.createSession).mockResolvedValueOnce({ session_id: 's2', ws_url: '/ws/web' });
     vi.mocked(apiClient.listSessions).mockResolvedValueOnce(baseSessions);

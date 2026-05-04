@@ -73,3 +73,19 @@ async fn revoke_token(
 
     Ok(Json(serde_json::json!({ "message": "token revoked" })))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_token_response_serialization() {
+        let resp = TokenResponse {
+            token: "abc-123".into(),
+            created_at: 1700000000,
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["token"], "abc-123");
+        assert_eq!(json["created_at"], 1700000000);
+    }
+}

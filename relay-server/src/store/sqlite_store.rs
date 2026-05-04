@@ -727,6 +727,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_delete_client_token() {
+        let store = test_store().await;
+        store.create_client_token("del-token", "owner-1").await.unwrap();
+        store.create_client_token("keep-token", "owner-1").await.unwrap();
+
+        // Delete one token
+        store.delete_client_token("del-token", "owner-1").await.unwrap();
+
+        let tokens = store.list_client_tokens("owner-1").await;
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].token, "keep-token");
+    }
+
+    #[tokio::test]
+    async fn test_delete_client_token_wrong_owner() {
+        let store = test_store().await;
+        store.create_client_token("shared-token", "owner-a").await.unwrap();
+
+        // owner-b cannot delete owner-a's token
+        let result = store.delete_client_token("shared-token", "owner-b").await;
+        assert!(result.is_err());
+
+        // Token still exists
+        assert!(store.validate_client_token("shared-token").await);
+    }
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_token() {
+        let store = test_store().await;
+        let result = store.delete_client_token("ghost", "nobody").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
     async fn test_list_client_tokens() {
         let store = test_store().await;
         store.create_client_token("tok-a", "owner").await.unwrap();
