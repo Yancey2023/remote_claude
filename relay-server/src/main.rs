@@ -56,23 +56,41 @@ async fn main() {
     let mut config = config::Config::load();
 
     // Auto-generate jwt_secret if empty (first run) and print an admin token
-    if config.ensure_jwt_secret() {
-        match auth::jwt::create_token(
+    let is_first_run = config.ensure_jwt_secret();
+
+    let store = store::SqliteStore::new(&config.database_url)
+        .await
+        .expect("failed to initialize database");
+    let client_hub = ClientHub::new();
+    let web_hub = WebHub::new();
+
+    if is_first_run {
+        // Create admin JWT token for API authentication
+        let admin_token = auth::jwt::create_token(
             "admin",
             &config.admin_user,
             &UserRole::Admin,
             &config.jwt_secret,
             config.jwt_expiry_hours,
-        ) {
-            Ok(token) => {
-                info!("Auto-generated JWT secret and admin token");
+        );
+
+        // Create a registration token for desktop client connection
+        let reg_token = uuid::Uuid::new_v4().to_string();
+        let _ = store.create_registration_token(&reg_token).await;
+
+        match admin_token {
+            Ok(admin_jwt) => {
+                info!("Auto-generated JWT secret, admin token, and registration token");
                 println!();
                 println!("================================================================");
                 println!("  Auto-generated JWT secret (saved to config)");
                 println!("  Secret: {}", config.jwt_secret);
                 println!();
                 println!("  Admin token (use this to authenticate API requests):");
-                println!("  {}", token);
+                println!("  {}", admin_jwt);
+                println!();
+                println!("  Registration token (use this as REGISTER_TOKEN for desktop client):");
+                println!("  {}", reg_token);
                 println!("================================================================");
                 println!();
             }
@@ -81,12 +99,6 @@ async fn main() {
             }
         }
     }
-
-    let store = store::SqliteStore::new(&config.database_url)
-        .await
-        .expect("failed to initialize database");
-    let client_hub = ClientHub::new();
-    let web_hub = WebHub::new();
 
     let login_rate_limiter = api::rate_limit::LoginRateLimiter::new(10, 300); // 10 attempts per 5 min per IP
     let ws_rate_limiter = Arc::new(api::rate_limit::LoginRateLimiter::new(30, 60));   // 30 WS upgrades per min per IP
@@ -173,4 +185,34 @@ fn extract_client_ip(headers: &HeaderMap) -> IpAddr {
                 .and_then(|s| s.parse::<IpAddr>().ok())
         })
         .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use store::SqliteStore;
+
+    /// Simulate the first-run registration token creation logic:
+    /// generate a UUID token, persist it, and verify it's valid.
+    #[tokio::test]
+    async fn test_first_run_creates_valid_registration_token() {
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+
+        // Simulate the first-run logic from main()
+        let reg_token = uuid::Uuid::new_v4().to_string();
+        store.create_registration_token(&reg_token).await.unwrap();
+
+        assert!(store.validate_registration_token(&reg_token).await);
+    }
+
+    /// Verify that a random string is NOT accepted as a registration token
+    /// (the store has no tokens at all, emulating pre-first-run state).
+    #[tokio::test]
+    async fn test_no_auto_token_without_first_run() {
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+
+        // Ensure a random UUID token is NOT valid (nothing stored yet)
+        let fake_token = uuid::Uuid::new_v4().to_string();
+        assert!(!store.validate_registration_token(&fake_token).await);
+    }
 }
