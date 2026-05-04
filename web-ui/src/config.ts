@@ -8,7 +8,7 @@ export interface AppConfig {
   wsMaxReconnectDelayMs: number;
 }
 
-const BASE_URL = import.meta.env.VITE_BASE_URL ?? '';
+export const BASE_URL = import.meta.env.VITE_BASE_URL ?? '';
 
 const config: AppConfig = {
   apiBaseUrl: BASE_URL + '/api',
