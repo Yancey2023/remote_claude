@@ -3,42 +3,17 @@ name: remote-claude
 services:
   relay-server:
     container_name: remote-claude-relay-server
-    build: relay-server
+    image: ghcr.io/yancey2023/remote_claude-relay-server:main
     ports:
       - "8080:8080"
     volumes:
       - relay-config:/app/config
       - relay-data:/app/data
     environment:
-      # Override via .env file or shell variables:
-      #   RELAY_ADMIN_USER, RELAY_ADMIN_PASS, RELAY_JWT_SECRET
       - ADMIN_USER=${RELAY_ADMIN_USER:-admin}
       - ADMIN_PASS=${RELAY_ADMIN_PASS:-admin123}
       - JWT_SECRET=${RELAY_JWT_SECRET:-change-me}
     restart: unless-stopped
-
-  desktop-client:
-    container_name: remote-claude-desktop-client
-    build: desktop-client
-    depends_on:
-      - relay-server
-      - web-ui   # connect through nginx for encrypted WS support
-    volumes:
-      - client-config:/app/config
-    environment:
-      # REGISTER_TOKEN is required — set via .env or export CLIENT_REGISTER_TOKEN=<token>
-      - REGISTER_TOKEN=${CLIENT_REGISTER_TOKEN:?error}
-      # Default: route through nginx (plain WS inside Docker network, TLS at nginx boundary)
-      - SERVER_URL=ws://web-ui:80/ws/client
-      # For TLS: uncomment web-ui port 443, mount certs, use nginx.ssl.conf, and set:
-      # - SERVER_URL=wss://web-ui:443/ws/client
-      - DEVICE_NAME=${CLIENT_DEVICE_NAME:-docker-client}
-    restart: unless-stopped
-    # If Claude CLI is installed on the host, mount it:
-    # volumes:
-    #   - /usr/local/bin/claude:/usr/local/bin/claude
-    # environment:
-    #   - CLAUDE_BINARY=/usr/local/bin/claude
 
   web-ui:
     container_name: remote-claude-web-ui
@@ -47,18 +22,10 @@ services:
       dockerfile: web-ui/Dockerfile
     ports:
       - "80:80"
-      # Enable for TLS termination at nginx:
-      # - "443:443"
     depends_on:
       - relay-server
     restart: unless-stopped
-    # Uncomment for TLS (mount certs and use nginx.ssl.conf):
-    # volumes:
-    #   - ./certs/cert.pem:/etc/nginx/ssl/cert.pem
-    #   - ./certs/key.pem:/etc/nginx/ssl/key.pem
-    #   - ./web-ui/nginx.ssl.conf:/etc/nginx/conf.d/default.conf
 
 volumes:
   relay-config:
   relay-data:
-  client-config:
