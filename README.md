@@ -91,7 +91,7 @@ docker compose up -d
 |------|-------------|
 | relay-server | `config/relay-server.toml` |
 | desktop-client | `config/desktop-client.toml` |
-| web-ui | `dist/config.json`（生产部署） |
+| web-ui | 构建时 `VITE_BASE_URL` 编译进 bundle，无运行时配置文件 |
 
 通过 `CONFIG_PATH` 环境变量可覆盖配置文件路径。
 
@@ -122,9 +122,9 @@ docker compose up -d
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 54 个测试
-cd desktop-client && cargo test  # 18 个测试
-cd web-ui && pnpm test           # 55 个测试
+cd relay-server && cargo test    # 67 个测试
+cd desktop-client && cargo test  # 23 个测试
+cd web-ui && pnpm test           # 64 个测试
 ```
 
 ## 技术栈
