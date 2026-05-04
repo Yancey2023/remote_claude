@@ -79,6 +79,10 @@ const translations = {
     tokenGenerated: 'Token generated! Copy it now — you won\'t see it again.',
     tokenGenerateFailed: 'Failed to generate token',
     tokenCopyFailed: 'Failed to copy',
+    tokenDelete: 'Revoke',
+    tokenDeleted: 'Token revoked',
+    tokenDeleteFailed: 'Failed to revoke token',
+    tokenDeleteConfirm: 'Revoke this token?',
   },
   zh: {
     appName: 'Remote Claude',
@@ -154,6 +158,10 @@ const translations = {
     tokenGenerated: '令牌已生成！请立即复制——关闭后不再显示。',
     tokenGenerateFailed: '生成令牌失败',
     tokenCopyFailed: '复制失败',
+    tokenDelete: '撤销',
+    tokenDeleted: '令牌已撤销',
+    tokenDeleteFailed: '撤销令牌失败',
+    tokenDeleteConfirm: '撤销此令牌？',
   },
 } as const;
 

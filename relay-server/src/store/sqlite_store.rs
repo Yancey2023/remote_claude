@@ -390,6 +390,23 @@ impl SqliteStore {
         result.unwrap_or(false)
     }
 
+    pub async fn delete_client_token(&self, token: &str, user_id: &str) -> Result<(), String> {
+        let affected = sqlx::query(
+            "DELETE FROM client_tokens WHERE token = ? AND user_id = ?",
+        )
+        .bind(token)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("database error: {}", e))?
+        .rows_affected();
+
+        if affected == 0 {
+            return Err("token not found".into());
+        }
+        Ok(())
+    }
+
     pub async fn has_client_tokens(&self) -> bool {
         let result: Option<bool> = sqlx::query(
             "SELECT COUNT(*) > 0 FROM client_tokens",

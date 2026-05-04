@@ -3,7 +3,7 @@ import { useDeviceStore } from '../stores/deviceStore';
 import { DeviceCard } from '../components/DeviceCard';
 import { apiClient } from '../api/client';
 import { getConfig } from '../config';
-import { useI18n } from '../i18n';
+import { translate, useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { TokenResponse } from '../types/protocol';
 
@@ -35,11 +35,11 @@ export function DeviceListPage() {
       const list = await apiClient.listTokens();
       setTokens(list);
     } catch {
-      setTokenError(t('tokenGenerateFailed'));
+      setTokenError(translate('tokenGenerateFailed'));
     } finally {
       setTokensLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     fetchDevices();
@@ -58,9 +58,19 @@ export function DeviceListPage() {
       // Refresh the token list
       await fetchTokens();
     } catch {
-      setTokenError(t('tokenGenerateFailed'));
+      setTokenError(translate('tokenGenerateFailed'));
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDeleteToken = async (token: string) => {
+    if (!window.confirm(t('tokenDeleteConfirm'))) return;
+    try {
+      await apiClient.deleteToken(token);
+      await fetchTokens();
+    } catch {
+      setTokenError(translate('tokenDeleteFailed'));
     }
   };
 
@@ -212,6 +222,24 @@ export function DeviceListPage() {
                   }}
                 >
                   {copiedIndex === idx ? t('tokenCopied') : t('tokenCopy')}
+                </button>
+                <button
+                  onClick={() => handleDeleteToken(tk.token)}
+                  title={t('tokenDelete')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#e74c3c',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    padding: '0.1rem 0.3rem',
+                    opacity: 0.5,
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; }}
+                >
+                  <span className="btn-icon-label">✕</span>
                 </button>
               </div>
             ))}

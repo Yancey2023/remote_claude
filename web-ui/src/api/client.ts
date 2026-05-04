@@ -88,6 +88,10 @@ class ApiClient {
   async listTokens() {
     return this.request<TokenResponse[]>('GET', '/tokens');
   }
+
+  async deleteToken(token: string) {
+    return this.request('DELETE', `/tokens/${encodeURIComponent(token)}`);
+  }
 }
 
 export class ApiClientError extends Error {

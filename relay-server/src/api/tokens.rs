@@ -1,4 +1,4 @@
-use axum::{routing::{get, post}, Json, Router};
+use axum::{routing::{delete, get, post}, extract::Path, Json, Router};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -11,6 +11,7 @@ use crate::ws::AppState;
 pub fn router() -> Router<Arc<RwLock<AppState>>> {
     Router::new()
         .route("/", post(generate_token).get(list_tokens))
+        .route("/{token}", delete(revoke_token))
 }
 
 #[derive(Serialize)]
@@ -55,4 +56,20 @@ async fn list_tokens(
             })
             .collect(),
     )
+}
+
+/// Revoke a registration token owned by the authenticated user.
+async fn revoke_token(
+    state: axum::extract::State<Arc<RwLock<AppState>>>,
+    user: AuthUser,
+    Path(token): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let state = state.read().await;
+    state
+        .store
+        .delete_client_token(&token, &user.user_id)
+        .await
+        .map_err(|e| AppError::NotFound(e))?;
+
+    Ok(Json(serde_json::json!({ "message": "token revoked" })))
 }
