@@ -29,7 +29,7 @@ describe('apiClient', () => {
       expect(res.token).toBe('jwt-1');
       expect(res.username).toBe('alice');
       expect(mockFetch).toHaveBeenCalledWith(
-        '/auth/login',
+        '/api/auth/login',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ username: 'alice', password: 'pass' }),
@@ -76,7 +76,7 @@ describe('apiClient', () => {
       const res = await apiClient.createSession('d1');
       expect(res.session_id).toBe('s1');
       expect(mockFetch).toHaveBeenCalledWith(
-        '/sessions',
+        '/api/sessions',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ device_id: 'd1', cwd: null }),
@@ -89,7 +89,7 @@ describe('apiClient', () => {
 
       await apiClient.closeSession('s1');
       expect(mockFetch).toHaveBeenCalledWith(
-        '/sessions/s1',
+        '/api/sessions/s1',
         expect.objectContaining({ method: 'DELETE' }),
       );
     });
@@ -113,7 +113,7 @@ describe('apiClient', () => {
 
       await apiClient.logout();
       expect(mockFetch).toHaveBeenCalledWith(
-        '/auth/logout',
+        '/api/auth/logout',
         expect.objectContaining({ method: 'POST' }),
       );
     });
