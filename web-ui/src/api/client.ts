@@ -3,6 +3,7 @@ import type {
   LoginResponse,
   DeviceResponse,
   SessionResponse,
+  TokenResponse,
   ApiError,
 } from '../types/protocol';
 import { getConfig } from '../config';
@@ -77,6 +78,15 @@ class ApiClient {
 
   async closeSession(sessionId: string) {
     return this.request('DELETE', `/sessions/${sessionId}`);
+  }
+
+  // Client Tokens
+  async createToken() {
+    return this.request<TokenResponse>('POST', '/tokens');
+  }
+
+  async listTokens() {
+    return this.request<TokenResponse[]>('GET', '/tokens');
   }
 }
 

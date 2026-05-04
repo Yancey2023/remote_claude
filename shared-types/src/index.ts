@@ -52,6 +52,7 @@ export interface DeviceResponse {
   online: boolean;
   busy: boolean;
   last_seen: number;
+  user_id: string;
 }
 
 export interface SessionResponse {
@@ -95,6 +96,11 @@ export interface SessionCreatedPayload {
 export interface DeviceStatusPayload {
   device_id: string;
   online: boolean;
+}
+
+export interface TokenResponse {
+  token: string;
+  created_at: number;
 }
 
 export interface ErrorPayload {

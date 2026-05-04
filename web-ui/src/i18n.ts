@@ -70,6 +70,15 @@ const translations = {
     deleteSessionFailed: 'failed to delete session',
     connectFailed: 'failed to connect',
     httpsWarning: 'Connection is not secure. Use HTTPS in production.',
+
+    tokens: 'Client Tokens',
+    generateToken: 'Generate Token',
+    tokenCopy: 'Copy',
+    tokenCopied: 'Copied!',
+    noTokens: 'No tokens yet. Click "Generate Token" to create one.',
+    tokenGenerated: 'Token generated! Copy it now — you won\'t see it again.',
+    tokenGenerateFailed: 'Failed to generate token',
+    tokenCopyFailed: 'Failed to copy',
   },
   zh: {
     appName: 'Remote Claude',
@@ -136,6 +145,15 @@ const translations = {
     deleteSessionFailed: '删除会话失败',
     connectFailed: '连接失败',
     httpsWarning: '连接不安全。生产环境请使用 HTTPS。',
+
+    tokens: '客户端令牌',
+    generateToken: '生成令牌',
+    tokenCopy: '复制',
+    tokenCopied: '已复制！',
+    noTokens: '暂无令牌，点击"生成令牌"创建一个。',
+    tokenGenerated: '令牌已生成！请立即复制——关闭后不再显示。',
+    tokenGenerateFailed: '生成令牌失败',
+    tokenCopyFailed: '复制失败',
   },
 } as const;
 

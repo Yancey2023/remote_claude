@@ -174,7 +174,7 @@ async fn generate_token(
     let state = state.read().await;
     state
         .store
-        .create_registration_token(&token)
+        .create_client_token(&token, &user.user_id)
         .await
         .map_err(|e| AppError::Internal(e))?;
 

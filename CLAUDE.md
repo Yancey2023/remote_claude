@@ -93,7 +93,7 @@ describe('模块名', () => {
 
 | 项目 | 框架 | 测试数量 | 位置 |
 |------|------|----------|------|
-| relay-server | `cargo test` / `tokio::test` | 75 | `#[cfg(test)]` 内联在源文件中 |
+| relay-server | `cargo test` / `tokio::test` | 78 | `#[cfg(test)]` 内联在源文件中 |
 | desktop-client | `cargo test` / `tokio::test` | 23 | `#[cfg(test)]` 内联在源文件中 |
 | web-ui | `vitest` / `pnpm test` | 64 | `*.test.ts` 和测试文件同目录 |
 

@@ -1,20 +1,18 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegistrationToken {
+pub struct ClientToken {
     pub token: String,
     pub created_at: i64,
-    pub is_used: bool,
-    pub used_by_device_id: Option<String>,
+    pub user_id: String,
 }
 
-impl RegistrationToken {
-    pub fn new(token: String) -> Self {
+impl ClientToken {
+    pub fn new(token: String, user_id: String) -> Self {
         Self {
             token,
             created_at: chrono::Utc::now().timestamp(),
-            is_used: false,
-            used_by_device_id: None,
+            user_id,
         }
     }
 }

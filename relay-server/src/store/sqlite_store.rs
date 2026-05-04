@@ -4,7 +4,7 @@ use std::path::Path;
 use std::str::FromStr;
 use tracing::info;
 
-use crate::models::{Device, Session, User, UserRole};
+use crate::models::{ClientToken, Device, Session, User, UserRole};
 
 #[derive(Clone)]
 pub struct SqliteStore {
@@ -94,15 +94,19 @@ impl SqliteStore {
             .await;
 
         sqlx::query(
-            "CREATE TABLE IF NOT EXISTS registration_tokens (
+            "CREATE TABLE IF NOT EXISTS client_tokens (
                 token TEXT PRIMARY KEY NOT NULL,
                 created_at INTEGER NOT NULL,
-                is_used INTEGER NOT NULL DEFAULT 0,
-                used_by_device_id TEXT
+                user_id TEXT NOT NULL
             )",
         )
         .execute(&self.pool)
         .await?;
+
+        // Add user_id column for existing devices databases
+        let _ = sqlx::query("ALTER TABLE devices ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
+            .execute(&self.pool)
+            .await;
 
         Ok(())
     }
@@ -198,8 +202,8 @@ impl SqliteStore {
 
     pub async fn upsert_device(&self, device: Device) {
         sqlx::query(
-            "INSERT INTO devices (id, name, version, online, busy, last_seen, registered_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO devices (id, name, version, online, busy, last_seen, registered_at, user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 version = excluded.version,
@@ -214,18 +218,32 @@ impl SqliteStore {
         .bind(device.busy as i32)
         .bind(device.last_seen)
         .bind(device.registered_at)
+        .bind(&device.user_id)
         .execute(&self.pool)
         .await
         .ok();
     }
 
-    pub async fn list_devices(&self) -> Vec<Device> {
-        sqlx::query("SELECT id, name, version, online, busy, last_seen, registered_at FROM devices ORDER BY last_seen DESC")
+    pub async fn list_devices(&self, user_id: Option<&str>) -> Vec<Device> {
+        match user_id {
+            Some(uid) => sqlx::query(
+                "SELECT id, name, version, online, busy, last_seen, registered_at, user_id FROM devices WHERE user_id = ? ORDER BY last_seen DESC",
+            )
+            .bind(uid)
             .fetch_all(&self.pool)
             .await
             .ok()
             .map(|rows| rows.into_iter().map(row_to_device).collect())
-            .unwrap_or_default()
+            .unwrap_or_default(),
+            None => sqlx::query(
+                "SELECT id, name, version, online, busy, last_seen, registered_at, user_id FROM devices ORDER BY last_seen DESC",
+            )
+            .fetch_all(&self.pool)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(row_to_device).collect())
+            .unwrap_or_default(),
+        }
     }
 
     pub async fn set_device_online(&self, id: &str, online: bool) {
@@ -319,24 +337,48 @@ impl SqliteStore {
         .ok()?
         .map(row_to_session)
     }
-    // ── Registration Tokens ──
+    // ── Client Tokens ──
 
-    pub async fn create_registration_token(&self, token: &str) -> Result<(), String> {
+    pub async fn create_client_token(&self, token: &str, user_id: &str) -> Result<(), String> {
         let now = chrono::Utc::now().timestamp();
         sqlx::query(
-            "INSERT INTO registration_tokens (token, created_at, is_used) VALUES (?, ?, 0)",
+            "INSERT INTO client_tokens (token, created_at, user_id) VALUES (?, ?, ?)",
         )
         .bind(token)
         .bind(now)
+        .bind(user_id)
         .execute(&self.pool)
         .await
         .map_err(|e| format!("database error: {}", e))?;
         Ok(())
     }
 
-    pub async fn validate_registration_token(&self, token: &str) -> bool {
+    pub async fn get_client_token(&self, token: &str) -> Option<ClientToken> {
+        sqlx::query(
+            "SELECT token, created_at, user_id FROM client_tokens WHERE token = ?",
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?
+        .map(row_to_client_token)
+    }
+
+    pub async fn list_client_tokens(&self, user_id: &str) -> Vec<ClientToken> {
+        sqlx::query(
+            "SELECT token, created_at, user_id FROM client_tokens WHERE user_id = ? ORDER BY created_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .ok()
+        .map(|rows| rows.into_iter().map(row_to_client_token).collect())
+        .unwrap_or_default()
+    }
+
+    pub async fn validate_client_token(&self, token: &str) -> bool {
         let result: Option<bool> = sqlx::query(
-            "SELECT COUNT(*) > 0 FROM registration_tokens WHERE token = ? AND is_used = 0",
+            "SELECT COUNT(*) > 0 FROM client_tokens WHERE token = ?",
         )
         .bind(token)
         .fetch_optional(&self.pool)
@@ -348,9 +390,9 @@ impl SqliteStore {
         result.unwrap_or(false)
     }
 
-    pub async fn has_registration_tokens(&self) -> bool {
+    pub async fn has_client_tokens(&self) -> bool {
         let result: Option<bool> = sqlx::query(
-            "SELECT COUNT(*) > 0 FROM registration_tokens WHERE is_used = 0",
+            "SELECT COUNT(*) > 0 FROM client_tokens",
         )
         .fetch_optional(&self.pool)
         .await
@@ -359,16 +401,6 @@ impl SqliteStore {
         .map(|row| row.get::<i32, _>(0) != 0);
 
         result.unwrap_or(false)
-    }
-
-    pub async fn mark_token_used(&self, token: &str, device_id: &str) {
-        let _ = sqlx::query(
-            "UPDATE registration_tokens SET is_used = 1, used_by_device_id = ? WHERE token = ?",
-        )
-        .bind(device_id)
-        .bind(token)
-        .execute(&self.pool)
-        .await;
     }
 }
 
@@ -410,6 +442,15 @@ fn row_to_device(row: sqlx::sqlite::SqliteRow) -> Device {
         busy: row.get::<i32, _>("busy") != 0,
         last_seen: row.get("last_seen"),
         registered_at: row.get("registered_at"),
+        user_id: row.get("user_id"),
+    }
+}
+
+fn row_to_client_token(row: sqlx::sqlite::SqliteRow) -> ClientToken {
+    ClientToken {
+        token: row.get("token"),
+        created_at: row.get("created_at"),
+        user_id: row.get("user_id"),
     }
 }
 
@@ -460,9 +501,9 @@ mod tests {
         assert!(db_path.exists(), "database file should have been auto-created");
 
         // Verify the store is functional
-        assert!(!store.has_registration_tokens().await);
-        store.create_registration_token("test-token").await.unwrap();
-        assert!(store.has_registration_tokens().await);
+        assert!(!store.has_client_tokens().await);
+        store.create_client_token("test-token", "").await.unwrap();
+        assert!(store.has_client_tokens().await);
 
         // Clean up
         store.pool.close().await;
@@ -551,18 +592,28 @@ mod tests {
     #[tokio::test]
     async fn test_device_upsert_and_list() {
         let store = test_store().await;
-        store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into())).await;
-        let devices = store.list_devices().await;
+        store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into(), "user-1".into())).await;
+        let devices = store.list_devices(None).await;
         assert_eq!(devices.len(), 1);
         assert_eq!(devices[0].name, "pc1");
     }
 
     #[tokio::test]
+    async fn test_device_list_by_user() {
+        let store = test_store().await;
+        store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into(), "user-a".into())).await;
+        store.upsert_device(Device::new("dev-2".into(), "pc2".into(), "1.0".into(), "user-b".into())).await;
+        let user_a_devices = store.list_devices(Some("user-a")).await;
+        assert_eq!(user_a_devices.len(), 1);
+        assert_eq!(user_a_devices[0].id, "dev-1");
+    }
+
+    #[tokio::test]
     async fn test_device_online_status() {
         let store = test_store().await;
-        store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into())).await;
+        store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into(), "user-1".into())).await;
         store.set_device_online("dev-1", false).await;
-        let devices = store.list_devices().await;
+        let devices = store.list_devices(None).await;
         let device = devices.iter().find(|d| d.id == "dev-1").unwrap();
         assert!(!device.online);
     }
@@ -594,74 +645,81 @@ mod tests {
     #[tokio::test]
     async fn test_create_and_validate_token() {
         let store = test_store().await;
-        store.create_registration_token("test-token-1").await.unwrap();
-        assert!(store.validate_registration_token("test-token-1").await);
+        store.create_client_token("test-token-1", "user-1").await.unwrap();
+        assert!(store.validate_client_token("test-token-1").await);
     }
 
     #[tokio::test]
     async fn test_validate_nonexistent_token() {
         let store = test_store().await;
-        assert!(!store.validate_registration_token("nonexistent").await);
+        assert!(!store.validate_client_token("nonexistent").await);
     }
 
     #[tokio::test]
-    async fn test_mark_token_used() {
+    async fn test_mark_token_used_still_valid() {
         let store = test_store().await;
-        store.create_registration_token("test-token-2").await.unwrap();
-        assert!(store.validate_registration_token("test-token-2").await);
-
-        store.mark_token_used("test-token-2", "dev-1").await;
-        assert!(!store.validate_registration_token("test-token-2").await);
-    }
-
-    #[tokio::test]
-    async fn test_token_cannot_be_reused() {
-        let store = test_store().await;
-        store.create_registration_token("single-use").await.unwrap();
-        store.mark_token_used("single-use", "dev-1").await;
-        assert!(!store.validate_registration_token("single-use").await);
-
-        // A second device trying to use the same token should fail
-        store.mark_token_used("single-use", "dev-2").await;
-        assert!(!store.validate_registration_token("single-use").await);
+        store.create_client_token("test-token-2", "user-1").await.unwrap();
+        assert!(store.validate_client_token("test-token-2").await);
     }
 
     #[tokio::test]
     async fn test_multiple_tokens_independent() {
         let store = test_store().await;
-        store.create_registration_token("token-a").await.unwrap();
-        store.create_registration_token("token-b").await.unwrap();
-        store.create_registration_token("token-c").await.unwrap();
+        store.create_client_token("token-a", "user-1").await.unwrap();
+        store.create_client_token("token-b", "user-1").await.unwrap();
+        store.create_client_token("token-c", "user-2").await.unwrap();
 
-        assert!(store.validate_registration_token("token-a").await);
-        assert!(store.validate_registration_token("token-b").await);
-        assert!(store.validate_registration_token("token-c").await);
-
-        store.mark_token_used("token-b", "dev-1").await;
-
-        assert!(store.validate_registration_token("token-a").await);
-        assert!(!store.validate_registration_token("token-b").await);
-        assert!(store.validate_registration_token("token-c").await);
+        assert!(store.validate_client_token("token-a").await);
+        assert!(store.validate_client_token("token-b").await);
+        assert!(store.validate_client_token("token-c").await);
     }
 
     #[tokio::test]
     async fn test_has_tokens_empty_on_new_store() {
         let store = test_store().await;
-        assert!(!store.has_registration_tokens().await);
+        assert!(!store.has_client_tokens().await);
     }
 
     #[tokio::test]
     async fn test_has_tokens_after_creating_one() {
         let store = test_store().await;
-        store.create_registration_token("some-token").await.unwrap();
-        assert!(store.has_registration_tokens().await);
+        store.create_client_token("some-token", "user-1").await.unwrap();
+        assert!(store.has_client_tokens().await);
     }
 
     #[tokio::test]
-    async fn test_has_tokens_false_when_all_used() {
+    async fn test_has_tokens_exists_after_create() {
         let store = test_store().await;
-        store.create_registration_token("single-use").await.unwrap();
-        store.mark_token_used("single-use", "dev-1").await;
-        assert!(!store.has_registration_tokens().await);
+        store.create_client_token("perm-token", "user-1").await.unwrap();
+        assert!(store.has_client_tokens().await);
+    }
+
+    #[tokio::test]
+    async fn test_get_client_token() {
+        let store = test_store().await;
+        store.create_client_token("get-me", "user-42").await.unwrap();
+        let rt = store.get_client_token("get-me").await.unwrap();
+        assert_eq!(rt.token, "get-me");
+        assert_eq!(rt.user_id, "user-42");
+    }
+
+    #[tokio::test]
+    async fn test_get_client_token_not_found() {
+        let store = test_store().await;
+        assert!(store.get_client_token("nonexistent").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_list_client_tokens() {
+        let store = test_store().await;
+        store.create_client_token("tok-a", "owner").await.unwrap();
+        store.create_client_token("tok-b", "owner").await.unwrap();
+        store.create_client_token("tok-c", "other").await.unwrap();
+        let owner_tokens = store.list_client_tokens("owner").await;
+        assert_eq!(owner_tokens.len(), 2);
+        assert!(owner_tokens.iter().any(|t| t.token == "tok-a"));
+        assert!(owner_tokens.iter().any(|t| t.token == "tok-b"));
+        let other_tokens = store.list_client_tokens("other").await;
+        assert_eq!(other_tokens.len(), 1);
     }
 }

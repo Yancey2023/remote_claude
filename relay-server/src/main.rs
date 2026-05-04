@@ -24,8 +24,6 @@ use ws::client_hub::ClientHub;
 use ws::web_hub::WebHub;
 use ws::AppState;
 
-use models::UserRole;
-
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -55,62 +53,14 @@ async fn main() {
 
     let mut config = config::Config::load();
 
-    // Auto-generate jwt_secret if empty (first run) and print an admin token
-    let is_first_run = config.ensure_jwt_secret();
+    // Auto-generate jwt_secret if empty (first run)
+    config.ensure_jwt_secret();
 
     let store = store::SqliteStore::new(&config.database_url)
         .await
         .expect("failed to initialize database");
     let client_hub = ClientHub::new();
     let web_hub = WebHub::new();
-
-    if is_first_run {
-        // Create admin JWT token for API authentication
-        let admin_token = auth::jwt::create_token(
-            "admin",
-            &config.admin_user,
-            &UserRole::Admin,
-            &config.jwt_secret,
-            config.jwt_expiry_hours,
-        );
-
-        // Create a registration token for desktop client connection
-        let reg_token = uuid::Uuid::new_v4().to_string();
-        let _ = store.create_registration_token(&reg_token).await;
-
-        match admin_token {
-            Ok(admin_jwt) => {
-                info!("Auto-generated JWT secret, admin token, and registration token");
-                println!();
-                println!("================================================================");
-                println!("  Auto-generated JWT secret (saved to config)");
-                println!("  Secret: {}", config.jwt_secret);
-                println!();
-                println!("  Admin token (use this to authenticate API requests):");
-                println!("  {}", admin_jwt);
-                println!();
-                println!("  Registration token (use this as REGISTER_TOKEN for desktop client):");
-                println!("  {}", reg_token);
-                println!("================================================================");
-                println!();
-            }
-            Err(e) => {
-                error!("Failed to create admin token: {}", e);
-            }
-        }
-    } else if !store.has_registration_tokens().await {
-        // No registration tokens exist (e.g. data.db was deleted or all tokens consumed).
-        // Auto-generate one so the user can still connect a desktop client.
-        let reg_token = uuid::Uuid::new_v4().to_string();
-        let _ = store.create_registration_token(&reg_token).await;
-        info!("No registration tokens found — auto-generated one");
-        println!();
-        println!("================================================================");
-        println!("  Registration token (use this as REGISTER_TOKEN for desktop client):");
-        println!("  {}", reg_token);
-        println!("================================================================");
-        println!();
-    }
 
     let login_rate_limiter = api::rate_limit::LoginRateLimiter::new(10, 300); // 10 attempts per 5 min per IP
     let ws_rate_limiter = Arc::new(api::rate_limit::LoginRateLimiter::new(30, 60));   // 30 WS upgrades per min per IP
@@ -204,43 +154,42 @@ mod tests {
     use super::*;
     use store::SqliteStore;
 
-    /// Simulate the first-run registration token creation logic:
-    /// generate a UUID token, persist it, and verify it's valid.
+    /// Simulate creating a client token: generate a UUID, persist it, verify it's valid.
     #[tokio::test]
-    async fn test_first_run_creates_valid_registration_token() {
+    async fn test_first_run_creates_valid_client_token() {
         let store = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         // Simulate the first-run logic from main()
         let reg_token = uuid::Uuid::new_v4().to_string();
-        store.create_registration_token(&reg_token).await.unwrap();
+        store.create_client_token(&reg_token, "").await.unwrap();
 
-        assert!(store.validate_registration_token(&reg_token).await);
+        assert!(store.validate_client_token(&reg_token).await);
     }
 
-    /// Verify that a random string is NOT accepted as a registration token
+    /// Verify that a random string is NOT accepted as a client token
     /// when no tokens have been stored.
     #[tokio::test]
     async fn test_random_token_not_valid_when_empty() {
         let store = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         let fake_token = uuid::Uuid::new_v4().to_string();
-        assert!(!store.validate_registration_token(&fake_token).await);
+        assert!(!store.validate_client_token(&fake_token).await);
     }
 
-    /// Simulate the fallback logic when no tokens exist on non-first-run:
+    /// Simulate the fallback logic when no tokens exist:
     /// generate a token, store it, and verify it becomes valid.
     #[tokio::test]
     async fn test_fallback_generates_token_when_none_exist() {
         let store = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         // Precondition: no tokens
-        assert!(!store.has_registration_tokens().await);
+        assert!(!store.has_client_tokens().await);
 
         // Simulate the fallback: generate + persist a token
         let reg_token = uuid::Uuid::new_v4().to_string();
-        store.create_registration_token(&reg_token).await.unwrap();
+        store.create_client_token(&reg_token, "").await.unwrap();
 
-        assert!(store.has_registration_tokens().await);
-        assert!(store.validate_registration_token(&reg_token).await);
+        assert!(store.has_client_tokens().await);
+        assert!(store.validate_client_token(&reg_token).await);
     }
 }

@@ -3,6 +3,7 @@ pub mod auth;
 pub mod devices;
 pub mod rate_limit;
 pub mod sessions;
+pub mod tokens;
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
@@ -17,6 +18,7 @@ pub fn router() -> Router<Arc<RwLock<AppState>>> {
         .nest("/api/devices", devices::router())
         .nest("/api/sessions", sessions::router())
         .nest("/api/admin", admin::router())
+        .nest("/api/tokens", tokens::router())
 }
 
 async fn health() -> &'static str {

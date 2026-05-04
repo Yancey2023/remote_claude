@@ -15,5 +15,6 @@ export type {
   ApiError,
   SessionCreatedPayload,
   DeviceStatusPayload,
+  TokenResponse,
   ErrorPayload,
 } from '@remote-claude/shared-types';
