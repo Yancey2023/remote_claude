@@ -12,7 +12,7 @@ export const BASE_URL = import.meta.env.VITE_BASE_URL ?? '';
 
 const config: AppConfig = {
   apiBaseUrl: BASE_URL + '/api',
-  wsBaseUrl: BASE_URL + '/ws',
+  wsBaseUrl: BASE_URL + '/ws/web',
   devicePollIntervalMs: Number(import.meta.env.VITE_DEVICE_POLL_INTERVAL_MS) || 5000,
   wsReconnectDelayMs: Number(import.meta.env.VITE_WS_RECONNECT_DELAY_MS) || 1000,
   wsMaxReconnectDelayMs: Number(import.meta.env.VITE_WS_MAX_RECONNECT_DELAY_MS) || 30000,
