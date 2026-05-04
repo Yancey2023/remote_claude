@@ -9,16 +9,14 @@ pub struct SessionActor {
     pub id: String,
     pub device_id: String,
     pub user_id: String,
-    pub cwd: Option<String>,
 }
 
 impl SessionActor {
-    pub fn new(device_id: String, user_id: String, cwd: Option<String>) -> Self {
+    pub fn new(device_id: String, user_id: String) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             device_id,
             user_id,
-            cwd,
         }
     }
 }
@@ -106,25 +104,5 @@ impl SessionRegistry {
             }
             out
         })
-    }
-
-    pub async fn get_sessions_for_user(&self, user_id: &str) -> Vec<SessionActor> {
-        self.sessions
-            .read()
-            .await
-            .values()
-            .filter(|s| s.actor.user_id == user_id)
-            .map(|s| s.actor.clone())
-            .collect()
-    }
-
-    pub async fn get_sessions_for_device(&self, device_id: &str) -> Vec<SessionActor> {
-        self.sessions
-            .read()
-            .await
-            .values()
-            .filter(|s| s.actor.device_id == device_id)
-            .map(|s| s.actor.clone())
-            .collect()
     }
 }

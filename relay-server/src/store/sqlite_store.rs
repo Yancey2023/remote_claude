@@ -315,18 +315,6 @@ impl SqliteStore {
         .unwrap_or_default()
     }
 
-    pub async fn list_sessions_for_device(&self, device_id: &str) -> Vec<Session> {
-        sqlx::query(
-            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE device_id = ? AND closed = 0 ORDER BY created_at DESC",
-        )
-        .bind(device_id)
-        .fetch_all(&self.pool)
-        .await
-        .ok()
-        .map(|rows| rows.into_iter().map(row_to_session).collect())
-        .unwrap_or_default()
-    }
-
     pub async fn get_session(&self, id: &str) -> Option<Session> {
         sqlx::query(
             "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE id = ?",
@@ -376,20 +364,6 @@ impl SqliteStore {
         .unwrap_or_default()
     }
 
-    pub async fn validate_client_token(&self, token: &str) -> bool {
-        let result: Option<bool> = sqlx::query(
-            "SELECT COUNT(*) > 0 FROM client_tokens WHERE token = ?",
-        )
-        .bind(token)
-        .fetch_optional(&self.pool)
-        .await
-        .ok()
-        .flatten()
-        .map(|row| row.get::<i32, _>(0) != 0);
-
-        result.unwrap_or(false)
-    }
-
     pub async fn delete_client_token(&self, token: &str, user_id: &str) -> Result<(), String> {
         let affected = sqlx::query(
             "DELETE FROM client_tokens WHERE token = ? AND user_id = ?",
@@ -407,18 +381,6 @@ impl SqliteStore {
         Ok(())
     }
 
-    pub async fn has_client_tokens(&self) -> bool {
-        let result: Option<bool> = sqlx::query(
-            "SELECT COUNT(*) > 0 FROM client_tokens",
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .ok()
-        .flatten()
-        .map(|row| row.get::<i32, _>(0) != 0);
-
-        result.unwrap_or(false)
-    }
 }
 
 // ── Row mappers ──
@@ -518,9 +480,7 @@ mod tests {
         assert!(db_path.exists(), "database file should have been auto-created");
 
         // Verify the store is functional
-        assert!(!store.has_client_tokens().await);
         store.create_client_token("test-token", "").await.unwrap();
-        assert!(store.has_client_tokens().await);
 
         // Clean up
         store.pool.close().await;
@@ -651,65 +611,11 @@ mod tests {
         store.create_session(Session::new("s2".into(), "dev-1".into(), "u1".into(), Some("/home".into()))).await.unwrap();
         let list = store.list_sessions("u1").await;
         assert_eq!(list.len(), 2);
-        let list_dev = store.list_sessions_for_device("dev-1").await;
-        assert_eq!(list_dev.len(), 2);
         let s = store.get_session("s1").await.unwrap();
         assert_eq!(s.id, "s1");
     }
 
     // ── Registration Token Tests ──
-
-    #[tokio::test]
-    async fn test_create_and_validate_token() {
-        let store = test_store().await;
-        store.create_client_token("test-token-1", "user-1").await.unwrap();
-        assert!(store.validate_client_token("test-token-1").await);
-    }
-
-    #[tokio::test]
-    async fn test_validate_nonexistent_token() {
-        let store = test_store().await;
-        assert!(!store.validate_client_token("nonexistent").await);
-    }
-
-    #[tokio::test]
-    async fn test_mark_token_used_still_valid() {
-        let store = test_store().await;
-        store.create_client_token("test-token-2", "user-1").await.unwrap();
-        assert!(store.validate_client_token("test-token-2").await);
-    }
-
-    #[tokio::test]
-    async fn test_multiple_tokens_independent() {
-        let store = test_store().await;
-        store.create_client_token("token-a", "user-1").await.unwrap();
-        store.create_client_token("token-b", "user-1").await.unwrap();
-        store.create_client_token("token-c", "user-2").await.unwrap();
-
-        assert!(store.validate_client_token("token-a").await);
-        assert!(store.validate_client_token("token-b").await);
-        assert!(store.validate_client_token("token-c").await);
-    }
-
-    #[tokio::test]
-    async fn test_has_tokens_empty_on_new_store() {
-        let store = test_store().await;
-        assert!(!store.has_client_tokens().await);
-    }
-
-    #[tokio::test]
-    async fn test_has_tokens_after_creating_one() {
-        let store = test_store().await;
-        store.create_client_token("some-token", "user-1").await.unwrap();
-        assert!(store.has_client_tokens().await);
-    }
-
-    #[tokio::test]
-    async fn test_has_tokens_exists_after_create() {
-        let store = test_store().await;
-        store.create_client_token("perm-token", "user-1").await.unwrap();
-        assert!(store.has_client_tokens().await);
-    }
 
     #[tokio::test]
     async fn test_get_client_token() {
@@ -750,7 +656,7 @@ mod tests {
         assert!(result.is_err());
 
         // Token still exists
-        assert!(store.validate_client_token("shared-token").await);
+        assert!(store.get_client_token("shared-token").await.is_some());
     }
 
     #[tokio::test]

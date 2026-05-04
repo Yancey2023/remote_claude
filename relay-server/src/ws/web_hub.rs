@@ -259,7 +259,7 @@ async fn handle_web_message(
                 .ok_or("device not found or offline")?;
 
             let session =
-                SessionActor::new(device.id.clone(), user_id.to_string(), cwd.clone());
+                SessionActor::new(device.id.clone(), user_id.to_string());
 
             let session_id = hub.session_registry.register(session).await;
 

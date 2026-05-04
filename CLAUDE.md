@@ -93,9 +93,9 @@ describe('模块名', () => {
 
 | 项目 | 框架 | 测试数量 | 位置 |
 |------|------|----------|------|
-| relay-server | `cargo test` / `tokio::test` | 82 | `#[cfg(test)]` 内联在源文件中 |
-| desktop-client | `cargo test` / `tokio::test` | 25 | `#[cfg(test)]` 内联在源文件中 |
-| web-ui | `vitest` / `pnpm test` | 98 | `*.test.ts` 和测试文件同目录 |
+| relay-server | `cargo test` / `tokio::test` | 72 | `#[cfg(test)]` 内联在源文件中 |
+| desktop-client | `cargo test` / `tokio::test` | 29 | `#[cfg(test)]` 内联在源文件中 |
+| web-ui | `vitest` / `pnpm test` | 99 | `*.test.ts` 和测试文件同目录 |
 
 ## 配置系统
 
@@ -405,9 +405,9 @@ GitHub Actions 自动构建和发布：
 
 ```bash
 # 运行全部
-cd relay-server && cargo test    # 82 tests
-cd desktop-client && cargo test  # 25 tests
-cd web-ui && pnpm test           # 84 tests
+cd relay-server && cargo test    # 72 tests
+cd desktop-client && cargo test  # 29 tests
+cd web-ui && pnpm test           # 99 tests
 
 # 运行单个测试文件（Rust）
 cd relay-server && cargo test test_config_default_values

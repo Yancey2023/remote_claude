@@ -1,12 +1,21 @@
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
-import { DeviceListPage } from './pages/DeviceListPage';
-import { SessionListPage } from './pages/SessionListPage';
-import { TerminalPage } from './pages/TerminalPage';
-import { AdminPage } from './pages/AdminPage';
 import { useAuthStore } from './stores/authStore';
+
+const DeviceListPage = lazy(() =>
+  import('./pages/DeviceListPage').then((m) => ({ default: m.DeviceListPage })),
+);
+const SessionListPage = lazy(() =>
+  import('./pages/SessionListPage').then((m) => ({ default: m.SessionListPage })),
+);
+const TerminalPage = lazy(() =>
+  import('./pages/TerminalPage').then((m) => ({ default: m.TerminalPage })),
+);
+const AdminPage = lazy(() =>
+  import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })),
+);
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);

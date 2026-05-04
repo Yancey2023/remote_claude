@@ -1,4 +1,4 @@
-use axum::{routing::{post, delete, get}, Json, Router};
+use axum::{routing::{post, get}, Json, Router};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -52,7 +52,6 @@ async fn create_session(
     let session = crate::ws::session::SessionActor::new(
         device.id.clone(),
         user.user_id.clone(),
-        req.cwd.clone(),
     );
     let session_id = session.id.clone();
 

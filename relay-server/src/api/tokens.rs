@@ -1,4 +1,4 @@
-use axum::{routing::{delete, get, post}, extract::Path, Json, Router};
+use axum::{routing::{delete, post}, extract::Path, Json, Router};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;

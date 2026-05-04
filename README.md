@@ -160,7 +160,7 @@ GitHub Actions 自动构建 relay-server 和 desktop-client 的 Linux/Windows �
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 82 个测试
+cd relay-server && cargo test    # 72 个测试
 cd desktop-client && cargo test  # 29 个测试
 cd web-ui && pnpm test           # 99 个测试
 ```

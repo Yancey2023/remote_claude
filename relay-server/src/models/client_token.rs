@@ -7,12 +7,3 @@ pub struct ClientToken {
     pub user_id: String,
 }
 
-impl ClientToken {
-    pub fn new(token: String, user_id: String) -> Self {
-        Self {
-            token,
-            created_at: chrono::Utc::now().timestamp(),
-            user_id,
-        }
-    }
-}

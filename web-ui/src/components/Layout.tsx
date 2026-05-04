@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useDeviceStore } from '../stores/deviceStore';
@@ -576,7 +576,7 @@ export function Layout() {
         )}
         <ConnectionOverlay />
         <div style={styles.content}>
-          <Outlet />
+          <Suspense fallback={null}><Outlet /></Suspense>
         </div>
       </div>
       <ToastContainer />
