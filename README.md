@@ -80,8 +80,27 @@ docker compose up -d
 ├── web-ui/             React 前端 (Vite + TypeScript + xterm.js)
 ├── shared-types/       共享 TypeScript 类型定义
 ├── docker-compose.yml  后端 Docker Compose 编排
+├── .github/workflows/   GitHub Actions CI/CD (ci/docker/release/deploy)
 └── pnpm-workspace.yaml
 ```
+
+## CI/CD
+
+| 工作流 | 触发 | 操作 |
+|--------|------|------|
+| `ci.yml` | push main / PR | 构建 + 测试全部三个项目 |
+| `docker.yml` | push main / v* tag | 构建并推送 relay-server Docker 镜像到 GHCR |
+| `release.yml` | push v* tag | 构建并发布二进制产物到 GitHub Releases |
+| `deploy.yml` | push main | 构建 web-ui 并部署到远程服务器 |
+
+发布新版本：
+
+```bash
+git tag v0.1.0
+git push --tags
+```
+
+GitHub Actions 自动构建 relay-server 和 desktop-client 的 Linux/Windows 二进制文件、web-ui 静态资源包，并创建 Release 页面。
 
 ## 配置
 
@@ -122,9 +141,9 @@ docker compose up -d
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 75 个测试
-cd desktop-client && cargo test  # 23 个测试
-cd web-ui && pnpm test           # 64 个测试
+cd relay-server && cargo test    # 82 个测试
+cd desktop-client && cargo test  # 25 个测试
+cd web-ui && pnpm test           # 84 个测试
 ```
 
 ## 技术栈
