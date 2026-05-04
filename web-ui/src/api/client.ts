@@ -38,45 +38,45 @@ class ApiClient {
 
   // Auth
   async login(data: LoginRequest) {
-    const res = await this.request<LoginResponse>('POST', '/api/auth/login', data);
+    const res = await this.request<LoginResponse>('POST', '/auth/login', data);
     return res;
   }
 
   async logout() {
-    await this.request('POST', '/api/auth/logout');
+    await this.request('POST', '/auth/logout');
   }
 
   async verify() {
     return this.request<{ valid: boolean; user_id: string; username: string; role: string; token: string }>(
       'POST',
-      '/api/auth/verify',
+      '/auth/verify',
     );
   }
 
   // Devices
   async listDevices() {
-    return this.request<DeviceResponse[]>('GET', '/api/devices');
+    return this.request<DeviceResponse[]>('GET', '/devices');
   }
 
   async deleteDevice(deviceId: string) {
-    return this.request('DELETE', `/api/devices/${deviceId}`);
+    return this.request('DELETE', `/devices/${deviceId}`);
   }
 
   // Sessions
   async createSession(deviceId: string, cwd?: string) {
-    return this.request<import('../types/protocol').SessionResponse>('POST', '/api/sessions', { device_id: deviceId, cwd: cwd ?? null });
+    return this.request<import('../types/protocol').SessionResponse>('POST', '/sessions', { device_id: deviceId, cwd: cwd ?? null });
   }
 
   async listSessions() {
-    return this.request<import('../types/protocol').SessionInfo[]>('GET', '/api/sessions');
+    return this.request<import('../types/protocol').SessionInfo[]>('GET', '/sessions');
   }
 
   async getSession(sessionId: string) {
-    return this.request<import('../types/protocol').SessionInfo>('GET', `/api/sessions/${sessionId}`);
+    return this.request<import('../types/protocol').SessionInfo>('GET', `/sessions/${sessionId}`);
   }
 
   async closeSession(sessionId: string) {
-    return this.request('DELETE', `/api/sessions/${sessionId}`);
+    return this.request('DELETE', `/sessions/${sessionId}`);
   }
 }
 

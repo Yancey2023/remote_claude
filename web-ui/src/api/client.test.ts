@@ -19,7 +19,7 @@ function mockResponse(status: number, body: unknown) {
 
 describe('apiClient', () => {
   describe('login', () => {
-    it('sends POST to /api/auth/login with credentials', async () => {
+    it('sends POST to /auth/login with credentials', async () => {
       mockFetch.mockResolvedValueOnce(
         mockResponse(200, { token: 'jwt-1', user_id: 'u1', username: 'alice', role: 'User' }),
       );
@@ -29,7 +29,7 @@ describe('apiClient', () => {
       expect(res.token).toBe('jwt-1');
       expect(res.username).toBe('alice');
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/auth/login',
+        '/auth/login',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ username: 'alice', password: 'pass' }),
@@ -76,7 +76,7 @@ describe('apiClient', () => {
       const res = await apiClient.createSession('d1');
       expect(res.session_id).toBe('s1');
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/sessions',
+        '/sessions',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ device_id: 'd1', cwd: null }),
@@ -89,7 +89,7 @@ describe('apiClient', () => {
 
       await apiClient.closeSession('s1');
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/sessions/s1',
+        '/sessions/s1',
         expect.objectContaining({ method: 'DELETE' }),
       );
     });
@@ -108,12 +108,12 @@ describe('apiClient', () => {
   });
 
   describe('logout', () => {
-    it('sends POST to /api/auth/logout', async () => {
+    it('sends POST to /auth/logout', async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(200, { message: 'logged out' }));
 
       await apiClient.logout();
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/auth/logout',
+        '/auth/logout',
         expect.objectContaining({ method: 'POST' }),
       );
     });
