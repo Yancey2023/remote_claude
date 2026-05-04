@@ -17,6 +17,15 @@
 - **desktop-client** — Rust 桌面客户端，连接到 relay-server 并在本地执行 Claude CLI 命令
 - **web-ui** — React 前端，通过浏览器远程创建会话、下发命令、查看实时输出
 
+## 界面截图
+
+<table>
+  <tr>
+    <td width="70%"><img src="screenshots/web-ui-desktop.png" alt="Web UI 电脑界面" width="100%"></td>
+    <td width="30%"><img src="screenshots/web-ui-mobile.png" alt="Web UI 手机界面" width="57%"></td>
+  </tr>
+</table>
+
 ## 快速开始
 
 ### 1. 启动中转服务器
