@@ -1,0 +1,46 @@
+# git-cliff ~ default configuration
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+header = """
+# Changelog\n\n
+"""
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+  ### {{ group | upper_first }}
+  {% for commit in commits %}
+    - {{ commit.message | upper_first }}{% if commit.breaking %} [breaking]{% endif %}
+  {% endfor %}
+{% endfor %}
+"""
+trim = true
+postprocess = """
+  sed -E 's/\r//' | sed -E '/^[[:space:]]*$/d'
+"""
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+
+# Regex to parse commit messages with optional scope
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^refactor|^rename", group = "Refactoring" },
+  { message = "^test", group = "Testing" },
+  { message = "^ci", group = "CI/CD" },
+  { message = ".*", group = "Miscellaneous" },
+]
+
+# Filter out commits that match these (e.g., chore(release))
+filter_commits = []
+
+# Sort groups within the changelog
+tag_pattern = "v[0-9]*"
+skip_tags = "v[0-9]+-[a-z]+"
+ignore_tags = ""
+topo_order = false
+sort_commits = "newest"
