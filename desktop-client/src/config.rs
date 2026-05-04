@@ -200,16 +200,26 @@ mod tests {
 
     #[test]
     fn test_config_path_default() {
+        let saved = env::var("CONFIG_PATH").ok();
+        unsafe { env::remove_var("CONFIG_PATH") };
         let path = Config::config_path();
-        assert!(path.ends_with("desktop-client.toml"));
+        assert_eq!(path.file_name().unwrap(), "desktop-client.toml");
+        if let Some(v) = saved {
+            unsafe { env::set_var("CONFIG_PATH", v) };
+        }
     }
 
     #[test]
     fn test_config_path_override() {
+        let saved = env::var("CONFIG_PATH").ok();
         unsafe { env::set_var("CONFIG_PATH", "/tmp/test-client.toml") };
         let path = Config::config_path();
         assert_eq!(path, PathBuf::from("/tmp/test-client.toml"));
-        unsafe { env::remove_var("CONFIG_PATH") };
+        // Restore original value
+        match saved {
+            Some(v) => unsafe { env::set_var("CONFIG_PATH", v) },
+            None => unsafe { env::remove_var("CONFIG_PATH") },
+        }
     }
 
     #[test]

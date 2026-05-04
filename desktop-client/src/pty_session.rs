@@ -1,6 +1,7 @@
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
+#[cfg(target_os = "windows")]
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use tokio::sync::mpsc::UnboundedSender;
