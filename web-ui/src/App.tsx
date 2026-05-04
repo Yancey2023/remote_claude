@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DeviceListPage } from './pages/DeviceListPage';
 import { SessionListPage } from './pages/SessionListPage';
 import { TerminalPage } from './pages/TerminalPage';
+import { AdminPage } from './pages/AdminPage';
 import { useAuthStore } from './stores/authStore';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -44,16 +45,16 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
-        path="/devices"
         element={
           <ProtectedRoute>
             <Layout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<DeviceListPage />} />
-        <Route path=":id" element={<SessionListPage />} />
-        <Route path=":id/sessions/:sessionId" element={<TerminalPage />} />
+        <Route path="/devices" element={<DeviceListPage />} />
+        <Route path="/devices/:id" element={<SessionListPage />} />
+        <Route path="/devices/:id/sessions/:sessionId" element={<TerminalPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/devices" replace />} />
     </Routes>

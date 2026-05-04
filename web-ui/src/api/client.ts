@@ -4,6 +4,7 @@ import type {
   DeviceResponse,
   SessionResponse,
   TokenResponse,
+  UserResponse,
   ApiError,
 } from '../types/protocol';
 import { getConfig } from '../config';
@@ -78,6 +79,23 @@ class ApiClient {
 
   async closeSession(sessionId: string) {
     return this.request('DELETE', `/sessions/${sessionId}`);
+  }
+
+  // Admin - User Management
+  async listUsers() {
+    return this.request<UserResponse[]>('GET', '/admin/users');
+  }
+
+  async createUser(username: string, password: string) {
+    return this.request<UserResponse>('POST', '/admin/users', { username, password });
+  }
+
+  async deleteUser(id: string) {
+    return this.request('DELETE', `/admin/users/${id}`);
+  }
+
+  async toggleUserStatus(id: string, enabled: boolean) {
+    return this.request('PATCH', `/admin/users/${id}/status`, { enabled });
   }
 
   // Client Tokens
