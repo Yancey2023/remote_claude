@@ -20,7 +20,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   error: null,
 
   fetchSessions: async () => {
-    set({ loading: true, error: null });
+    set((s) => ({ loading: s.sessions.length === 0, error: null }));
     try {
       const sessions = await apiClient.listSessions();
       set({ sessions, loading: false });

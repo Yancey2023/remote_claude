@@ -18,7 +18,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   error: null,
 
   fetchDevices: async () => {
-    set({ loading: true, error: null });
+    set((s) => ({ loading: s.devices.length === 0, error: null }));
     try {
       const devices = await apiClient.listDevices();
       set({ devices, loading: false });
