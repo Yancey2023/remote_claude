@@ -11,7 +11,12 @@ RUN mkdir src && echo "fn main() {}" > src/main.rs && \
 
 # Now copy real source and rebuild (deps cached from previous layer)
 COPY src ./src
-RUN cargo build --release && \
+# Force Cargo to rebuild from real source. Docker COPY preserves git mtimes,
+# and BuildKit GHA cache restores target/ with the old fingerprint. Without
+# touching, Cargo may see the unchanged mtime and skip recompilation, leaving
+# the dummy fn main() {} binary in place.
+RUN touch src/main.rs && \
+    cargo build --release && \
     cp target/release/relay-server /relay-server
 
 FROM debian:bookworm-slim
