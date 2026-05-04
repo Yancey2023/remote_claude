@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiClient } from '../api/client';
+import { apiClient, ApiClientError } from '../api/client';
 import { useI18n, translate } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { UserResponse } from '../types/protocol';
@@ -26,8 +26,8 @@ export function AdminPage() {
     try {
       const list = await apiClient.listUsers();
       setUsers(list);
-    } catch {
-      setError(translate('fetchUsersFailed'));
+    } catch (e) {
+      setError(e instanceof ApiClientError ? e.message : translate('fetchUsersFailed'));
     } finally {
       setLoading(false);
     }
@@ -49,8 +49,8 @@ export function AdminPage() {
       setNewPassword('');
       setShowForm(false);
       await fetchUsers();
-    } catch {
-      setCreateError(translate('createUserFailed'));
+    } catch (e) {
+      setCreateError(e instanceof ApiClientError ? e.message : translate('createUserFailed'));
     } finally {
       setCreating(false);
     }
@@ -61,8 +61,8 @@ export function AdminPage() {
     try {
       await apiClient.deleteUser(id);
       await fetchUsers();
-    } catch {
-      setError(translate('deleteUserFailed'));
+    } catch (e) {
+      setError(e instanceof ApiClientError ? e.message : translate('deleteUserFailed'));
     }
   };
 
@@ -70,8 +70,8 @@ export function AdminPage() {
     try {
       await apiClient.toggleUserStatus(id, !current);
       await fetchUsers();
-    } catch {
-      setError(translate('toggleUserStatusFailed'));
+    } catch (e) {
+      setError(e instanceof ApiClientError ? e.message : translate('toggleUserStatusFailed'));
     }
   };
 
@@ -112,7 +112,7 @@ export function AdminPage() {
     },
     formRow: {
       display: 'flex',
-      flexDirection: isMobile ? 'column' : 'row',
+      flexDirection: 'column',
       gap: '0.5rem',
       marginBottom: '0.5rem',
     },

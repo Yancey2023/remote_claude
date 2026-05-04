@@ -16,14 +16,18 @@ let mockUsers: Array<{
   created_at: number;
 }> = [];
 
-vi.mock('../api/client', () => ({
-  apiClient: {
-    listUsers: (...args: unknown[]) => mockListUsers(...args),
-    createUser: (...args: unknown[]) => mockCreateUser(...args),
-    deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
-    toggleUserStatus: (...args: unknown[]) => mockToggleUserStatus(...args),
-  },
-}));
+vi.mock('../api/client', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../api/client')>();
+  return {
+    ...mod,
+    apiClient: {
+      listUsers: (...args: unknown[]) => mockListUsers(...args),
+      createUser: (...args: unknown[]) => mockCreateUser(...args),
+      deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
+      toggleUserStatus: (...args: unknown[]) => mockToggleUserStatus(...args),
+    },
+  };
+});
 
 vi.mock('../hooks/useIsMobile', () => ({
   useIsMobile: () => false,
