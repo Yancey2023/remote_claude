@@ -14,7 +14,7 @@ RUN corepack enable && \
 
 FROM nginx:alpine
 
-COPY --from=builder /app/web-ui/dist /usr/share/nginx/html
+COPY --from=builder /app/web-ui/dist /usr/share/nginx/html/remote_claude
 COPY web-ui/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80 443
