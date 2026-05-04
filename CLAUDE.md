@@ -199,6 +199,8 @@ cargo run
 | `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
 | `claude_binary` | `CLAUDE_BINARY` | `claude` | Claude CLI 可执行文件路径/名称 |
 
+> Windows 兼容说明：`desktop-client` 会在启动前自动清洗 `claude_binary` / `cwd`（去除 `\0` 和首尾空白）。当 `claude_binary` 是 `.cmd/.bat` 或无扩展名命令时，会通过 `cmd.exe /D /C` 包装启动，避免 `CreateProcessW ... os error 193`。
+
 ### 3. 网页前端
 
 ```bash
