@@ -1,0 +1,156 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  relay-server:
+    name: relay-server (${{ matrix.target }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: relay-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            relay-server/target
+          key: ${{ runner.os }}-cargo-relay-${{ hashFiles('relay-server/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/relay-server${{ matrix.ext }} relay-server${{ matrix.ext }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: relay-server-${{ matrix.target }}
+          path: relay-server/relay-server${{ matrix.ext }}
+
+  desktop-client:
+    name: desktop-client (${{ matrix.target }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop-client/target
+          key: ${{ runner.os }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/desktop-client${{ matrix.ext }} desktop-client${{ matrix.ext }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-client-${{ matrix.target }}
+          path: desktop-client/desktop-client${{ matrix.ext }}
+
+  web-ui:
+    name: web-ui
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm --filter @remote-claude/web-ui build
+        env:
+          VITE_BASE_URL: /remote_claude
+
+      - name: Package
+        shell: bash
+        run: |
+          cd dist
+          zip -r ../web-ui-dist.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-ui-dist
+          path: web-ui/web-ui-dist.zip
+
+  release:
+    name: Create Release
+    needs: [relay-server, desktop-client, web-ui]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Display structure
+        shell: bash
+        run: ls -R
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            relay-server-x86_64-unknown-linux-gnu/*
+            relay-server-x86_64-pc-windows-msvc/*
+            desktop-client-x86_64-unknown-linux-gnu/*
+            desktop-client-x86_64-pc-windows-msvc/*
+            web-ui-dist/*
+          generate_release_notes: true
