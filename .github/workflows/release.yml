@@ -15,9 +15,11 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            short_target: linux-x64
             ext: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            short_target: windows-x64
             ext: ".exe"
     runs-on: ${{ matrix.os }}
     defaults:
@@ -44,12 +46,13 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          cp target/${{ matrix.target }}/release/relay-server${{ matrix.ext }} relay-server${{ matrix.ext }}
+          artifact="remote-claude-relay-server-${{ github.ref_name }}-${{ matrix.short_target }}${{ matrix.ext }}"
+          cp "target/${{ matrix.target }}/release/relay-server${{ matrix.ext }}" "$artifact"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: relay-server-${{ matrix.target }}
-          path: relay-server/relay-server${{ matrix.ext }}
+          name: relay-server-${{ matrix.short_target }}
+          path: relay-server/remote-claude-relay-server-*
 
   desktop-client:
     name: desktop-client (${{ matrix.target }})
@@ -58,9 +61,11 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            short_target: linux-x64
             ext: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            short_target: windows-x64
             ext: ".exe"
     runs-on: ${{ matrix.os }}
     defaults:
@@ -87,12 +92,13 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          cp target/${{ matrix.target }}/release/desktop-client${{ matrix.ext }} desktop-client${{ matrix.ext }}
+          artifact="remote-claude-desktop-client-${{ github.ref_name }}-${{ matrix.short_target }}${{ matrix.ext }}"
+          cp "target/${{ matrix.target }}/release/desktop-client${{ matrix.ext }}" "$artifact"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: desktop-client-${{ matrix.target }}
-          path: desktop-client/desktop-client${{ matrix.ext }}
+          name: desktop-client-${{ matrix.short_target }}
+          path: desktop-client/remote-claude-desktop-client-*
 
   web-ui:
     name: web-ui
@@ -127,12 +133,12 @@ jobs:
         shell: bash
         run: |
           cd dist
-          zip -r ../web-ui-dist.zip .
+          zip -r "../remote-claude-web-ui-${{ github.ref_name }}.zip" .
 
       - uses: actions/upload-artifact@v4
         with:
           name: web-ui-dist
-          path: web-ui/web-ui-dist.zip
+          path: web-ui/remote-claude-web-ui-*
 
   release:
     name: Create Release
@@ -148,9 +154,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            relay-server-x86_64-unknown-linux-gnu/*
-            relay-server-x86_64-pc-windows-msvc/*
-            desktop-client-x86_64-unknown-linux-gnu/*
-            desktop-client-x86_64-pc-windows-msvc/*
+            relay-server-linux-x64/*
+            relay-server-windows-x64/*
+            desktop-client-linux-x64/*
+            desktop-client-windows-x64/*
             web-ui-dist/*
           generate_release_notes: true
