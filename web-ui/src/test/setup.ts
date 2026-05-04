@@ -3,6 +3,20 @@ import { afterEach, vi } from 'vitest';
 import { loadConfig } from '../config';
 
 // ── Global mocks ────────────────────────────────────────────
+// jsdom's localStorage requires a valid origin; on CI it may come
+// through as a non-function value.  Provide a proper Storage shim.
+class MockStorage {
+  private _data = new Map<string, string>();
+  getItem(k: string) { return this._data.get(k) ?? null; }
+  setItem(k: string, v: string) { this._data.set(k, v); }
+  removeItem(k: string) { this._data.delete(k); }
+  clear() { this._data.clear(); }
+  get length() { return this._data.size; }
+  key(n: number) { return [...this._data.keys()][n] ?? null; }
+}
+const mockStorage = new MockStorage();
+Object.defineProperty(globalThis, 'localStorage', { value: mockStorage, writable: false });
+
 // jsdom doesn't implement WebSocket; provide a stub matching the
 // browser WebSocket API surface so code importing ws.ts doesn't explode.
 class MockWebSocket {
