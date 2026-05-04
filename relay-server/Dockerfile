@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /relay-server /app/relay-server
-RUN mkdir -p /app/config
+RUN mkdir -p /app/config /app/data
 
 EXPOSE 8080
 
