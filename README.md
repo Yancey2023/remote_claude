@@ -122,7 +122,7 @@ docker compose up -d
 ## 运行测试
 
 ```bash
-cd relay-server && cargo test    # 67 个测试
+cd relay-server && cargo test    # 75 个测试
 cd desktop-client && cargo test  # 23 个测试
 cd web-ui && pnpm test           # 64 个测试
 ```

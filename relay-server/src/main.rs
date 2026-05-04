@@ -98,6 +98,18 @@ async fn main() {
                 error!("Failed to create admin token: {}", e);
             }
         }
+    } else if !store.has_registration_tokens().await {
+        // No registration tokens exist (e.g. data.db was deleted or all tokens consumed).
+        // Auto-generate one so the user can still connect a desktop client.
+        let reg_token = uuid::Uuid::new_v4().to_string();
+        let _ = store.create_registration_token(&reg_token).await;
+        info!("No registration tokens found — auto-generated one");
+        println!();
+        println!("================================================================");
+        println!("  Registration token (use this as REGISTER_TOKEN for desktop client):");
+        println!("  {}", reg_token);
+        println!("================================================================");
+        println!();
     }
 
     let login_rate_limiter = api::rate_limit::LoginRateLimiter::new(10, 300); // 10 attempts per 5 min per IP
@@ -206,13 +218,29 @@ mod tests {
     }
 
     /// Verify that a random string is NOT accepted as a registration token
-    /// (the store has no tokens at all, emulating pre-first-run state).
+    /// when no tokens have been stored.
     #[tokio::test]
-    async fn test_no_auto_token_without_first_run() {
+    async fn test_random_token_not_valid_when_empty() {
         let store = SqliteStore::new("sqlite::memory:").await.unwrap();
 
-        // Ensure a random UUID token is NOT valid (nothing stored yet)
         let fake_token = uuid::Uuid::new_v4().to_string();
         assert!(!store.validate_registration_token(&fake_token).await);
+    }
+
+    /// Simulate the fallback logic when no tokens exist on non-first-run:
+    /// generate a token, store it, and verify it becomes valid.
+    #[tokio::test]
+    async fn test_fallback_generates_token_when_none_exist() {
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+
+        // Precondition: no tokens
+        assert!(!store.has_registration_tokens().await);
+
+        // Simulate the fallback: generate + persist a token
+        let reg_token = uuid::Uuid::new_v4().to_string();
+        store.create_registration_token(&reg_token).await.unwrap();
+
+        assert!(store.has_registration_tokens().await);
+        assert!(store.validate_registration_token(&reg_token).await);
     }
 }

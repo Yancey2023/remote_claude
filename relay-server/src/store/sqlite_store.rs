@@ -348,6 +348,19 @@ impl SqliteStore {
         result.unwrap_or(false)
     }
 
+    pub async fn has_registration_tokens(&self) -> bool {
+        let result: Option<bool> = sqlx::query(
+            "SELECT COUNT(*) > 0 FROM registration_tokens WHERE is_used = 0",
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten()
+        .map(|row| row.get::<i32, _>(0) != 0);
+
+        result.unwrap_or(false)
+    }
+
     pub async fn mark_token_used(&self, token: &str, device_id: &str) {
         let _ = sqlx::query(
             "UPDATE registration_tokens SET is_used = 1, used_by_device_id = ? WHERE token = ?",
@@ -427,6 +440,55 @@ mod tests {
 
         assert!(parent.exists());
 
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn test_new_creates_db_file_when_missing() {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("relay-server-store-db-{nanos}"));
+        let db_path = root.join("data.db");
+
+        assert!(!db_path.exists(), "database file should not exist yet");
+
+        // This should create the file and all parent directories
+        let store = SqliteStore::new(&format!("sqlite:{}", db_path.display())).await.unwrap();
+
+        assert!(db_path.exists(), "database file should have been auto-created");
+
+        // Verify the store is functional
+        assert!(!store.has_registration_tokens().await);
+        store.create_registration_token("test-token").await.unwrap();
+        assert!(store.has_registration_tokens().await);
+
+        // Clean up
+        store.pool.close().await;
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn test_new_creates_db_with_relative_path() {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("relay-server-rel-{nanos}"));
+        let _ = std::fs::create_dir_all(&root);
+        let old_dir = std::env::current_dir().unwrap();
+
+        // Switch to temp dir so relative "data.db" resolves there
+        std::env::set_current_dir(&root).unwrap();
+
+        // Use the same relative format as the default config: "sqlite:data.db"
+        let store = SqliteStore::new("sqlite:data.db").await.unwrap();
+        let db_file = root.join("data.db");
+        assert!(db_file.exists(), "relative sqlite:data.db should create the file");
+
+        store.pool.close().await;
+        std::env::set_current_dir(&old_dir).unwrap();
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -580,5 +642,26 @@ mod tests {
         assert!(store.validate_registration_token("token-a").await);
         assert!(!store.validate_registration_token("token-b").await);
         assert!(store.validate_registration_token("token-c").await);
+    }
+
+    #[tokio::test]
+    async fn test_has_tokens_empty_on_new_store() {
+        let store = test_store().await;
+        assert!(!store.has_registration_tokens().await);
+    }
+
+    #[tokio::test]
+    async fn test_has_tokens_after_creating_one() {
+        let store = test_store().await;
+        store.create_registration_token("some-token").await.unwrap();
+        assert!(store.has_registration_tokens().await);
+    }
+
+    #[tokio::test]
+    async fn test_has_tokens_false_when_all_used() {
+        let store = test_store().await;
+        store.create_registration_token("single-use").await.unwrap();
+        store.mark_token_used("single-use", "dev-1").await;
+        assert!(!store.has_registration_tokens().await);
     }
 }
