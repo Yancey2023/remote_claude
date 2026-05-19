@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiClient, ApiClientError } from '../api/client';
+import { apiClient } from '../api/client';
 import { translate } from '../i18n';
 
 interface User {
@@ -35,8 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         loading: false,
       });
     } catch (e) {
-      const msg = e instanceof ApiClientError ? e.message : translate('loginFailed');
-      set({ error: msg, loading: false });
+      set({ error: translate('loginFailed'), loading: false });
       throw e;
     }
   },

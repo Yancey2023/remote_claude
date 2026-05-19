@@ -66,9 +66,11 @@ export function DeviceListPage() {
 
   const handleDeleteToken = async (token: string) => {
     if (!window.confirm(t('tokenDeleteConfirm'))) return;
+    setTokenError(null);
     try {
       await apiClient.deleteToken(token);
-      await fetchTokens();
+      const list = await apiClient.listTokens();
+      setTokens(list);
     } catch {
       setTokenError(translate('tokenDeleteFailed'));
     }

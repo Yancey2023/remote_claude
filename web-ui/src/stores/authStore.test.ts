@@ -44,7 +44,7 @@ describe('authStore', () => {
 
     await expect(useAuthStore.getState().login('alice', 'wrong')).rejects.toThrow();
     const state = useAuthStore.getState();
-    expect(state.error).toBe('bad credentials');
+    expect(state.error).toBe('login failed');
     expect(state.loading).toBe(false);
     expect(state.token).toBeNull();
   });

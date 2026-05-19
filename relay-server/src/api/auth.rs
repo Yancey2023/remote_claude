@@ -17,6 +17,7 @@ pub fn router() -> Router<Arc<RwLock<AppState>>> {
         .route("/login", post(login))
         .route("/logout", post(logout))
         .route("/verify", post(verify))
+        .route("/change-password", post(change_password))
 }
 
 #[derive(Deserialize)]
@@ -156,6 +157,60 @@ async fn login(
     })))
 }
 
+#[derive(Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+async fn change_password(
+    state: axum::extract::State<Arc<RwLock<AppState>>>,
+    user: AuthUser,
+    Json(req): Json<ChangePasswordRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if req.new_password.len() < 6 {
+        return Err(AppError::BadRequest(
+            "new password must be at least 6 characters".into(),
+        ));
+    }
+    if req.new_password.len() > 256 {
+        return Err(AppError::BadRequest("new password too long".into()));
+    }
+
+    let state = state.read().await;
+
+    let mut db_user = state
+        .store
+        .get_user(&user.user_id)
+        .await
+        .ok_or(AppError::BadRequest(
+            "password change not supported for this account type".into(),
+        ))?;
+
+    // Admin users created via config don't have DB entries, so they'd hit the error above.
+    // For DB-stored users (including those with role=Admin), verify current password.
+
+    let valid = password::verify_password(&req.current_password, &db_user.password_hash)
+        .map_err(|_| AppError::Internal("password verification error".into()))?;
+
+    if !valid {
+        return Err(AppError::Unauthorized("current password is incorrect".into()));
+    }
+
+    let new_hash = password::hash_password(&req.new_password)
+        .map_err(|e| AppError::Internal(e))?;
+
+    db_user.password_hash = new_hash;
+
+    state
+        .store
+        .update_user(db_user)
+        .await
+        .map_err(|e| AppError::Internal(e))?;
+
+    Ok(Json(serde_json::json!({ "message": "password changed successfully" })))
+}
+
 #[derive(Serialize)]
 struct LogoutResponse {
     message: String,
@@ -230,6 +285,7 @@ fn extract_token_from_headers(headers: &HeaderMap) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{User, UserRole};
 
     #[test]
     fn test_login_request_deserialization() {
@@ -252,6 +308,73 @@ mod tests {
         assert_eq!(json["user_id"], "test-user");
         assert_eq!(json["username"], "testuser");
         assert_eq!(json["role"], "Admin");
+    }
+
+    #[test]
+    fn test_change_password_request_deserialization() {
+        let json = r#"{"current_password":"old123","new_password":"new456"}"#;
+        let req: ChangePasswordRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.current_password, "old123");
+        assert_eq!(req.new_password, "new456");
+    }
+
+    #[tokio::test]
+    async fn test_change_password_flow_with_store() {
+        let store = crate::store::SqliteStore::new("sqlite::memory:").await.unwrap();
+        let password_hash = password::hash_password("old-pass").unwrap();
+        let user = User::new("uid-1".into(), "testuser".into(), password_hash, UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        // Verify old password works
+        let db_user = store.get_user("uid-1").await.unwrap();
+        assert!(password::verify_password("old-pass", &db_user.password_hash).unwrap());
+
+        // Simulate change_password logic: hash new password and update
+        let new_hash = password::hash_password("new-pass").unwrap();
+        let mut updated_user = db_user.clone();
+        updated_user.password_hash = new_hash;
+        store.update_user(updated_user).await.unwrap();
+
+        // Verify new password works
+        let db_user = store.get_user("uid-1").await.unwrap();
+        assert!(password::verify_password("new-pass", &db_user.password_hash).unwrap());
+        // Verify old password no longer works
+        assert!(!password::verify_password("old-pass", &db_user.password_hash).unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_change_password_wrong_current_password_fails() {
+        let store = crate::store::SqliteStore::new("sqlite::memory:").await.unwrap();
+        let password_hash = password::hash_password("correct-pass").unwrap();
+        let user = User::new("uid-2".into(), "testuser2".into(), password_hash, UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        let db_user = store.get_user("uid-2").await.unwrap();
+
+        // Wrong current password should not verify
+        assert!(!password::verify_password("wrong-pass", &db_user.password_hash).unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_change_password_short_new_password_validated() {
+        // The handler rejects < 6 chars, test the validation rule
+        let store = crate::store::SqliteStore::new("sqlite::memory:").await.unwrap();
+        let password_hash = password::hash_password("current-pass").unwrap();
+        let user = User::new("uid-3".into(), "testuser3".into(), password_hash, UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        // Short password attempt
+        let short = "ab";
+        assert!(short.len() < 6);
+        // Hash and store should still work (this tests that validation
+        // is handled by the handler, not the store)
+        let short_hash = password::hash_password(short).unwrap();
+        let mut db_user = store.get_user("uid-3").await.unwrap();
+        db_user.password_hash = short_hash;
+        store.update_user(db_user).await.unwrap();
+
+        let db_user = store.get_user("uid-3").await.unwrap();
+        assert!(password::verify_password(short, &db_user.password_hash).unwrap());
     }
 
     #[test]

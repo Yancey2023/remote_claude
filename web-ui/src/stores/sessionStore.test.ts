@@ -38,7 +38,7 @@ describe('sessionStore', () => {
 
     await useSessionStore.getState().fetchSessions();
 
-    expect(useSessionStore.getState().error).toBe('fetch failed');
+    expect(useSessionStore.getState().error).toBe('failed to fetch sessions');
     expect(useSessionStore.getState().loading).toBe(false);
   });
 
@@ -81,7 +81,7 @@ describe('sessionStore', () => {
     const created = await useSessionStore.getState().createSession('d1');
 
     expect(created).toBeNull();
-    expect(useSessionStore.getState().error).toBe('create failed');
+    expect(useSessionStore.getState().error).toBe('failed to create session');
   });
 
   it('deletes session from store', async () => {

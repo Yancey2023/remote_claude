@@ -39,7 +39,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
         }}>
           <h1 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>{translate('errorBoundaryTitle')}</h1>
           <p style={{ marginBottom: '2rem', color: '#a0a0a0' }}>
-            {this.state.error?.message || translate('unexpectedError')}
+            {translate('unexpectedError')}
           </p>
           <button
             onClick={() => window.location.reload()}

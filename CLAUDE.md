@@ -93,9 +93,9 @@ describe('模块名', () => {
 
 | 项目 | 框架 | 测试数量 | 位置 |
 |------|------|----------|------|
-| relay-server | `cargo test` / `tokio::test` | 72 | `#[cfg(test)]` 内联在源文件中 |
+| relay-server | `cargo test` / `tokio::test` | 78 | `#[cfg(test)]` 内联在源文件中 |
 | desktop-client | `cargo test` / `tokio::test` | 29 | `#[cfg(test)]` 内联在源文件中 |
-| web-ui | `vitest` / `pnpm test` | 99 | `*.test.ts` 和测试文件同目录 |
+| web-ui | `vitest` / `pnpm test` | 102 | `*.test.ts` 和测试文件同目录 |
 
 ## 配置系统
 
@@ -342,13 +342,22 @@ docker compose down
 | POST | `/api/auth/login` | 无 | 登录，返回 JWT |
 | POST | `/api/auth/logout` | JWT | 登出 |
 | POST | `/api/auth/verify` | JWT | 验证 token 有效性 |
+| POST | `/api/auth/change-password` | JWT | 修改密码（需当前密码验证） |
 | GET | `/api/devices` | JWT | 设备列表 |
+| DELETE | `/api/devices/:id` | JWT | 删除自己的设备 |
 | POST | `/api/sessions` | JWT | 创建设备控制会话 |
+| GET | `/api/sessions` | JWT | 会话列表 |
+| GET | `/api/sessions/:id` | JWT | 获取会话详情 |
 | DELETE | `/api/sessions/:id` | JWT | 关闭会话 |
 | POST | `/api/admin/users` | Admin | 创建用户 |
 | GET | `/api/admin/users` | Admin | 用户列表 |
 | DELETE | `/api/admin/users/:id` | Admin | 删除用户 |
 | PATCH | `/api/admin/users/:id/status` | Admin | 启用/禁用用户 |
+| POST | `/api/admin/users/:id/password` | Admin | 重置用户密码 |
+| GET | `/api/admin/devices` | Admin | 所有设备列表 |
+| DELETE | `/api/admin/devices/:id` | Admin | 删除指定设备 |
+| GET | `/api/admin/sessions` | Admin | 所有会话列表 |
+| GET | `/api/admin/sessions/:id` | Admin | 会话详情（含终端历史） |
 | POST | `/api/admin/tokens` | Admin | 生成客户端令牌 |
 
 ### WebSocket 协议
@@ -405,9 +414,9 @@ GitHub Actions 自动构建和发布：
 
 ```bash
 # 运行全部
-cd relay-server && cargo test    # 72 tests
+cd relay-server && cargo test    # 78 tests
 cd desktop-client && cargo test  # 29 tests
-cd web-ui && pnpm test           # 99 tests
+cd web-ui && pnpm test           # 102 tests
 
 # 运行单个测试文件（Rust）
 cd relay-server && cargo test test_config_default_values

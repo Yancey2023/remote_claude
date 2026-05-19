@@ -105,6 +105,58 @@ const translations = {
     delete: 'Delete',
     usernameRequired: 'Username is required',
     passwordMinLength: 'Password must be at least 6 characters',
+
+    changePassword: 'Change Password',
+    currentPassword: 'Current Password',
+    newPassword: 'New Password',
+    passwordChanged: 'Password changed successfully',
+    changePasswordFailed: 'Failed to change password',
+    passwordMismatch: 'Passwords do not match',
+    confirmPassword: 'Confirm New Password',
+    passwordTooLong: 'Password must be at most 256 characters',
+    currentPasswordIncorrect: 'Current password is incorrect',
+    passwordChangeNotSupported: 'Password change not supported for this account type',
+
+    // Admin panel tabs
+    adminUsers: 'Users',
+    adminDevices: 'Devices',
+    adminSessions: 'Sessions',
+
+    // Admin user actions
+    resetPassword: 'Reset Password',
+    resetPasswordFor: 'Reset password for "{username}"',
+    newPasswordLabel: 'New Password',
+    resetPasswordSuccess: 'Password reset successfully',
+    resetPasswordFailed: 'Failed to reset password',
+
+    // Admin device management
+    allDevices: 'All Devices',
+    deviceId: 'Device ID',
+    version: 'Version',
+    lastSeen: 'Last Seen',
+    registeredAt: 'Registered At',
+    adminDeviceDeleteConfirm: 'Delete device "{name}" ({id})?',
+    adminDeviceDeleteFailed: 'Failed to delete device',
+    fetchAllDevicesFailed: 'Failed to fetch all devices',
+
+    // Admin session management
+    allSessions: 'All Sessions',
+    sessionId: 'Session ID',
+    sessionActive: 'Active',
+    sessionClosed: 'Closed',
+    viewDetail: 'View Detail',
+    sessionDetail: 'Session Detail',
+    terminalHistory: 'Terminal History',
+    noHistory: 'No terminal history available.',
+    fetchAllSessionsFailed: 'Failed to fetch all sessions',
+    fetchSessionDetailFailed: 'Failed to fetch session detail',
+
+    // General (used across admin)
+    deviceName: 'Name',
+    userId: 'User ID',
+    cwd: 'CWD',
+    close: 'Close',
+    loading: 'Loading...',
   },
   zh: {
     appName: 'Remote Claude',
@@ -206,6 +258,58 @@ const translations = {
     delete: '删除',
     usernameRequired: '请输入用户名',
     passwordMinLength: '密码至少需要6个字符',
+
+    changePassword: '修改密码',
+    currentPassword: '当前密码',
+    newPassword: '新密码',
+    passwordChanged: '密码修改成功',
+    changePasswordFailed: '修改密码失败',
+    passwordMismatch: '两次输入的密码不一致',
+    confirmPassword: '确认新密码',
+    passwordTooLong: '密码最多256个字符',
+    currentPasswordIncorrect: '当前密码错误',
+    passwordChangeNotSupported: '该账号类型不支持修改密码',
+
+    // Admin panel tabs
+    adminUsers: '用户',
+    adminDevices: '设备',
+    adminSessions: '会话',
+
+    // Admin user actions
+    resetPassword: '重置密码',
+    resetPasswordFor: '重置“{username}”的密码',
+    newPasswordLabel: '新密码',
+    resetPasswordSuccess: '密码已重置',
+    resetPasswordFailed: '重置密码失败',
+
+    // Admin device management
+    allDevices: '所有设备',
+    deviceId: '设备 ID',
+    version: '版本',
+    lastSeen: '最后在线',
+    registeredAt: '注册时间',
+    adminDeviceDeleteConfirm: '删除设备“{name}”（{id}）？',
+    adminDeviceDeleteFailed: '删除设备失败',
+    fetchAllDevicesFailed: '获取所有设备失败',
+
+    // Admin session management
+    allSessions: '所有会话',
+    sessionId: '会话 ID',
+    sessionActive: '活跃',
+    sessionClosed: '已关闭',
+    viewDetail: '查看详情',
+    sessionDetail: '会话详情',
+    terminalHistory: '终端历史',
+    noHistory: '暂无终端历史记录。',
+    fetchAllSessionsFailed: '获取所有会话失败',
+    fetchSessionDetailFailed: '获取会话详情失败',
+
+    // General (used across admin)
+    deviceName: '设备名称',
+    userId: '用户 ID',
+    cwd: '工作目录',
+    close: '关闭',
+    loading: '加载中...',
   },
 } as const;
 

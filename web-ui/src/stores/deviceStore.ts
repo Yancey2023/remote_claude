@@ -23,7 +23,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const devices = await apiClient.listDevices();
       set({ devices, loading: false });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : translate('fetchDevicesFailed'), loading: false });
+      set({ error: translate('fetchDevicesFailed'), loading: false });
     }
   },
 
@@ -34,7 +34,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const devices = get().devices.filter((d) => d.id !== deviceId);
       set({ devices });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : translate('deleteDeviceFailed') });
+      set({ error: translate('deleteDeviceFailed') });
     }
   },
 

@@ -51,7 +51,7 @@ describe('deviceStore', () => {
 
     await useDeviceStore.getState().fetchDevices();
 
-    expect(useDeviceStore.getState().error).toBe('network error');
+    expect(useDeviceStore.getState().error).toBe('failed to fetch devices');
     expect(useDeviceStore.getState().loading).toBe(false);
   });
 

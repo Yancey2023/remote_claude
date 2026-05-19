@@ -5,6 +5,7 @@ import { useSessionStore } from '../stores/sessionStore';
 import { useDeviceStore } from '../stores/deviceStore';
 import { ToastContainer } from './Toast';
 import { ConnectionOverlay } from './ConnectionOverlay';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { useI18n } from '../i18n';
 import { getConfig } from '../config';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -335,6 +336,7 @@ export function Layout() {
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const isMobile = useIsMobile(900);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showChangePwd, setShowChangePwd] = useState(false);
   const currentDevice = devices.find((d) => d.id === deviceId);
   const sessionsForDevice = useMemo(
     () => sessions.filter((s) => s.device_id === deviceId).sort((a, b) => b.created_at - a.created_at),
@@ -541,6 +543,17 @@ export function Layout() {
               <span className="btn-label">{t('languageChinese')}</span>
             </button>
           </div>
+          {user?.user_id !== 'admin' && (
+            <button
+              onClick={() => setShowChangePwd(true)}
+              style={{
+                ...styles.logoutBtn,
+                marginTop: '0.35rem',
+              }}
+            >
+              <span className="btn-label">{t('changePassword')}</span>
+            </button>
+          )}
           <button
             onClick={handleLogout}
             style={styles.logoutBtn}
@@ -548,6 +561,7 @@ export function Layout() {
             <span className="btn-label">{t('logout')}</span>
           </button>
         </div>
+        {showChangePwd && <ChangePasswordDialog onClose={() => setShowChangePwd(false)} />}
       </div>
       <div style={styles.main}>
         {isMobile && (

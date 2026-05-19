@@ -84,7 +84,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       // Handle errors
       const unsubErr = ws.on('error', (payload) => {
         const msg = payload.message as string;
-        set({ error: msg });
+        set({ error: `${translate('error')}: ${msg}` });
       });
 
       const unsubClosed = ws.on('session_closed', (payload) => {
@@ -122,7 +122,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         error: null,
       });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : translate('connectFailed') });
+      set({ error: translate('connectFailed') });
     }
   },
 

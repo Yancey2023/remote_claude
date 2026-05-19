@@ -30,17 +30,13 @@ async fn list_devices(
 ) -> Json<Vec<DeviceResponse>> {
     let state = state.read().await;
 
-    // Admin sees all devices; regular users only see their own
-    let store_devices = if user.is_admin() {
-        state.store.list_devices(None).await
-    } else {
-        state.store.list_devices(Some(&user.user_id)).await
-    };
+    // Every user only sees their own devices
+    let store_devices = state.store.list_devices(Some(&user.user_id)).await;
 
     // Merge with online status from hub
     let online_devices = state.client_hub.list_online().await;
 
-    let mut result: Vec<DeviceResponse> = store_devices
+    let result: Vec<DeviceResponse> = store_devices
         .into_iter()
         .map(|d| {
             let online = online_devices.iter().any(|o| o.id == d.id);
@@ -56,21 +52,6 @@ async fn list_devices(
         })
         .collect();
 
-    // Also include online devices not yet in store (fresh connections)
-    for od in &online_devices {
-        if !result.iter().any(|r| r.id == od.id) {
-            result.push(DeviceResponse {
-                id: od.id.clone(),
-                name: od.name.clone(),
-                version: od.version.clone(),
-                online: true,
-                busy: false,
-                last_seen: chrono::Utc::now().timestamp(),
-                user_id: String::new(),
-            });
-        }
-    }
-
     Json(result)
 }
 
@@ -81,12 +62,10 @@ async fn delete_device(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let state = state.read().await;
 
-    // Only owner or admin can delete
-    if !user.is_admin() {
-        let device = state.store.list_devices(Some(&user.user_id)).await;
-        if !device.iter().any(|d| d.id == id) {
-            return Err(AppError::Forbidden("not your device".into()));
-        }
+    // Only owner can delete
+    let device = state.store.list_devices(Some(&user.user_id)).await;
+    if !device.iter().any(|d| d.id == id) {
+        return Err(AppError::Forbidden("not your device".into()));
     }
 
     // If device is online, kick and unregister it from the hub
@@ -99,4 +78,43 @@ async fn delete_device(
         .map_err(|e| AppError::NotFound(e))?;
 
     Ok(Json(serde_json::json!({ "message": "device deleted" })))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_device_response_serialization() {
+        let resp = DeviceResponse {
+            id: "dev-1".into(),
+            name: "my-pc".into(),
+            version: "1.0".into(),
+            online: true,
+            busy: false,
+            last_seen: 1700000000,
+            user_id: "user-42".into(),
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["id"], "dev-1");
+        assert_eq!(json["name"], "my-pc");
+        assert_eq!(json["online"], true);
+        assert_eq!(json["user_id"], "user-42");
+    }
+
+    #[test]
+    fn test_device_response_offline() {
+        let resp = DeviceResponse {
+            id: "dev-2".into(),
+            name: "offline-pc".into(),
+            version: "0.5".into(),
+            online: false,
+            busy: false,
+            last_seen: 1690000000,
+            user_id: String::new(),
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["online"], false);
+        assert_eq!(json["user_id"], "");
+    }
 }

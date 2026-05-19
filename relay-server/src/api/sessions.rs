@@ -41,12 +41,17 @@ async fn create_session(
 ) -> Result<Json<CreateSessionResponse>, AppError> {
     let state = state.read().await;
 
-    // Verify device exists and is online
+    // Verify device exists, is online, and belongs to this user
     let device = state
         .client_hub
         .get_by_device_id(&req.device_id)
         .await
         .ok_or(AppError::NotFound("device not found or offline".into()))?;
+
+    let db_devices = state.store.list_devices(Some(&user.user_id)).await;
+    if !db_devices.iter().any(|d| d.id == req.device_id) {
+        return Err(AppError::Forbidden("not your device".into()));
+    }
 
     // Create session actor
     let session = crate::ws::session::SessionActor::new(
@@ -119,7 +124,7 @@ async fn get_session(
         .await
         .ok_or(AppError::NotFound("session not found".into()))?;
 
-    if s.user_id != user.user_id && !user.is_admin() {
+    if s.user_id != user.user_id {
         return Err(AppError::Forbidden("not your session".into()));
     }
 
@@ -147,7 +152,7 @@ async fn close_session(
         .await
         .ok_or(AppError::NotFound("session not found".into()))?;
 
-    if session.user_id != user.user_id && !user.is_admin() {
+    if session.user_id != user.user_id {
         return Err(AppError::Forbidden("not your session".into()));
     }
 

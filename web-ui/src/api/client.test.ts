@@ -107,6 +107,42 @@ describe('apiClient', () => {
     });
   });
 
+  describe('changePassword', () => {
+    it('sends POST to /auth/change-password with passwords', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(200, { message: 'password changed successfully' }),
+      );
+
+      await apiClient.changePassword('old-pass', 'new-pass-123');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/auth/change-password',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            current_password: 'old-pass',
+            new_password: 'new-pass-123',
+          }),
+        }),
+      );
+    });
+
+    it('throws on wrong current password', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(401, { code: 'ERR_UNAUTHORIZED', message: 'current password is incorrect' }),
+      );
+
+      await expect(apiClient.changePassword('wrong', 'new')).rejects.toThrow(ApiClientError);
+    });
+
+    it('throws on too-short new password', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(400, { code: 'ERR_BAD_REQUEST', message: 'new password must be at least 6 characters' }),
+      );
+
+      await expect(apiClient.changePassword('old', 'ab')).rejects.toThrow(ApiClientError);
+    });
+  });
+
   describe('logout', () => {
     it('sends POST to /auth/logout', async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(200, { message: 'logged out' }));

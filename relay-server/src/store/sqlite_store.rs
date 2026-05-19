@@ -325,6 +325,18 @@ impl SqliteStore {
         .ok()?
         .map(row_to_session)
     }
+
+    pub async fn list_all_sessions(&self) -> Vec<Session> {
+        sqlx::query(
+            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions ORDER BY created_at DESC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .ok()
+        .map(|rows| rows.into_iter().map(row_to_session).collect())
+        .unwrap_or_default()
+    }
+
     // ── Client Tokens ──
 
     pub async fn create_client_token(&self, token: &str, user_id: &str) -> Result<(), String> {

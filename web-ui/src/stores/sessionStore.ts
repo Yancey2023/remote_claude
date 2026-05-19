@@ -25,7 +25,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessions = await apiClient.listSessions();
       set({ sessions, loading: false });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : translate('fetchSessionsFailed'), loading: false });
+      set({ error: translate('fetchSessionsFailed'), loading: false });
     }
   },
 
@@ -38,7 +38,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({ sessions });
       return sessions.find((s) => s.id === res.session_id) || null;
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : translate('createSessionFailed') });
+      set({ error: translate('createSessionFailed') });
       return null;
     }
   },
@@ -50,7 +50,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessions = get().sessions.filter((s) => s.id !== sessionId);
       set({ sessions });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : translate('deleteSessionFailed') });
+      set({ error: translate('deleteSessionFailed') });
     }
   },
 

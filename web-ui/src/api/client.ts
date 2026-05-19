@@ -98,6 +98,37 @@ class ApiClient {
     return this.request('PATCH', `/admin/users/${id}/status`, { enabled });
   }
 
+  // Auth - Password
+  async changePassword(currentPassword: string, newPassword: string) {
+    return this.request<{ message: string }>('POST', '/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  }
+
+  // Admin - Password Reset
+  async resetUserPassword(userId: string, newPassword: string) {
+    return this.request<{ message: string }>('POST', `/admin/users/${userId}/password`, { new_password: newPassword });
+  }
+
+  // Admin - Device Management
+  async listAllDevices() {
+    return this.request<import('../types/protocol').AdminDeviceResponse[]>('GET', '/admin/devices');
+  }
+
+  async adminDeleteDevice(id: string) {
+    return this.request('DELETE', `/admin/devices/${id}`);
+  }
+
+  // Admin - Session Management
+  async listAllSessions() {
+    return this.request<import('../types/protocol').AdminSessionResponse[]>('GET', '/admin/sessions');
+  }
+
+  async getSessionDetail(id: string) {
+    return this.request<import('../types/protocol').SessionDetailResponse>('GET', `/admin/sessions/${id}`);
+  }
+
   // Client Tokens
   async createToken() {
     return this.request<TokenResponse>('POST', '/tokens');
