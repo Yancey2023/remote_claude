@@ -16,8 +16,14 @@ export function TerminalPage() {
   const token = useAuthStore((s) => s.token);
   const devices = useDeviceStore((s) => s.devices);
   const device = devices.find((d) => d.id === deviceId);
-  const store = useTerminalStore();
-  const { connect, sendRawInput, sendResize, disconnect, connected, ws, error, sessionId: activeSessionId } = store;
+  const connect = useTerminalStore((s) => s.connect);
+  const sendRawInput = useTerminalStore((s) => s.sendRawInput);
+  const sendResize = useTerminalStore((s) => s.sendResize);
+  const disconnect = useTerminalStore((s) => s.disconnect);
+  const connected = useTerminalStore((s) => s.connected);
+  const ws = useTerminalStore((s) => s.ws);
+  const error = useTerminalStore((s) => s.error);
+  const activeSessionId = useTerminalStore((s) => s.sessionId);
   const terminalRef = useRef<TerminalHandle>(null);
   const terminalSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const suppressInputRef = useRef(false);

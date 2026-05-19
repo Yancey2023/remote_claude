@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { showToast } from './Toast';
@@ -9,7 +10,7 @@ interface Props {
   device: DeviceResponse;
 }
 
-export function DeviceCard({ device }: Props) {
+function DeviceCardInner({ device }: Props) {
   const { t, tf } = useI18n();
   const navigate = useNavigate();
   const deleteDevice = useDeviceStore((s) => s.deleteDevice);
@@ -88,3 +89,5 @@ export function DeviceCard({ device }: Props) {
     </div>
   );
 }
+
+export const DeviceCard = memo(DeviceCardInner);

@@ -44,7 +44,9 @@ export function DeviceListPage() {
   useEffect(() => {
     fetchDevices();
     fetchTokens();
-    const interval = setInterval(fetchDevices, getConfig().devicePollIntervalMs);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchDevices();
+    }, getConfig().devicePollIntervalMs);
     return () => clearInterval(interval);
   }, [fetchDevices, fetchTokens]);
 

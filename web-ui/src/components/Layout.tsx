@@ -365,7 +365,9 @@ export function Layout() {
 
   useEffect(() => {
     fetchSessions();
-    const interval = setInterval(fetchSessions, getConfig().devicePollIntervalMs);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchSessions();
+    }, getConfig().devicePollIntervalMs);
     return () => clearInterval(interval);
   }, [fetchSessions]);
 

@@ -12,7 +12,11 @@ export function SessionListPage() {
   const navigate = useNavigate();
   const devices = useDeviceStore((s) => s.devices);
   const device = devices.find((d) => d.id === deviceId);
-  const { sessions, loading, fetchSessions, createSession, deleteSession } = useSessionStore();
+  const sessions = useSessionStore((s) => s.sessions);
+  const loading = useSessionStore((s) => s.loading);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const createSession = useSessionStore((s) => s.createSession);
+  const deleteSession = useSessionStore((s) => s.deleteSession);
   const [showNew, setShowNew] = useState(false);
   const [cwd, setCwd] = useState('');
   const isMobile = useIsMobile(900);
