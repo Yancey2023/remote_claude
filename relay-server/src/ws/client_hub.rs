@@ -210,6 +210,10 @@ pub async fn handle_client_ws(
     store.upsert_device(device).await;
     store.set_device_online(&entry.id, true).await;
 
+    // Notify web UI that device is online
+    let online_msg = format!(r#"{{"type":"device_status","payload":{{"device_id":"{}","online":true}}}}"#, entry.id);
+    let _ = web_hub.send_to_user(&client_token.user_id, &online_msg).await;
+
     let device_id = entry.id.clone();
     let last_pong = entry.last_pong.clone();
     let heartbeat_interval = Duration::from_secs(config.heartbeat_interval_secs);
@@ -327,7 +331,15 @@ pub async fn handle_client_ws(
             }
         }
 
-        // Cleanup on exit
+        use std::collections::HashSet;
+
+        // Cleanup on exit: notify web users that device went offline
+        let sessions = web_hub_fwd.session_registry.list_by_device(&device_id_fwd).await;
+        let notified: HashSet<&str> = sessions.iter().map(|s| s.user_id.as_str()).collect();
+        let status_msg = format!(r#"{{"type":"device_status","payload":{{"device_id":"{}","online":false}}}}"#, device_id_fwd);
+        for user_id in notified {
+            let _ = web_hub_fwd.send_to_user(user_id, &status_msg).await;
+        }
         hub.unregister(&token).await;
         store.set_device_online(&device_id_fwd, false).await;
     });

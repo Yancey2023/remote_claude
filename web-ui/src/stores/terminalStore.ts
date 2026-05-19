@@ -95,6 +95,23 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         }
       });
 
+      // Track device status — mark session disconnected when device goes offline,
+      // and auto-reconnect when it comes back online
+      const unsubDeviceStatus = ws.on('device_status', (payload) => {
+        const did = payload.device_id as string | undefined;
+        const online = payload.online as boolean | undefined;
+        if (!did || online === undefined) return;
+        const state = get();
+        if (state.deviceId !== did) return;
+        if (!online) {
+          set({ connected: false });
+        } else if (state.sessionId && !state.connected) {
+          // Device came back online — re-attach session
+          ws.send('attach_session', { session_id: state.sessionId });
+          set({ connected: true });
+        }
+      });
+
       // Track session context for WS reconnect re-attachment
       let savedReconnect: { sessionId: string; deviceId: string; cwd?: string } | null = null;
 

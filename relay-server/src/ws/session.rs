@@ -108,6 +108,32 @@ impl SessionRegistry {
         Some(out)
     }
 
+    /// Find and remove all sessions belonging to the given device.
+    /// Returns the closed session actors so callers can notify users and close DB records.
+    pub async fn unregister_by_device(&self, device_id: &str) -> Vec<SessionActor> {
+        let mut sessions = self.sessions.write().await;
+        let mut removed = Vec::new();
+        sessions.retain(|_, state| {
+            if state.actor.device_id == device_id {
+                removed.push(state.actor.clone());
+                false
+            } else {
+                true
+            }
+        });
+        removed
+    }
+
+    /// List all sessions for a device without removing them.
+    pub async fn list_by_device(&self, device_id: &str) -> Vec<SessionActor> {
+        let sessions = self.sessions.read().await;
+        sessions
+            .values()
+            .filter(|s| s.actor.device_id == device_id)
+            .map(|s| s.actor.clone())
+            .collect()
+    }
+
     /// Check which session IDs from `ids` still exist in the registry.
     /// Acquires the read lock once instead of N times.
     pub async fn filter_existing(&self, ids: &[String]) -> HashSet<String> {
@@ -122,6 +148,33 @@ impl SessionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn test_unregister_by_device() {
+        let registry = SessionRegistry::new();
+        let s1 = SessionActor::new("dev-a".into(), "user-1".into());
+        let s2 = SessionActor::new("dev-a".into(), "user-2".into());
+        let s3 = SessionActor::new("dev-b".into(), "user-1".into());
+        let id1 = registry.register(s1).await;
+        let id2 = registry.register(s2).await;
+        registry.register(s3).await;
+
+        let removed = registry.unregister_by_device("dev-a").await;
+        assert_eq!(removed.len(), 2);
+        assert!(registry.get(&id1).await.is_none());
+        assert!(registry.get(&id2).await.is_none());
+
+        // dev-b session should still exist
+        let ids = vec!["nonexistent".into()];
+        assert_eq!(registry.filter_existing(&ids).await.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_unregister_by_device_nonexistent() {
+        let registry = SessionRegistry::new();
+        let removed = registry.unregister_by_device("nonexistent-device").await;
+        assert!(removed.is_empty());
+    }
 
     #[test]
     fn test_session_actor_new() {

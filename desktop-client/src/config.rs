@@ -100,7 +100,7 @@ impl Config {
             server_url: field_str!(
                 server_url,
                 "SERVER_URL",
-                "ws://127.0.0.1:8080/ws/client"
+                "wss://www.yanceymc.cn/remote_claude/ws/client"
             ),
             client_token,
             device_name: field_str!(device_name, "DEVICE_NAME", hostname()),
