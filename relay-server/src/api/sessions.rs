@@ -48,8 +48,7 @@ async fn create_session(
         .await
         .ok_or(AppError::NotFound("device not found or offline".into()))?;
 
-    let db_devices = state.store.list_devices(Some(&user.user_id)).await;
-    if !db_devices.iter().any(|d| d.id == req.device_id) {
+    if !state.store.device_belongs_to_user(&req.device_id, &user.user_id).await {
         return Err(AppError::Forbidden("not your device".into()));
     }
 
@@ -77,7 +76,7 @@ async fn create_session(
 
     Ok(Json(CreateSessionResponse {
         session_id,
-        ws_url: format!("/ws/web"),
+        ws_url: "/ws/web".into(),
     }))
 }
 
@@ -88,21 +87,24 @@ async fn list_sessions(
     let state = state.read().await;
     let sessions = state.store.list_sessions(&user.user_id).await;
 
-    // Auto-clean stale sessions that are no longer present in active WS registry.
+    // Batch-check session existence in registry (single RwLock read).
+    let ids: Vec<String> = sessions.iter().map(|s| s.id.clone()).collect();
+    let active_ids = state.web_hub.session_registry.filter_existing(&ids).await;
+
+    let mut visible = Vec::with_capacity(active_ids.len());
     let mut stale_ids = Vec::new();
-    let mut visible = Vec::new();
     for s in sessions {
-        if state.web_hub.session_registry.get(&s.id).await.is_none() {
+        if active_ids.contains(&s.id) {
+            visible.push(SessionInfo {
+                id: s.id,
+                device_id: s.device_id,
+                user_id: s.user_id,
+                created_at: s.created_at,
+                cwd: s.cwd,
+            });
+        } else {
             stale_ids.push(s.id);
-            continue;
         }
-        visible.push(SessionInfo {
-            id: s.id,
-            device_id: s.device_id,
-            user_id: s.user_id,
-            created_at: s.created_at,
-            cwd: s.cwd,
-        });
     }
 
     for id in stale_ids {

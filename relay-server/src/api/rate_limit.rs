@@ -33,11 +33,20 @@ impl LoginRateLimiter {
     pub fn check_and_record(&self, ip: IpAddr) -> bool {
         let mut inner = self.inner.lock().expect("rate limiter lock poisoned");
         let now = Instant::now();
+        let cutoff = now - self.window;
+
+        // Periodically purge stale entries when the map grows large,
+        // preventing unbounded memory growth from many unique IPs.
+        if inner.attempts.len() > 1000 {
+            inner.attempts.retain(|_, attempts| {
+                attempts.retain(|t| *t > cutoff);
+                !attempts.is_empty()
+            });
+        }
 
         let attempts = inner.attempts.entry(ip).or_default();
 
         // Remove expired entries outside the window
-        let cutoff = now - self.window;
         attempts.retain(|t| *t > cutoff);
 
         // Check limit

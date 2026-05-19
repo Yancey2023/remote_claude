@@ -12,7 +12,8 @@ use crate::api::rate_limit::LoginRateLimiter;
 use crate::config::Config;
 
 pub struct AppState {
-    pub config: Config,
+    pub jwt_secret: Arc<String>,
+    pub config: Arc<Config>,
     pub client_hub: client_hub::ClientHub,
     pub web_hub: web_hub::WebHub,
     pub store: crate::store::SqliteStore,
@@ -37,7 +38,7 @@ pub async fn ws_handler(
             let config = s.config.clone();
             let register_limiter = s.register_rate_limiter.clone();
             drop(s);
-            client_hub::handle_client_ws(ws, client_hub, web_hub, store, config, register_limiter, client_ip)
+            client_hub::handle_client_ws(ws, client_hub, web_hub, store, (*config).clone(), register_limiter, client_ip)
                 .instrument(tracing::info_span!("client_ws"))
                 .await;
         }
@@ -47,7 +48,7 @@ pub async fn ws_handler(
             let store = s.store.clone();
             let config = s.config.clone();
             drop(s);
-            web_hub::handle_web_ws(ws, web_hub, client_hub, store, config)
+            web_hub::handle_web_ws(ws, web_hub, client_hub, store, (*config).clone())
                 .instrument(tracing::info_span!("web_ws"))
                 .await;
         }

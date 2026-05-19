@@ -33,7 +33,7 @@ pub fn create_token(
     let claims = Claims {
         sub: user_id.to_string(),
         username: username.to_string(),
-        role: format!("{:?}", role),
+        role: role.as_str().to_string(),
         exp,
         iat: now,
     };

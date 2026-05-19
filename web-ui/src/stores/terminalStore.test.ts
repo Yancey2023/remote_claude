@@ -19,7 +19,6 @@ beforeEach(() => {
     connected: false,
     wsConnected: false,
     ws: null,
-    output: '',
     error: null,
   });
 });
@@ -30,15 +29,6 @@ describe('terminalStore', () => {
     expect(s.sessionId).toBeNull();
     expect(s.deviceId).toBeNull();
     expect(s.connected).toBe(false);
-    expect(s.output).toBe('');
-  });
-
-  it('appends output chunks', () => {
-    useTerminalStore.getState().appendOutput('hello ');
-    expect(useTerminalStore.getState().output).toBe('hello ');
-
-    useTerminalStore.getState().appendOutput('world');
-    expect(useTerminalStore.getState().output).toBe('hello world');
   });
 
   it('toggles wsConnected state', () => {
@@ -55,7 +45,6 @@ describe('terminalStore', () => {
       deviceId: 'd1',
       connected: true,
       wsConnected: true,
-      output: 'some output',
     });
 
     useTerminalStore.getState().disconnect();
@@ -64,7 +53,6 @@ describe('terminalStore', () => {
     expect(s.sessionId).toBeNull();
     expect(s.deviceId).toBeNull();
     expect(s.connected).toBe(false);
-    expect(s.output).toBe('');
   });
 
   it('sendCommand does nothing when not connected', () => {

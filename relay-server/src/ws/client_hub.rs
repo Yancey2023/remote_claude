@@ -19,16 +19,19 @@ use super::web_hub::WebHub;
 
 #[derive(Clone)]
 pub struct ClientHub {
-    /// token → device info + sender channel
-    pub online_devices: Arc<RwLock<HashMap<String, OnlineDeviceEntry>>>,
-    /// device_id → token (lookup by device id)
-    pub device_id_to_token: Arc<RwLock<HashMap<String, String>>>,
+    /// device_id → device info + sender channel (primary map for hot-path lookups)
+    pub connections: Arc<RwLock<HashMap<String, OnlineDeviceEntry>>>,
+    /// token → device_id (reverse index for registration/unregister)
+    pub token_to_device_id: Arc<RwLock<HashMap<String, String>>>,
 }
 
 #[derive(Clone)]
 pub struct OnlineDeviceEntry {
     pub id: String,
+    pub token: String,
+    #[allow(dead_code)]
     pub name: String,
+    #[allow(dead_code)]
     pub version: String,
     pub tx: mpsc::Sender<String>,
     pub last_pong: Arc<RwLock<Instant>>,
@@ -37,8 +40,8 @@ pub struct OnlineDeviceEntry {
 impl ClientHub {
     pub fn new() -> Self {
         Self {
-            online_devices: Arc::new(RwLock::new(HashMap::new())),
-            device_id_to_token: Arc::new(RwLock::new(HashMap::new())),
+            connections: Arc::new(RwLock::new(HashMap::new())),
+            token_to_device_id: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -51,68 +54,73 @@ impl ClientHub {
         tx: mpsc::Sender<String>,
     ) -> OnlineDeviceEntry {
         let id = device_id.to_string();
+        let token_owned = token.to_string();
         let entry = OnlineDeviceEntry {
             id: id.clone(),
+            token: token_owned.clone(),
             name: name.to_string(),
             version: version.to_string(),
             tx,
             last_pong: Arc::new(RwLock::new(Instant::now())),
         };
 
-        self.online_devices
+        self.connections
             .write()
             .await
-            .insert(token.to_string(), entry.clone());
-        self.device_id_to_token
+            .insert(id.clone(), entry.clone());
+        self.token_to_device_id
             .write()
             .await
-            .insert(id.clone(), token.to_string());
+            .insert(token_owned, id.clone());
 
         info!(device_id = %id, name = %name, "device registered");
         entry
     }
 
     pub async fn unregister(&self, token: &str) -> Option<OnlineDeviceEntry> {
-        let entry = self.online_devices.write().await.remove(token)?;
-        self.device_id_to_token
-            .write()
-            .await
-            .remove(&entry.id);
-        info!(device_id = %entry.id, "device unregistered");
-        Some(entry)
+        let device_id = self.token_to_device_id.write().await.remove(token)?;
+        let entry = self.connections.write().await.remove(&device_id);
+        if let Some(ref e) = entry {
+            info!(device_id = %e.id, "device unregistered");
+        }
+        entry
     }
 
     /// Kick and unregister a device by its device_id.
     /// Returns the device token if found, so callers can await cleanup.
     pub async fn kick_and_unregister(&self, device_id: &str) -> Option<String> {
-        let token = self.device_id_to_token.read().await.get(device_id)?.clone();
-        // Kick the device connection
-        if let Some(entry) = self.online_devices.read().await.get(&token) {
-            let _ = entry.tx.send("__kick__".to_string()).await;
-        }
-        // Remove from maps
-        self.online_devices.write().await.remove(&token);
-        self.device_id_to_token.write().await.remove(device_id);
+        let token = {
+            let connections = self.connections.read().await;
+            let entry = connections.get(device_id)?;
+            drop(entry.tx.send("__kick__".to_string()).await);
+            entry.token.clone()
+        };
+        self.token_to_device_id.write().await.remove(&token);
+        self.connections.write().await.remove(device_id);
         info!(device_id = %device_id, "device kicked and unregistered");
         Some(token)
     }
 
     pub async fn get_by_token(&self, token: &str) -> Option<OnlineDeviceEntry> {
-        self.online_devices.read().await.get(token).cloned()
+        let device_id = self.token_to_device_id.read().await.get(token)?.clone();
+        self.connections.read().await.get(&device_id).cloned()
     }
 
     pub async fn get_by_device_id(&self, device_id: &str) -> Option<OnlineDeviceEntry> {
-        let token = self.device_id_to_token.read().await.get(device_id)?.clone();
-        self.online_devices.read().await.get(&token).cloned()
+        self.connections.read().await.get(device_id).cloned()
     }
 
     pub async fn list_online(&self) -> Vec<OnlineDeviceEntry> {
-        self.online_devices
+        self.connections
             .read()
             .await
             .values()
             .cloned()
             .collect()
+    }
+
+    pub async fn is_device_online(&self, device_id: &str) -> bool {
+        self.connections.read().await.contains_key(device_id)
     }
 
     pub async fn send_to_device(&self, device_id: &str, msg: &str) -> Result<(), String> {
@@ -249,48 +257,50 @@ pub async fn handle_client_ws(
                                 continue;
                             }
                             *last_pong_fwd.write().await = Instant::now();
+                            // Quick check: pong/status_update need no JSON parsing
+                            if text.len() <= 64 && (text.contains("\"pong\"") || text.contains("\"status_update\"")) {
+                                continue;
+                            }
                             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                                 let msg_type = parsed.get("type").and_then(|t| t.as_str());
-                                match msg_type {
-                                    Some("result_chunk") => {
-                                        // Forward result_chunk to the web user who owns this session
-                                        if let Some(session_id) = parsed["payload"]["session_id"].as_str() {
-                                            if let Some(session) = web_hub_fwd.session_registry.get(session_id).await {
-                                                if let Some(chunk) = parsed["payload"]["chunk"].as_str() {
-                                                    web_hub_fwd
-                                                        .session_registry
-                                                        .append_history(session_id, chunk)
-                                                        .await;
-                                                }
-                                                if let Err(e) = web_hub_fwd.send_to_user(&session.user_id, &text).await {
-                                                    warn!(session_id = %session_id, user_id = %session.user_id, error = %e, "failed to forward to web user");
-                                                }
-
-                                                // PTY process exited: auto-close stale/invalid session.
-                                                if parsed["payload"]["done"].as_bool().unwrap_or(false) {
-                                                    web_hub_fwd.session_registry.unregister(session_id).await;
-                                                    let _ = store.close_session(session_id).await;
-                                                    let closed_msg = serde_json::json!({
-                                                        "type": "session_closed",
-                                                        "payload": { "session_id": session_id }
-                                                    });
-                                                    let _ = web_hub_fwd
-                                                        .send_to_user(&session.user_id, &closed_msg.to_string())
-                                                        .await;
-                                                }
-                                            } else {
-                                                warn!(session_id = %session_id, "result_chunk for unknown session");
+                                if msg_type == Some("result_chunk") {
+                                    // Forward result_chunk to the web user who owns this session
+                                    let payload = parsed.get("payload");
+                                    let session_id = payload.and_then(|p| p.get("session_id")).and_then(|s| s.as_str());
+                                    let done = payload.and_then(|p| p.get("done")).and_then(|d| d.as_bool()).unwrap_or(false);
+                                    if let Some(sid) = session_id {
+                                        if let Some(session) = web_hub_fwd.session_registry.get(sid).await {
+                                            if let Some(chunk) = payload.and_then(|p| p.get("chunk")).and_then(|c| c.as_str()) {
+                                                web_hub_fwd
+                                                    .session_registry
+                                                    .append_history(sid, chunk)
+                                                    .await;
+                                            }
+                                            if let Err(e) = web_hub_fwd.send_to_user(&session.user_id, &text).await {
+                                                warn!(session_id = %sid, user_id = %session.user_id, error = %e, "failed to forward to web user");
+                                            }
+                                            // PTY process exited: auto-close stale/invalid session.
+                                            if done {
+                                                web_hub_fwd.session_registry.unregister(sid).await;
+                                                let _ = store.close_session(sid).await;
+                                                let closed_msg = format!(
+                                                    r#"{{"type":"session_closed","payload":{{"session_id":"{sid}"}}}}"#
+                                                );
+                                                let _ = web_hub_fwd
+                                                    .send_to_user(&session.user_id, &closed_msg)
+                                                    .await;
                                             }
                                         } else {
-                                            warn!(msg = %text, "result_chunk missing session_id");
+                                            warn!(session_id = %sid, "result_chunk for unknown session");
                                         }
-                                        continue;
+                                    } else {
+                                        warn!(msg = %text, "result_chunk missing session_id");
                                     }
-                                    Some("pong") | Some("status_update") => {
-                                        // heartbeat already updated above; nothing to forward
-                                        continue;
-                                    }
-                                    _ => {}
+                                    continue;
+                                }
+                                if matches!(msg_type, Some("pong") | Some("status_update")) {
+                                    // heartbeat already updated above; nothing to forward
+                                    continue;
                                 }
                             }
                             tracing::debug!(device_id = %device_id_fwd, msg = %text, "unhandled client message");
@@ -473,6 +483,16 @@ mod tests {
         let received = rx.recv().await;
         assert!(received.is_some());
         assert_eq!(received.unwrap(), "test message");
+    }
+
+    #[tokio::test]
+    async fn test_is_device_online() {
+        let hub = ClientHub::new();
+        let (tx, _rx) = mpsc::channel(256);
+
+        assert!(!hub.is_device_online("dev-1").await);
+        hub.register("token-1", "pc-1", "1.0", "dev-1", tx).await;
+        assert!(hub.is_device_online("dev-1").await);
     }
 
     #[tokio::test]

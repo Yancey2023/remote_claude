@@ -14,8 +14,7 @@ export function TerminalPage() {
   const cwd = searchParams.get('cwd') || undefined;
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
-  const devices = useDeviceStore((s) => s.devices);
-  const device = devices.find((d) => d.id === deviceId);
+  const deviceName = useDeviceStore((s) => s.devices.find((d) => d.id === deviceId)?.name);
   const connect = useTerminalStore((s) => s.connect);
   const sendRawInput = useTerminalStore((s) => s.sendRawInput);
   const sendResize = useTerminalStore((s) => s.sendResize);
@@ -168,7 +167,7 @@ export function TerminalPage() {
           }}
         >
           <span style={{ color: '#e0e0e0', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {device?.name || deviceId || ''}
+            {deviceName || deviceId || ''}
           </span>
           {!isMobile && (
             <span style={{ color: '#666', fontSize: '0.8rem' }}>

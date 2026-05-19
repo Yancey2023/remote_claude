@@ -72,9 +72,10 @@ export class WebSocketClient {
 
   private scheduleReconnect() {
     if (this.closed) return;
+    const jitter = 0.5 + Math.random() * 0.5;
     setTimeout(() => {
       this.doConnect();
-    }, this.reconnectDelay);
+    }, this.reconnectDelay * jitter);
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
   }
 

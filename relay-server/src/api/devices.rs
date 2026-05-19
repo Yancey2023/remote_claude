@@ -1,5 +1,6 @@
 use axum::{routing::{delete, get}, Json, Router};
 use serde::Serialize;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -33,24 +34,22 @@ async fn list_devices(
     // Every user only sees their own devices
     let store_devices = state.store.list_devices(Some(&user.user_id)).await;
 
-    // Merge with online status from hub
-    let online_devices = state.client_hub.list_online().await;
+    let online_ids: HashSet<String> = state.client_hub.list_online().await
+        .into_iter().map(|e| e.id).collect();
 
-    let result: Vec<DeviceResponse> = store_devices
-        .into_iter()
-        .map(|d| {
-            let online = online_devices.iter().any(|o| o.id == d.id);
-            DeviceResponse {
-                id: d.id,
-                name: d.name,
-                version: d.version,
-                online,
-                busy: d.busy,
-                last_seen: d.last_seen,
-                user_id: d.user_id,
-            }
-        })
-        .collect();
+    let mut result = Vec::with_capacity(store_devices.len());
+    for d in store_devices {
+        let online = online_ids.contains(&d.id);
+        result.push(DeviceResponse {
+            id: d.id,
+            name: d.name,
+            version: d.version,
+            online,
+            busy: d.busy,
+            last_seen: d.last_seen,
+            user_id: d.user_id,
+        });
+    }
 
     Json(result)
 }
@@ -62,20 +61,15 @@ async fn delete_device(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let state = state.read().await;
 
-    // Only owner can delete
-    let device = state.store.list_devices(Some(&user.user_id)).await;
-    if !device.iter().any(|d| d.id == id) {
-        return Err(AppError::Forbidden("not your device".into()));
-    }
-
-    // If device is online, kick and unregister it from the hub
+    // Kick and unregister from hub if online
     state.client_hub.kick_and_unregister(&id).await;
 
+    // Delete only if it belongs to the current user (single query)
     state
         .store
-        .delete_device(&id)
+        .delete_user_device(&id, &user.user_id)
         .await
-        .map_err(|e| AppError::NotFound(e))?;
+        .map_err(|_| AppError::Forbidden("not your device".into()))?;
 
     Ok(Json(serde_json::json!({ "message": "device deleted" })))
 }

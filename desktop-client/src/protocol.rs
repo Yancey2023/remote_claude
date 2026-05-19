@@ -72,30 +72,47 @@ impl ClientMessage {
     }
 
     pub fn pong() -> String {
-        serde_json::json!({ "type": "pong", "payload": {} }).to_string()
+        static PONG: &str = r#"{"type":"pong","payload":{}}"#;
+        PONG.to_string()
     }
 
     pub fn result_chunk(session_id: &str, chunk: &str, done: bool) -> String {
-        serde_json::json!({
-            "type": "result_chunk",
-            "payload": {
-                "session_id": session_id,
-                "chunk": chunk,
-                "done": done
-            }
+        #[derive(serde::Serialize)]
+        struct Payload<'a> {
+            session_id: &'a str,
+            chunk: &'a str,
+            done: bool,
+        }
+        #[derive(serde::Serialize)]
+        struct Msg<'a> {
+            #[serde(rename = "type")]
+            msg_type: &'a str,
+            payload: Payload<'a>,
+        }
+        serde_json::to_string(&Msg {
+            msg_type: "result_chunk",
+            payload: Payload { session_id, chunk, done },
         })
-        .to_string()
+        .expect("result_chunk serialization")
     }
 
     pub fn status_update(online: bool, busy: bool) -> String {
-        serde_json::json!({
-            "type": "status_update",
-            "payload": {
-                "online": online,
-                "busy": busy
-            }
+        #[derive(serde::Serialize)]
+        struct Payload {
+            online: bool,
+            busy: bool,
+        }
+        #[derive(serde::Serialize)]
+        struct Msg {
+            #[serde(rename = "type")]
+            msg_type: &'static str,
+            payload: Payload,
+        }
+        serde_json::to_string(&Msg {
+            msg_type: "status_update",
+            payload: Payload { online, busy },
         })
-        .to_string()
+        .expect("status_update serialization")
     }
 }
 

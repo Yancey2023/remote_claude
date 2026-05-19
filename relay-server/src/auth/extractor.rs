@@ -37,10 +37,7 @@ impl FromRequestParts<Arc<RwLock<AppState>>> for AuthUser {
         parts: &mut Parts,
         state: &Arc<RwLock<AppState>>,
     ) -> Result<Self, Self::Rejection> {
-        let jwt_secret = {
-            let state = state.read().await;
-            state.config.jwt_secret.clone()
-        };
+        let jwt_secret = state.read().await.jwt_secret.clone();
 
         let token_str: String = {
             // Try Authorization: Bearer <token> first

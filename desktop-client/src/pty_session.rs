@@ -7,6 +7,8 @@ use std::sync::{mpsc, Arc, Mutex};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{info, warn};
 
+const MAX_CONCURRENT_SESSIONS: usize = 16;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct LaunchCommand {
     program: String,
@@ -125,8 +127,8 @@ pub struct PtySessionManager {
 }
 
 struct PtyHandle {
-    input_tx: mpsc::Sender<String>,
-    resize_tx: mpsc::Sender<PtySize>,
+    input_tx: mpsc::SyncSender<String>,
+    resize_tx: mpsc::SyncSender<PtySize>,
     child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>>,
 }
 
@@ -151,14 +153,22 @@ impl PtySessionManager {
         result_tx: UnboundedSender<(String, String, bool)>,
         cwd: Option<&str>,
     ) -> Result<(), String> {
+        // Cap concurrent sessions to bound OS thread usage (4 threads per session)
+        {
+            let sessions = self.sessions.lock().unwrap();
+            if sessions.len() >= MAX_CONCURRENT_SESSIONS {
+                return Err(format!("max concurrent sessions ({}) reached", MAX_CONCURRENT_SESSIONS));
+            }
+        }
+
         let sid = session_id.to_string();
         let launch = resolve_launch_command(claude_binary)?;
         let launch_label = sanitize_spawn_value(claude_binary)
             .unwrap_or_else(|| claude_binary.to_string());
         let cwd_owned = cwd.and_then(sanitize_spawn_value);
 
-        let (input_tx, input_rx) = mpsc::channel::<String>();
-        let (resize_tx, resize_rx) = mpsc::channel::<PtySize>();
+        let (input_tx, input_rx) = mpsc::sync_channel::<String>(256);
+        let (resize_tx, resize_rx) = mpsc::sync_channel::<PtySize>(64);
         let child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send>>>> = Arc::new(Mutex::new(None));
 
         // Store handle synchronously so write_input works immediately.
@@ -348,8 +358,8 @@ impl PtySessionManager {
     pub fn write_input(&self, session_id: &str, data: &str) {
         let sessions = self.sessions.lock().unwrap();
         if let Some(handle) = sessions.get(session_id) {
-            if handle.input_tx.send(data.to_string()).is_err() {
-                warn!(session_id = %session_id, "PTY input channel closed");
+            if handle.input_tx.try_send(data.to_string()).is_err() {
+                warn!(session_id = %session_id, "PTY input channel full or closed");
             }
         }
     }
@@ -367,8 +377,8 @@ impl PtySessionManager {
                 pixel_width: 0,
                 pixel_height: 0,
             };
-            if tx.send(size).is_err() {
-                warn!(session_id = %session_id, "PTY resize channel closed");
+            if tx.try_send(size).is_err() {
+                // Resize events are ephemeral; dropping stale ones is fine under backpressure
             }
         }
     }

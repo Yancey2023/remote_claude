@@ -1,6 +1,6 @@
 use tokio::sync::RwLock;
 use std::sync::Arc;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 
 /// Bidirectional session between a web client and a device client.
@@ -97,12 +97,99 @@ impl SessionRegistry {
     }
 
     pub async fn get_history(&self, id: &str) -> Option<String> {
-        self.sessions.read().await.get(id).map(|s| {
-            let mut out = String::with_capacity(s.history_bytes);
-            for c in &s.history_chunks {
-                out.push_str(c);
-            }
-            out
-        })
+        let chunks: Vec<String> = {
+            let sessions = self.sessions.read().await;
+            sessions.get(id).map(|s| s.history_chunks.iter().cloned().collect())?
+        };
+        let mut out = String::with_capacity(chunks.iter().map(|c| c.len()).sum());
+        for c in &chunks {
+            out.push_str(c);
+        }
+        Some(out)
+    }
+
+    /// Check which session IDs from `ids` still exist in the registry.
+    /// Acquires the read lock once instead of N times.
+    pub async fn filter_existing(&self, ids: &[String]) -> HashSet<String> {
+        let sessions = self.sessions.read().await;
+        ids.iter()
+            .filter(|id| sessions.contains_key(*id))
+            .cloned()
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_session_actor_new() {
+        let actor = SessionActor::new("dev-1".into(), "user-1".into());
+        assert!(!actor.id.is_empty());
+        assert_eq!(actor.device_id, "dev-1");
+        assert_eq!(actor.user_id, "user-1");
+    }
+
+    #[tokio::test]
+    async fn test_register_and_get() {
+        let registry = SessionRegistry::new();
+        let actor = SessionActor::new("dev-1".into(), "user-1".into());
+        let id = registry.register(actor.clone()).await;
+        let retrieved = registry.get(&id).await.unwrap();
+        assert_eq!(retrieved.device_id, "dev-1");
+        assert_eq!(retrieved.user_id, "user-1");
+    }
+
+    #[tokio::test]
+    async fn test_get_nonexistent() {
+        let registry = SessionRegistry::new();
+        assert!(registry.get("nonexistent").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_unregister_removes_session() {
+        let registry = SessionRegistry::new();
+        let actor = SessionActor::new("dev-1".into(), "user-1".into());
+        let id = registry.register(actor).await;
+        registry.unregister(&id).await;
+        assert!(registry.get(&id).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_append_and_get_history() {
+        let registry = SessionRegistry::new();
+        let actor = SessionActor::new("dev-1".into(), "user-1".into());
+        let id = registry.register(actor).await;
+        registry.append_history(&id, "hello ").await;
+        registry.append_history(&id, "world").await;
+        let history = registry.get_history(&id).await.unwrap();
+        assert_eq!(history, "hello world");
+    }
+
+    #[tokio::test]
+    async fn test_get_history_empty() {
+        let registry = SessionRegistry::new();
+        let actor = SessionActor::new("dev-1".into(), "user-1".into());
+        let id = registry.register(actor).await;
+        let history = registry.get_history(&id).await;
+        assert!(history.is_some());
+        assert!(history.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_filter_existing() {
+        let registry = SessionRegistry::new();
+        let s1 = SessionActor::new("dev-1".into(), "user-1".into());
+        let s2 = SessionActor::new("dev-1".into(), "user-1".into());
+        let sid1 = registry.register(s1).await;
+        let sid2 = registry.register(s2).await;
+
+        let ids = vec![sid1.clone(), sid2.clone(), "nonexistent".into()];
+        let existing = registry.filter_existing(&ids).await;
+        assert_eq!(existing.len(), 2);
+        assert!(existing.contains(&sid1));
+        assert!(existing.contains(&sid2));
+        assert!(!existing.contains("nonexistent"));
     }
 }

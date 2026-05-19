@@ -153,7 +153,7 @@ async fn login(
         token,
         user_id: user.id,
         username: user.username,
-        role: format!("{:?}", user.role),
+        role: user.role.as_str().to_string(),
     })))
 }
 
@@ -177,15 +177,16 @@ async fn change_password(
         return Err(AppError::BadRequest("new password too long".into()));
     }
 
-    let state = state.read().await;
-
-    let mut db_user = state
-        .store
-        .get_user(&user.user_id)
-        .await
-        .ok_or(AppError::BadRequest(
-            "password change not supported for this account type".into(),
-        ))?;
+    let mut db_user = {
+        let state = state.read().await;
+        state
+            .store
+            .get_user(&user.user_id)
+            .await
+            .ok_or(AppError::BadRequest(
+                "password change not supported for this account type".into(),
+            ))?
+    };
 
     // Admin users created via config don't have DB entries, so they'd hit the error above.
     // For DB-stored users (including those with role=Admin), verify current password.
@@ -203,6 +204,8 @@ async fn change_password(
     db_user.password_hash = new_hash;
 
     state
+        .read()
+        .await
         .store
         .update_user(db_user)
         .await

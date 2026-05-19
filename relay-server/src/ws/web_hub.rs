@@ -233,13 +233,9 @@ async fn handle_web_message(
                 return Err("not your session".to_string());
             }
 
-            let msg = serde_json::json!({
-                "type": msg_type,
-                "payload": payload,
-            });
-
+            // Forward original text directly — avoids re-serialization
             client_hub
-                .send_to_device(&session.device_id, &msg.to_string())
+                .send_to_device(&session.device_id, text)
                 .await?;
         }
         "create_session" => {
@@ -293,11 +289,7 @@ async fn handle_web_message(
 
             if let Some(session) = hub.session_registry.get(session_id).await {
                 if session.user_id == user_id {
-                    let close_msg = serde_json::json!({
-                        "type": "session_closed",
-                        "payload": { "session_id": session_id }
-                    });
-                    let _ = client_hub.send_to_device(&session.device_id, &close_msg.to_string()).await;
+                    let _ = client_hub.send_to_device(&session.device_id, text).await;
                 }
             }
 

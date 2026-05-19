@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { showToast } from './Toast';
@@ -16,6 +16,8 @@ function DeviceCardInner({ device }: Props) {
   const deleteDevice = useDeviceStore((s) => s.deleteDevice);
   const isMobile = useIsMobile(900);
 
+  const handleClick = useCallback(() => navigate(`/devices/${device.id}`), [device.id, navigate]);
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(tf('deviceDeleteConfirm', { name: device.name }))) return;
@@ -29,7 +31,7 @@ function DeviceCardInner({ device }: Props) {
 
   return (
     <div
-      onClick={() => navigate(`/devices/${device.id}`)}
+      onClick={handleClick}
       style={{
         background: '#16213e',
         borderRadius: '8px',

@@ -10,14 +10,12 @@ interface TerminalState {
   connected: boolean;
   wsConnected: boolean;
   ws: WebSocketClient | null;
-  output: string;
   error: string | null;
   connect: (deviceId: string, token: string, existingSessionId: string, cwd?: string) => Promise<void>;
   sendCommand: (cmd: string) => void;
   sendRawInput: (data: string) => void;
   sendResize: (cols: number, rows: number) => void;
   disconnect: () => void;
-  appendOutput: (chunk: string) => void;
   setWsConnected: (connected: boolean) => void;
 }
 
@@ -27,7 +25,6 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   connected: false,
   wsConnected: false,
   ws: null,
-  output: '',
   error: null,
 
   connect: async (deviceId: string, token: string, existingSessionId: string, cwd?: string) => {
@@ -98,7 +95,26 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         }
       });
 
+      // Track session context for WS reconnect re-attachment
+      let savedReconnect: { sessionId: string; deviceId: string; cwd?: string } | null = null;
+
       ws.onStatus((connected) => {
+        if (!connected) {
+          const s = get();
+          if (s.sessionId && s.deviceId) {
+            savedReconnect = { sessionId: s.sessionId, deviceId: s.deviceId, cwd };
+          }
+        }
+        if (connected && savedReconnect) {
+          const ctx = savedReconnect;
+          savedReconnect = null;
+          if (ctx.sessionId === 'new') {
+            ws.send('create_session', { device_id: ctx.deviceId, cwd: ctx.cwd ?? null });
+          } else {
+            ws.send('attach_session', { session_id: ctx.sessionId });
+            set({ sessionId: ctx.sessionId, connected: true });
+          }
+        }
         set({ wsConnected: connected });
       });
 
@@ -118,7 +134,6 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         deviceId,
         wsConnected: false,
         connected: false,
-        output: '',
         error: null,
       });
     } catch (e) {
@@ -154,12 +169,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       connected: false,
       wsConnected: false,
       ws: null,
-      output: '',
     });
-  },
-
-  appendOutput: (chunk: string) => {
-    set((s) => ({ output: s.output + chunk }));
   },
 
   setWsConnected: (connected: boolean) => {

@@ -48,6 +48,7 @@ async fn main() {
         match ws_client::connect_and_run(&config).await {
             Ok(()) => {
                 info!("connection closed normally, reconnecting...");
+                retry_delay = Duration::from_secs(1);
             }
             Err(e) => {
                 error!(error = %e, "connection error");

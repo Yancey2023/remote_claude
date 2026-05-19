@@ -67,7 +67,8 @@ async fn main() {
     let register_rate_limiter = Arc::new(api::rate_limit::LoginRateLimiter::new(5, 60)); // 5 registration attempts per min per IP
 
     let state = Arc::new(RwLock::new(AppState {
-        config: config.clone(),
+        jwt_secret: Arc::new(config.jwt_secret.clone()),
+        config: Arc::new(config.clone()),
         client_hub,
         web_hub,
         store,

@@ -16,6 +16,15 @@ pub struct User {
     pub created_at: i64,
 }
 
+impl UserRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            UserRole::Admin => "Admin",
+            UserRole::User => "User",
+        }
+    }
+}
+
 impl User {
     pub fn new(id: String, username: String, password_hash: String, role: UserRole) -> Self {
         Self {
@@ -32,6 +41,12 @@ impl User {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_user_role_as_str() {
+        assert_eq!(UserRole::Admin.as_str(), "Admin");
+        assert_eq!(UserRole::User.as_str(), "User");
+    }
 
     #[test]
     fn test_new_user() {

@@ -1,31 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-function supportsMatchMedia(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
-}
+const supportsMatchMedia = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+
+const sharedMql = supportsMatchMedia()
+  ? window.matchMedia('(max-width: 900px)')
+  : null;
 
 export function useIsMobile(maxWidth = 900): boolean {
-  const query = useMemo(() => `(max-width: ${maxWidth}px)`, [maxWidth]);
   const [isMobile, setIsMobile] = useState(() => {
     if (!supportsMatchMedia()) return false;
-    return window.matchMedia(query).matches;
+    const mql = maxWidth === 900 && sharedMql
+      ? sharedMql
+      : window.matchMedia(`(max-width: ${maxWidth}px)`);
+    return mql.matches;
   });
 
   useEffect(() => {
     if (!supportsMatchMedia()) return;
-    const mql = window.matchMedia(query);
+    const mql = maxWidth === 900 && sharedMql
+      ? sharedMql
+      : window.matchMedia(`(max-width: ${maxWidth}px)`);
     const update = () => setIsMobile(mql.matches);
     update();
 
-    const listener = () => update();
     if (typeof mql.addEventListener === 'function') {
-      mql.addEventListener('change', listener);
-      return () => mql.removeEventListener('change', listener);
+      mql.addEventListener('change', update);
+      return () => mql.removeEventListener('change', update);
     }
 
-    mql.addListener(listener);
-    return () => mql.removeListener(listener);
-  }, [query]);
+    mql.addListener(update);
+    return () => mql.removeListener(update);
+  }, [maxWidth]);
 
   return isMobile;
 }

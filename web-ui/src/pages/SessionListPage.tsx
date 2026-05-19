@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { useSessionStore } from '../stores/sessionStore';
@@ -55,11 +55,11 @@ export function SessionListPage() {
     setNewFlag(false);
   };
 
-  const handleDelete = async (sessionId: string) => {
-    await deleteSession(sessionId);
-  };
-
   const deviceSessions = sessions.filter((s) => s.device_id === deviceId);
+
+  const handleDelete = useCallback((sessionId: string) => {
+    deleteSession(sessionId);
+  }, [deleteSession]);
 
   return (
     <div style={{ padding: isMobile ? '0.9rem 0.75rem' : '1.5rem', overflow: 'auto', flex: 1, minWidth: 0 }}>
@@ -177,73 +177,105 @@ export function SessionListPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {deviceSessions.map((s) => (
-          <div
+          <SessionItem
             key={s.id}
-            onClick={() => navigate(`/devices/${deviceId}/sessions/${s.id}`)}
-            style={{
-              background: '#16213e',
-              border: '1px solid #0f3460',
-              borderRadius: '8px',
-              padding: isMobile ? '0.7rem 0.8rem' : '0.75rem 1rem',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: isMobile ? 'flex-start' : 'center',
-              gap: '0.6rem',
-              transition: 'border-color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = '#e94560';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = '#0f3460';
-            }}
-          >
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div
-                style={{
-                  color: '#e0e0e0',
-                  fontSize: '0.9rem',
-                  marginBottom: '0.2rem',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {s.cwd || t('defaultDirectory')}
-              </div>
-              <div style={{ color: '#666', fontSize: '0.75rem' }}>
-                {new Date(s.created_at * 1000).toLocaleString()}
-              </div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm(t('deleteSessionConfirm'))) {
-                  handleDelete(s.id);
-                }
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#e74c3c',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                opacity: 0.5,
-                alignSelf: 'center',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '1.3rem',
-                minHeight: '1.3rem',
-              }}
-              title={t('deleteSessionTitle')}
-            >
-              <span className="btn-icon-label">✕</span>
-            </button>
-          </div>
+            id={s.id}
+            cwd={s.cwd}
+            createdAt={s.created_at}
+            deviceId={deviceId!}
+            isMobile={isMobile}
+            onDelete={handleDelete}
+          />
         ))}
       </div>
     </div>
   );
 }
+
+interface SessionItemProps {
+  id: string;
+  cwd: string | null;
+  createdAt: number;
+  deviceId: string;
+  isMobile: boolean;
+  onDelete: (id: string) => void;
+}
+
+const SessionItem = memo(function SessionItem({
+  id,
+  cwd,
+  createdAt,
+  deviceId,
+  isMobile,
+  onDelete,
+}: SessionItemProps) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+
+  return (
+    <div
+      onClick={() => navigate(`/devices/${deviceId}/sessions/${id}`)}
+      style={{
+        background: '#16213e',
+        border: '1px solid #0f3460',
+        borderRadius: '8px',
+        padding: isMobile ? '0.7rem 0.8rem' : '0.75rem 1rem',
+        cursor: 'pointer',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        gap: '0.6rem',
+        transition: 'border-color 0.2s',
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = '#e94560';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = '#0f3460';
+      }}
+    >
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div
+          style={{
+            color: '#e0e0e0',
+            fontSize: '0.9rem',
+            marginBottom: '0.2rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {cwd || t('defaultDirectory')}
+        </div>
+        <div style={{ color: '#666', fontSize: '0.75rem' }}>
+          {new Date(createdAt * 1000).toLocaleString()}
+        </div>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (window.confirm(t('deleteSessionConfirm'))) {
+            onDelete(id);
+          }
+        }}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: '#e74c3c',
+          cursor: 'pointer',
+          fontSize: '1rem',
+          opacity: 0.5,
+          alignSelf: 'center',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: '1.3rem',
+          minHeight: '1.3rem',
+        }}
+        title={t('deleteSessionTitle')}
+      >
+        <span className="btn-icon-label">✕</span>
+      </button>
+    </div>
+  );
+});

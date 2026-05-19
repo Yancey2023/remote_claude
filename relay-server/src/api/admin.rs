@@ -4,6 +4,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -62,7 +63,7 @@ async fn list_users(
             .map(|u| UserResponse {
                 id: u.id,
                 username: u.username,
-                role: format!("{:?}", u.role),
+                role: u.role.as_str().to_string(),
                 enabled: u.enabled,
                 created_at: u.created_at,
             })
@@ -100,7 +101,7 @@ async fn create_user(
     let resp = UserResponse {
         id: new_user.id.clone(),
         username: new_user.username.clone(),
-        role: format!("{:?}", new_user.role),
+        role: new_user.role.as_str().to_string(),
         enabled: new_user.enabled,
         created_at: new_user.created_at,
     };
@@ -226,12 +227,13 @@ async fn list_all_devices(
 
     let state = state.read().await;
     let store_devices = state.store.list_devices(None).await;
-    let online_devices = state.client_hub.list_online().await;
+    let online_ids: HashSet<String> = state.client_hub.list_online().await
+        .into_iter().map(|e| e.id).collect();
 
     let result: Vec<AdminDeviceResponse> = store_devices
         .into_iter()
         .map(|d| {
-            let online = online_devices.iter().any(|o| o.id == d.id);
+            let online = online_ids.contains(&d.id);
             AdminDeviceResponse {
                 id: d.id,
                 name: d.name,
@@ -303,9 +305,12 @@ async fn list_all_sessions(
     let state = state.read().await;
     let sessions = state.store.list_all_sessions().await;
 
+    let ids: Vec<String> = sessions.iter().map(|s| s.id.clone()).collect();
+    let active_ids = state.web_hub.session_registry.filter_existing(&ids).await;
+
     let mut result = Vec::with_capacity(sessions.len());
     for s in sessions {
-        let active = state.web_hub.session_registry.get(&s.id).await.is_some();
+        let active = active_ids.contains(&s.id);
         result.push(AdminSessionResponse {
             id: s.id,
             device_id: s.device_id,

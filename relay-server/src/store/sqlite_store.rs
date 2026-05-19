@@ -20,8 +20,18 @@ impl SqliteStore {
         Self::ensure_parent_dir(&connect_options)?;
 
         let pool = SqlitePoolOptions::new()
-            .max_connections(5)
+            .max_connections(10)
             .connect_with(connect_options)
+            .await?;
+
+        // Enable WAL mode for better concurrent read/write throughput.
+        // In-memory databases silently ignore PRAGMA journal_mode=WAL.
+        let _ = sqlx::query("PRAGMA journal_mode=WAL")
+            .execute(&pool)
+            .await;
+        // Set busy timeout to avoid SQLITE_BUSY errors under concurrent access.
+        sqlx::query("PRAGMA busy_timeout=5000")
+            .execute(&pool)
             .await?;
 
         let store = Self { pool };
@@ -114,7 +124,7 @@ impl SqliteStore {
     // ── Users ──
 
     pub async fn create_user(&self, user: User) -> Result<(), String> {
-        let role_str = format!("{:?}", user.role);
+        let role_str = user.role.as_str().to_string();
         sqlx::query(
             "INSERT INTO users (id, username, password_hash, role, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         )
@@ -164,7 +174,7 @@ impl SqliteStore {
     }
 
     pub async fn update_user(&self, user: User) -> Result<(), String> {
-        let role_str = format!("{:?}", user.role);
+        let role_str = user.role.as_str().to_string();
         let affected = sqlx::query(
             "UPDATE users SET username = ?, password_hash = ?, role = ?, enabled = ? WHERE id = ?",
         )
@@ -257,6 +267,7 @@ impl SqliteStore {
             .ok();
     }
 
+    /// Delete a device by id. Admin-only: no ownership check.
     pub async fn delete_device(&self, id: &str) -> Result<(), String> {
         let affected = sqlx::query("DELETE FROM devices WHERE id = ?")
             .bind(id)
@@ -269,6 +280,34 @@ impl SqliteStore {
             return Err("device not found".into());
         }
         Ok(())
+    }
+
+    /// Delete a device only if it belongs to the given user.
+    /// Combines ownership check and deletion in a single query.
+    pub async fn delete_user_device(&self, device_id: &str, user_id: &str) -> Result<(), String> {
+        let affected = sqlx::query("DELETE FROM devices WHERE id = ? AND user_id = ?")
+            .bind(device_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("database error: {}", e))?
+            .rows_affected();
+
+        if affected == 0 {
+            return Err("device not found or not yours".into());
+        }
+        Ok(())
+    }
+
+    pub async fn device_belongs_to_user(&self, device_id: &str, user_id: &str) -> bool {
+        sqlx::query("SELECT 1 FROM devices WHERE id = ? AND user_id = ? LIMIT 1")
+            .bind(device_id)
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .ok()
+            .flatten()
+            .is_some()
     }
 
     // ── Sessions ──
@@ -669,6 +708,16 @@ mod tests {
 
         // Token still exists
         assert!(store.get_client_token("shared-token").await.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_device_belongs_to_user() {
+        let store = test_store().await;
+        store.upsert_device(Device::new("dev-1".into(), "pc1".into(), "1.0".into(), "user-a".into())).await;
+
+        assert!(store.device_belongs_to_user("dev-1", "user-a").await);
+        assert!(!store.device_belongs_to_user("dev-1", "user-b").await);
+        assert!(!store.device_belongs_to_user("nonexistent", "user-a").await);
     }
 
     #[tokio::test]
