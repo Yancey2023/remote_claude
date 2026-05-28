@@ -9,10 +9,14 @@ permissions:
 
 jobs:
   relay-server:
-    name: relay-server (${{ matrix.target }})
+    name: relay-server (${{ matrix.short_target }})
     strategy:
       matrix:
         include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            short_target: linux-x64-ubuntu22
+            ext: ""
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             short_target: linux-x64
@@ -38,7 +42,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             relay-server/target
-          key: ${{ runner.os }}-cargo-relay-${{ hashFiles('relay-server/Cargo.lock') }}
+          key: ${{ matrix.short_target }}-cargo-relay-${{ hashFiles('relay-server/Cargo.lock') }}
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -55,10 +59,14 @@ jobs:
           path: relay-server/remote-claude-relay-server-*
 
   desktop-client:
-    name: desktop-client (${{ matrix.target }})
+    name: desktop-client (${{ matrix.short_target }})
     strategy:
       matrix:
         include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            short_target: linux-x64-ubuntu22
+            ext: ""
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             short_target: linux-x64
@@ -84,7 +92,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             desktop-client/target
-          key: ${{ runner.os }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
+          key: ${{ matrix.short_target }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -177,8 +185,10 @@ jobs:
         with:
           body_path: release-notes.md
           files: |
+            relay-server-linux-x64-ubuntu22/*
             relay-server-linux-x64/*
             relay-server-windows-x64/*
+            desktop-client-linux-x64-ubuntu22/*
             desktop-client-linux-x64/*
             desktop-client-windows-x64/*
             web-ui-dist/*
