@@ -12,6 +12,7 @@ export function TerminalPage() {
   const { id: deviceId, sessionId } = useParams<{ id: string; sessionId: string }>();
   const [searchParams] = useSearchParams();
   const cwd = searchParams.get('cwd') || undefined;
+  const program = (searchParams.get('program') || 'claude') as string;
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
   const deviceName = useDeviceStore((s) => s.devices.find((d) => d.id === deviceId)?.name);
@@ -33,16 +34,19 @@ export function TerminalPage() {
   // (Re)attach on session change; store handles same-device fast switching.
   useEffect(() => {
     if (!deviceId || !sessionId || !token) return;
-    connect(deviceId, token, sessionId!, cwd);
-  }, [deviceId, sessionId, token, cwd, connect]);
+    connect(deviceId, token, sessionId!, cwd, program);
+  }, [deviceId, sessionId, token, cwd, program, connect]);
 
   // New-session flow: once server assigns real session id, sync URL via React Router.
   useEffect(() => {
     if (!deviceId || !sessionId || !activeSessionId) return;
     if (sessionId !== 'new') return;
-    const qs = cwd ? `?cwd=${encodeURIComponent(cwd)}` : '';
-    navigate(`/devices/${deviceId}/sessions/${activeSessionId}${qs}`, { replace: true });
-  }, [deviceId, sessionId, activeSessionId, cwd, navigate]);
+    const params = new URLSearchParams();
+    if (cwd) params.set('cwd', cwd);
+    if (program && program !== 'claude') params.set('program', program);
+    const qs = params.toString();
+    navigate(`/devices/${deviceId}/sessions/${activeSessionId}${qs ? '?' + qs : ''}`, { replace: true });
+  }, [deviceId, sessionId, activeSessionId, cwd, program, navigate]);
 
   // Close WS only when leaving terminal page.
   useEffect(() => {

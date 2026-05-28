@@ -11,7 +11,7 @@ interface TerminalState {
   wsConnected: boolean;
   ws: WebSocketClient | null;
   error: string | null;
-  connect: (deviceId: string, token: string, existingSessionId: string, cwd?: string) => Promise<void>;
+  connect: (deviceId: string, token: string, existingSessionId: string, cwd?: string, program?: string) => Promise<void>;
   sendCommand: (cmd: string) => void;
   sendRawInput: (data: string) => void;
   sendResize: (cols: number, rows: number) => void;
@@ -27,7 +27,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   ws: null,
   error: null,
 
-  connect: async (deviceId: string, token: string, existingSessionId: string, cwd?: string) => {
+  connect: async (deviceId: string, token: string, existingSessionId: string, cwd?: string, program?: string) => {
     const prev = get();
     const existingWs = prev.ws;
     const sameDevice = !!existingWs && prev.deviceId === deviceId;
@@ -38,7 +38,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     // This avoids full-page reconnect feel and only refreshes terminal content.
     if (sameDevice) {
       if (isNew) {
-        existingWs!.send('create_session', { device_id: deviceId, cwd: cwd ?? null });
+        existingWs!.send('create_session', { device_id: deviceId, cwd: cwd ?? null, program: program ?? null });
         set({ sessionId: null, connected: false, error: null });
       } else {
         existingWs!.send('attach_session', { session_id: existingSessionId });
@@ -75,7 +75,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         // Router path sync is handled in TerminalPage via navigate(...),
         // so side bar active-state stays in sync with React Router.
         // Trigger PTY spawn without injecting visible input characters.
-        ws.send('terminal_input', { session_id: sid, data: '', cwd: serverCwd ?? null });
+        const serverProgram = payload.program as string | undefined;
+        ws.send('terminal_input', { session_id: sid, data: '', cwd: serverCwd ?? null, program: serverProgram ?? null });
       });
 
       // Handle errors
@@ -113,20 +114,20 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
 
       // Track session context for WS reconnect re-attachment
-      let savedReconnect: { sessionId: string; deviceId: string; cwd?: string } | null = null;
+      let savedReconnect: { sessionId: string; deviceId: string; cwd?: string; program?: string } | null = null;
 
       ws.onStatus((connected) => {
         if (!connected) {
           const s = get();
           if (s.sessionId && s.deviceId) {
-            savedReconnect = { sessionId: s.sessionId, deviceId: s.deviceId, cwd };
+            savedReconnect = { sessionId: s.sessionId, deviceId: s.deviceId, cwd, program };
           }
         }
         if (connected && savedReconnect) {
           const ctx = savedReconnect;
           savedReconnect = null;
           if (ctx.sessionId === 'new') {
-            ws.send('create_session', { device_id: ctx.deviceId, cwd: ctx.cwd ?? null });
+            ws.send('create_session', { device_id: ctx.deviceId, cwd: ctx.cwd ?? null, program: ctx.program ?? null });
           } else {
             ws.send('attach_session', { session_id: ctx.sessionId });
             set({ sessionId: ctx.sessionId, connected: true });
@@ -138,7 +139,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       ws.connect(() => {
         if (isNew) {
           // Create session over WS
-          ws.send('create_session', { device_id: deviceId, cwd: cwd ?? null });
+          ws.send('create_session', { device_id: deviceId, cwd: cwd ?? null, program: program ?? null });
         } else {
           // Reconnect to existing session
           ws.send('attach_session', { session_id: existingSessionId });

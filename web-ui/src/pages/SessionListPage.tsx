@@ -19,7 +19,16 @@ export function SessionListPage() {
   const deleteSession = useSessionStore((s) => s.deleteSession);
   const [showNew, setShowNew] = useState(false);
   const [cwd, setCwd] = useState('');
+  const [program, setProgram] = useState('claude');
   const isMobile = useIsMobile(900);
+
+  const PROGRAMS = [
+    { value: 'powershell', label: t('programPowerShell') },
+    { value: 'bash', label: t('programBash') },
+    { value: 'claude', label: t('programClaude') },
+    { value: 'codex', label: t('programCodex') },
+    { value: 'opencode', label: t('programOpencode') },
+  ];
 
   useEffect(() => {
     fetchSessions();
@@ -46,6 +55,7 @@ export function SessionListPage() {
     setShowNew(false);
     const params = new URLSearchParams();
     if (cwd) params.set('cwd', cwd);
+    if (program !== 'claude') params.set('program', program);
     const qs = params.toString();
     navigate(`/devices/${deviceId}/sessions/new${qs ? '?' + qs : ''}`);
   };
@@ -134,6 +144,35 @@ export function SessionListPage() {
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
           />
+          <div style={{ marginBottom: '0.75rem' }}>
+            <div style={{ color: '#a0a0a0', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+              {t('program')}
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {PROGRAMS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setProgram(p.value)}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    background: program === p.value ? '#e94560' : '#1d2a4b',
+                    border: `1px solid ${program === p.value ? '#e94560' : '#2f4778'}`,
+                    color: program === p.value ? '#fff' : '#b0b8d0',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    fontWeight: 500,
+                    flex: isMobile ? '1 1 calc(50% - 0.4rem)' : 'none',
+                    minWidth: isMobile ? 0 : '6.5rem',
+                    textAlign: 'center',
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
             <button
               onClick={handleCreate}

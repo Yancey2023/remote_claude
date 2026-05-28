@@ -248,6 +248,11 @@ async fn handle_web_message(
                 .get("cwd")
                 .and_then(|c| c.as_str())
                 .map(|s| s.to_string());
+            let program = payload
+                .get("program")
+                .and_then(|p| p.as_str())
+                .filter(|p| !p.is_empty())
+                .map(|s| s.to_string());
 
             let device = client_hub
                 .get_by_device_id(device_id)
@@ -274,7 +279,8 @@ async fn handle_web_message(
                 "payload": {
                     "session_id": session_id,
                     "device_id": device_id,
-                    "cwd": cwd
+                    "cwd": cwd,
+                    "program": program
                 }
             });
 

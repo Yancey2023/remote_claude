@@ -27,4 +27,6 @@ Thumbs.db
 
 # Build artifacts
 *.db
+*.db-shm
+*.db-wal
 *.tsbuildinfo

@@ -91,6 +91,7 @@ export interface SessionCreatedPayload {
   session_id: string;
   device_id: string;
   cwd?: string;
+  program?: string;
 }
 
 export interface DeviceStatusPayload {
@@ -113,6 +114,7 @@ export interface ErrorPayload {
 export interface TerminalInputPayload {
   session_id: string;
   data: string;
+  program?: string;
 }
 
 export interface TerminalResizePayload {

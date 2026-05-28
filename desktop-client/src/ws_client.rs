@@ -85,7 +85,7 @@ pub async fn connect_and_run(config: &Config) -> Result<(), String> {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
                         if let Err(e) = handle_server_message(
-                            &text, &outbound_tx, &result_tx, config, &pty_mgr
+                            &text, &outbound_tx, &result_tx, &pty_mgr
                         ).await {
                             warn!(error = %e, "handling server message");
                         }
@@ -154,11 +154,12 @@ async fn receive_registered(
     }
 }
 
+const DEFAULT_PROGRAM: &str = "claude";
+
 async fn handle_server_message(
     text: &str,
     outbound_tx: &mpsc::UnboundedSender<String>,
     result_tx: &mpsc::UnboundedSender<(String, String, bool)>,
-    config: &Config,
     pty_mgr: &PtySessionManager,
 ) -> Result<(), String> {
     // Handle "__kick__" text message
@@ -173,7 +174,10 @@ async fn handle_server_message(
                 let sid = payload.session_id;
                 if !pty_mgr.has_session(&sid) {
                     let cwd = payload.cwd.clone();
-                    pty_mgr.spawn(&sid, &config.claude_binary, result_tx.clone(), cwd.as_deref())
+                    let program = payload.program.as_deref()
+                        .filter(|p| !p.is_empty())
+                        .unwrap_or(DEFAULT_PROGRAM);
+                    pty_mgr.spawn(&sid, program, result_tx.clone(), cwd.as_deref())
                         .map_err(|e| format!("PTY spawn: {}", e))?;
                     let _ = outbound_tx.send(ClientMessage::status_update(true, true));
                 }
@@ -191,7 +195,7 @@ async fn handle_server_message(
                 let _ = outbound_tx.send(ClientMessage::status_update(true, true));
                 let sid = payload.session_id;
                 if !pty_mgr.has_session(&sid) {
-                    pty_mgr.spawn(&sid, &config.claude_binary, result_tx.clone(), None)?;
+                    pty_mgr.spawn(&sid, DEFAULT_PROGRAM, result_tx.clone(), None)?;
                 }
                 let input = payload.command + "\r";
                 pty_mgr.write_input(&sid, &input);
@@ -211,19 +215,6 @@ async fn handle_server_message(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
-
-    fn test_config() -> Config {
-        Config {
-            server_url: "ws://test:8080/ws/client".into(),
-            client_token: "test-token".into(),
-            device_name: "test-pc".into(),
-            client_version: "1.0.0".into(),
-            max_retry_delay_secs: 30,
-            device_id: "dev-test".into(),
-            claude_binary: "claude".into(),
-        }
-    }
 
     fn test_pty_mgr() -> PtySessionManager {
         PtySessionManager::new()
@@ -233,10 +224,9 @@ mod tests {
     async fn test_kick_message() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
-        let result = handle_server_message("__kick__", &out_tx, &res_tx, &config, &pty_mgr).await;
+        let result = handle_server_message("__kick__", &out_tx, &res_tx, &pty_mgr).await;
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "kicked");
     }
@@ -245,10 +235,9 @@ mod tests {
     async fn test_ping_message() {
         let (out_tx, mut out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
-        let result = handle_server_message(r#"{"type":"ping","payload":{}}"#, &out_tx, &res_tx, &config, &pty_mgr).await;
+        let result = handle_server_message(r#"{"type":"ping","payload":{}}"#, &out_tx, &res_tx, &pty_mgr).await;
         assert!(result.is_ok());
 
         let sent = out_rx.try_recv().unwrap();
@@ -259,12 +248,25 @@ mod tests {
     async fn test_terminal_input_message() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
         let result = handle_server_message(
             r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"h","cwd":"/tmp"}}"#,
-            &out_tx, &res_tx, &config, &pty_mgr,
+            &out_tx, &res_tx, &pty_mgr,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_terminal_input_with_program_field() {
+        let (out_tx, _out_rx) = mpsc::unbounded_channel();
+        let (res_tx, _res_rx) = mpsc::unbounded_channel();
+        let pty_mgr = test_pty_mgr();
+
+        let result = handle_server_message(
+            r#"{"type":"terminal_input","payload":{"session_id":"s2","data":"h","cwd":null,"program":"powershell"}}"#,
+            &out_tx, &res_tx, &pty_mgr,
         )
         .await;
         assert!(result.is_ok());
@@ -274,12 +276,11 @@ mod tests {
     async fn test_session_closed_message() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
         let result = handle_server_message(
             r#"{"type":"session_closed","payload":{"session_id":"s1"}}"#,
-            &out_tx, &res_tx, &config, &pty_mgr,
+            &out_tx, &res_tx, &pty_mgr,
         )
         .await;
         assert!(result.is_ok());
@@ -289,12 +290,11 @@ mod tests {
     async fn test_command_message() {
         let (out_tx, mut out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
         let result = handle_server_message(
             r#"{"type":"command","payload":{"session_id":"s1","command":"test cmd"}}"#,
-            &out_tx, &res_tx, &config, &pty_mgr,
+            &out_tx, &res_tx, &pty_mgr,
         )
         .await;
         // Will fail PTY spawn in test env but shouldn't crash
@@ -309,12 +309,11 @@ mod tests {
     async fn test_unknown_message() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
         let result = handle_server_message(
             r#"{"type":"unknown","payload":{}}"#,
-            &out_tx, &res_tx, &config, &pty_mgr,
+            &out_tx, &res_tx, &pty_mgr,
         )
         .await;
         assert!(result.is_ok());
@@ -324,10 +323,9 @@ mod tests {
     async fn test_invalid_json() {
         let (out_tx, _out_rx) = mpsc::unbounded_channel();
         let (res_tx, _res_rx) = mpsc::unbounded_channel();
-        let config = test_config();
         let pty_mgr = test_pty_mgr();
 
-        let result = handle_server_message("not json", &out_tx, &res_tx, &config, &pty_mgr).await;
+        let result = handle_server_message("not json", &out_tx, &res_tx, &pty_mgr).await;
         assert!(result.is_ok());
     }
 }

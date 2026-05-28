@@ -35,6 +35,7 @@ pub struct TerminalInputPayload {
     pub session_id: String,
     pub data: String,
     pub cwd: Option<String>,
+    pub program: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -186,6 +187,36 @@ mod tests {
                 assert_eq!(payload.command, "hello");
             }
             _ => panic!("expected Command variant"),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_terminal_input_with_program() {
+        let json = r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"echo hi","cwd":"/tmp","program":"powershell"}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::TerminalInput { payload } => {
+                assert_eq!(payload.session_id, "s1");
+                assert_eq!(payload.data, "echo hi");
+                assert_eq!(payload.cwd, Some("/tmp".to_string()));
+                assert_eq!(payload.program, Some("powershell".to_string()));
+            }
+            _ => panic!("expected TerminalInput variant"),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_terminal_input_no_program() {
+        let json = r#"{"type":"terminal_input","payload":{"session_id":"s1","data":"hello","cwd":null}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::TerminalInput { payload } => {
+                assert_eq!(payload.session_id, "s1");
+                assert_eq!(payload.data, "hello");
+                assert_eq!(payload.cwd, None);
+                assert_eq!(payload.program, None);
+            }
+            _ => panic!("expected TerminalInput variant"),
         }
     }
 

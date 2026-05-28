@@ -94,7 +94,7 @@ describe('模块名', () => {
 | 项目 | 框架 | 测试数量 | 位置 |
 |------|------|----------|------|
 | relay-server | `cargo test` / `tokio::test` | 78 | `#[cfg(test)]` 内联在源文件中 |
-| desktop-client | `cargo test` / `tokio::test` | 29 | `#[cfg(test)]` 内联在源文件中 |
+| desktop-client | `cargo test` / `tokio::test` | 32 | `#[cfg(test)]` 内联在源文件中 |
 | web-ui | `vitest` / `pnpm test` | 102 | `*.test.ts` 和测试文件同目录 |
 
 ## 配置系统
@@ -199,9 +199,8 @@ cargo run
 | `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
 | `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
 | `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
-| `claude_binary` | `CLAUDE_BINARY` | `claude` | Claude CLI 可执行文件路径/名称 |
 
-> Windows 兼容说明：`desktop-client` 会在启动前自动清洗 `claude_binary` / `cwd`（去除 `\0` 和首尾空白）。当 `claude_binary` 是 `.cmd/.bat` 或无扩展名命令时，会通过 `cmd.exe /D /C` 包装启动，避免 `CreateProcessW ... os error 193`。
+> Windows 兼容说明：`desktop-client` 会在启动前自动清洗命令路径（去除 `\0` 和首尾空白）。当命令是 `.cmd/.bat` 或无扩展名时，会通过 `cmd.exe /D /C` 包装启动，避免 `CreateProcessW ... os error 193`。
 
 ### 3. 网页前端
 
@@ -366,11 +365,14 @@ docker compose down
 
 | type | 方向 | payload |
 |------|------|---------|
-| `register` | C→S | `{ token, name, version }` |
+| `register` | C→S | `{ token, name, version, device_id }` |
 | `registered` | S→C | `{ device_id }` |
 | `ping` | S→C | `{}` |
 | `pong` | C→S | `{}` |
 | `command` | S→C | `{ session_id, command }` |
+| `terminal_input` | S→C | `{ session_id, data, cwd?, program? }` |
+| `terminal_resize` | S→C | `{ session_id, cols, rows }` |
+| `session_closed` | S→C | `{ session_id }` |
 | `result_chunk` | C→S | `{ session_id, chunk, done }` |
 | `status_update` | C→S | `{ online, busy }` |
 
@@ -380,11 +382,14 @@ docker compose down
 
 | type | 方向 | payload |
 |------|------|---------|
-| `create_session` | C→S | `{ device_id }` |
-| `session_created` | S→C | `{ session_id, device_id }` |
+| `create_session` | C→S | `{ device_id, cwd?, program? }` |
+| `session_created` | S→C | `{ session_id, device_id, cwd?, program? }` |
+| `attach_session` | C→S | `{ session_id }` |
 | `command` | C→S | `{ session_id, command }` |
-| `result_chunk` | S→C | `{ session_id, chunk, done }` |
+| `terminal_input` | C→S | `{ session_id, data, cwd?, program? }` |
+| `terminal_resize` | C→S | `{ session_id, cols, rows }` |
 | `close_session` | C→S | `{ session_id }` |
+| `result_chunk` | S→C | `{ session_id, chunk, done }` |
 | `device_status` | S→C | `{ device_id, online }` |
 | `error` | S→C | `{ code, message }` |
 
@@ -415,7 +420,7 @@ GitHub Actions 自动构建和发布：
 ```bash
 # 运行全部
 cd relay-server && cargo test    # 78 tests
-cd desktop-client && cargo test  # 29 tests
+cd desktop-client && cargo test  # 32 tests
 cd web-ui && pnpm test           # 102 tests
 
 # 运行单个测试文件（Rust）
