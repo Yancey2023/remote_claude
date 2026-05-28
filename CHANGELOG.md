@@ -4,6 +4,36 @@
 
 ### Bug Fixes
 
+- Update job names and caching keys to use short target identifiers for relay-server and desktop-client
+
+- Device status indicator and session persistence on disconnect
+
+- Eliminate compiler warnings and dead code
+
+
+### Documentation
+
+- Update CHANGELOG.md [skip ci]
+
+
+### Features
+
+- Add program selection for terminal sessions and update related payloads
+
+- Admin panel, change password, i18n fixes, and token delete UI fix
+
+
+### Miscellaneous
+
+- Bump version to 1.1.0 for release
+
+- Comprehensive performance optimization across all three projects
+
+- Reduce unnecessary re-renders and pause polling when tab is hidden
+
+
+### Bug Fixes
+
 - Fetch all tags and use --tag flag in git-cliff
 
 - Checkout tag for git-cliff then switch to main for commit
