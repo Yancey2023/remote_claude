@@ -65,6 +65,5 @@ ENV CONFIG_PATH=/app/config/relay-server.toml
 ENV DATABASE_URL=sqlite:///app/data/data.db
 VOLUME /app/config
 VOLUME /app/data
-VOLUME /app/downloads
 
 CMD ["/app/relay-server"]
