@@ -347,7 +347,7 @@ GitHub Actions 自动构建和发布：
 |--------|------|
 | `REMOTE_HOST` | 服务器地址 |
 | `REMOTE_USER` | SSH 用户名 |
-| `ACCESS_TOKEN` | SSH 密码或访问令牌 |
+| `ACCESS_TOKEN` | SSH 私钥 |
 
 部署流程：连接服务器 → `cd /home/ubuntu/server` → `docker compose pull remote-claude` → `docker compose up -d --no-deps remote-claude`，仅重启该服务不影响其他容器。
 

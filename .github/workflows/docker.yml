@@ -47,7 +47,7 @@ jobs:
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
-          password: ${{ secrets.ACCESS_TOKEN }}
+          key: ${{ secrets.ACCESS_TOKEN }}
           script: |
             cd /home/ubuntu/server
             docker compose pull remote-claude
