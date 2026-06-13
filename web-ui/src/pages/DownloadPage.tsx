@@ -4,6 +4,8 @@ import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { DownloadFileInfo } from '../types/protocol';
 
+type OsTab = 'linux' | 'windows' | 'macos';
+
 function formatSize(bytes: number): string {
   if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -12,9 +14,12 @@ function formatSize(bytes: number): string {
   return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-function isWindows(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /win(dows|32|64|16|ce)/i.test(navigator.platform);
+function detectOsTab(): OsTab {
+  if (typeof navigator === 'undefined') return 'linux';
+  const p = navigator.platform.toLowerCase();
+  if (p.startsWith('win')) return 'windows';
+  if (p.startsWith('mac')) return 'macos';
+  return 'linux';
 }
 
 function formatDate(iso: string): string {
@@ -134,14 +139,43 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#65719c',
     marginTop: '0.35rem',
   },
+  osTabRow: {
+    display: 'flex',
+    gap: '0.35rem',
+    marginBottom: '0.75rem',
+  } as const,
+  osTab: {
+    border: '1px solid #1d2b50',
+    borderRadius: '6px',
+    padding: '0.35rem 0.7rem',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    background: 'transparent',
+    color: '#8d95b8',
+    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+  } as const,
+};
+
+const OS_TABS: { key: OsTab; label: string }[] = [
+  { key: 'linux', label: '🐧 Linux' },
+  { key: 'windows', label: '⊞ Windows' },
+  { key: 'macos', label: '🍎 macOS' },
+];
+
+const OS_COMMANDS: Record<OsTab, string> = {
+  linux: 'chmod +x desktop-client && ./desktop-client',
+  windows: 'desktop-client.exe',
+  macos: 'chmod +x desktop-client && ./desktop-client',
 };
 
 export function DownloadPage() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const isMobile = useIsMobile(900);
   const [files, setFiles] = useState<DownloadFileInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [osTab, setOsTab] = useState<OsTab>(detectOsTab);
 
   useEffect(() => {
     let cancelled = false;
@@ -245,9 +279,23 @@ export function DownloadPage() {
             <span>{t('downloadHelpStep1')}</span>
           </div>
           <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
-            <code style={styles.code}>
-              {isWindows() ? 'desktop-client.exe' : 'chmod +x desktop-client && ./desktop-client'}
-            </code>
+            <div style={styles.osTabRow}>
+              {OS_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setOsTab(tab.key)}
+                  style={{
+                    ...styles.osTab,
+                    background: osTab === tab.key ? '#1d2a4b' : 'transparent',
+                    color: osTab === tab.key ? '#f17a8e' : '#8d95b8',
+                    borderColor: osTab === tab.key ? '#2f4778' : '#1d2b50',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <code style={styles.code}>{OS_COMMANDS[osTab]}</code>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
             <span style={styles.stepNum}>3</span>
