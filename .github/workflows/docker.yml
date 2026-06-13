@@ -44,7 +44,8 @@ jobs:
 
       - name: Save image for transfer
         run: |
-          IMAGE="${{ secrets.DOCKER_USERNAME }}/remote-claude:${{ github.sha }}"
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/remote-claude:${SHORT_SHA}"
           docker tag "$IMAGE" "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest"
           docker save "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest" | gzip > /tmp/remote-claude.tar.gz
 
