@@ -49,7 +49,7 @@ jobs:
           docker save "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest" | gzip > /tmp/remote-claude.tar.gz
 
       - name: Copy image to server
-        uses: appleboy/scp-action@v0
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}

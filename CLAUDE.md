@@ -349,7 +349,7 @@ GitHub Actions 自动构建和发布：
 | `REMOTE_USER` | SSH 用户名 |
 | `ACCESS_TOKEN` | SSH 私钥 |
 
-部署流程：连接服务器 → `cd /home/ubuntu/server` → `docker compose pull remote-claude` → `docker compose up -d --no-deps remote-claude`，仅重启该服务不影响其他容器。
+部署流程：GitHub Actions 构建镜像 → `docker save` → `scp` 到服务器 `/tmp/` → 服务器 `docker load` → `docker compose up -d --no-deps remote-claude`，绕过 Docker Hub 网络问题。
 
 ## 运行测试
 
