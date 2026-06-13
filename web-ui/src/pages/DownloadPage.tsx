@@ -215,7 +215,7 @@ export function DownloadPage() {
                         download={f.filename}
                         style={styles.downloadBtn}
                       >
-                        {t('downloadFile')} ↓
+                        {t('downloadFile')}
                       </a>
                     </td>
                   </tr>
