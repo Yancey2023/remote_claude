@@ -14,7 +14,8 @@ RUN cd relay-server && touch src/main.rs && cargo build --release && cp target/r
 FROM ubuntu:22.04 AS client-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates build-essential pkg-config libssl-dev && \
+    curl ca-certificates build-essential pkg-config libssl-dev \
+    gcc-mingw-w64-x86-64 && \
     rm -rf /var/lib/apt/lists/*
 
 ENV RUSTUP_HOME=/usr/local/rustup \
@@ -24,16 +25,26 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     sh -s -- -y --default-toolchain stable --profile minimal --no-modify-path
 
+# Add cross-compilation targets
+RUN rustup target add x86_64-pc-windows-gnu
+
+# Cross-compilation linkers
+ENV CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
+
 WORKDIR /app
 
 # Cache dependencies
 COPY desktop-client/Cargo.toml desktop-client/Cargo.lock ./desktop-client/
 RUN mkdir -p desktop-client/src && echo "fn main() {}" > desktop-client/src/main.rs && \
-    cd desktop-client && cargo build --release && cd .. && rm -rf desktop-client/src
+    cd desktop-client && cargo build --release && \
+    cargo build --release --target x86_64-pc-windows-gnu && \
+    cd .. && rm -rf desktop-client/src
 
 # Build real binary
 COPY desktop-client/src ./desktop-client/src
-RUN cd desktop-client && touch src/main.rs && cargo build --release
+RUN cd desktop-client && touch src/main.rs && \
+    cargo build --release && \
+    cargo build --release --target x86_64-pc-windows-gnu
 
 # Package into downloads directory with release naming
 RUN version=$(grep '^version' desktop-client/Cargo.toml | head -1 | cut -d'"' -f2) && \
@@ -44,7 +55,10 @@ RUN version=$(grep '^version' desktop-client/Cargo.toml | head -1 | cut -d'"' -f
         aarch64) arch="arm64" ;; \
     esac && \
     mkdir -p /app/downloads && \
-    cp desktop-client/target/release/desktop-client "/app/downloads/remote-claude-desktop-client-v${version}-${os}-${arch}"
+    cp desktop-client/target/release/desktop-client \
+      "/app/downloads/remote-claude-desktop-client-v${version}-${os}-${arch}" && \
+    cp desktop-client/target/x86_64-pc-windows-gnu/release/desktop-client.exe \
+      "/app/downloads/remote-claude-desktop-client-v${version}-windows-x64.exe"
 
 # ── Runtime ──
 FROM debian:bookworm-slim

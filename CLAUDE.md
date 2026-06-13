@@ -248,7 +248,7 @@ docker start remote-claude-relay-server
 | `ADMIN_PASS` | `admin123` | 管理员密码 |
 | `JWT_SECRET` | `change-me` | JWT 签名密钥 |
 
-> 客户端二进制文件在构建 relay-server 镜像时自动编译并放入 `relay-downloads` volume 中，可通过网页端「下载客户端」页面直接下载。如需放置额外的客户端版本，执行 `docker cp <文件> remote-claude-relay-server:/app/downloads/`。
+> 客户端二进制文件在构建 relay-server 镜像时自动交叉编译 Linux x64 和 Windows x64 版本，放入 `relay-downloads` volume 中，可通过网页端「下载客户端」页面直接下载。如需放置其他平台的额外版本（如 macOS），执行 `docker cp <文件> remote-claude-relay-server:/app/downloads/`。
 
 ## 迁移说明
 
