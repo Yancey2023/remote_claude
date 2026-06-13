@@ -44,7 +44,7 @@ RUN version=$(grep '^version' desktop-client/Cargo.toml | head -1 | cut -d'"' -f
         aarch64) arch="arm64" ;; \
     esac && \
     mkdir -p /app/downloads && \
-    cp target/release/desktop-client "/app/downloads/remote-claude-desktop-client-v${version}-${os}-${arch}"
+    cp desktop-client/target/release/desktop-client "/app/downloads/remote-claude-desktop-client-v${version}-${os}-${arch}"
 
 # ── Runtime ──
 FROM debian:bookworm-slim
