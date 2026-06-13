@@ -158,9 +158,9 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 const OS_TABS: { key: OsTab; label: string }[] = [
-  { key: 'linux', label: '🐧 Linux' },
   { key: 'windows', label: '⊞ Windows' },
   { key: 'macos', label: '🍎 macOS' },
+  { key: 'linux', label: '🐧 Linux' },
 ];
 
 const OS_COMMANDS: Record<OsTab, string> = {
