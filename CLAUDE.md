@@ -248,7 +248,7 @@ docker start remote-claude-relay-server
 | `ADMIN_PASS` | `admin123` | 管理员密码 |
 | `JWT_SECRET` | `change-me` | JWT 签名密钥 |
 
-> 客户端二进制文件在构建 relay-server 镜像时自动交叉编译 Linux x64 和 Windows x64 版本，放入 `relay-downloads` volume 中，可通过网页端「下载客户端」页面直接下载。如需放置其他平台的额外版本（如 macOS），执行 `docker cp <文件> remote-claude-relay-server:/app/downloads/`。
+> 客户端二进制文件由 GitHub Actions 在原生 runner 上编译（见 `.github/workflows/docker.yml` 的 `desktop-client` 矩阵任务），构建 Docker 镜像时自动打包进 `/app/downloads` 目录。目前自动编译 Linux x64、Windows x64、macOS x64 三个版本。
 
 ## 迁移说明
 
