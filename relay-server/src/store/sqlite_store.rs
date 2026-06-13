@@ -234,31 +234,10 @@ impl SqliteStore {
         .ok();
     }
 
-    pub async fn get_username(&self, user_id: &str) -> Option<String> {
-        sqlx::query("SELECT username FROM users WHERE id = ?")
-            .bind(user_id)
-            .fetch_optional(&self.pool)
-            .await
-            .ok()
-            .flatten()
-            .map(|row: sqlx::sqlite::SqliteRow| row.get("username"))
-    }
-
-    pub async fn get_device_name(&self, device_id: &str) -> Option<String> {
-        sqlx::query("SELECT name FROM devices WHERE id = ?")
-            .bind(device_id)
-            .fetch_optional(&self.pool)
-            .await
-            .ok()
-            .flatten()
-            .map(|row: sqlx::sqlite::SqliteRow| row.get("name"))
-    }
-
     pub async fn list_devices(&self, user_id: Option<&str>) -> Vec<Device> {
-        let base_sql = "SELECT d.id, d.name, d.version, d.online, d.busy, d.last_seen, d.registered_at, d.user_id, COALESCE(u.username, '') AS username FROM devices d LEFT JOIN users u ON d.user_id = u.id";
         match user_id {
             Some(uid) => sqlx::query(
-                &format!("{} WHERE d.user_id = ? ORDER BY d.last_seen DESC", base_sql),
+                "SELECT d.id, d.name, d.version, d.online, d.busy, d.last_seen, d.registered_at, d.user_id, COALESCE(u.username, '') AS username FROM devices d LEFT JOIN users u ON d.user_id = u.id WHERE d.user_id = ? ORDER BY d.last_seen DESC",
             )
             .bind(uid)
             .fetch_all(&self.pool)
@@ -267,7 +246,7 @@ impl SqliteStore {
             .map(|rows| rows.into_iter().map(row_to_device).collect())
             .unwrap_or_default(),
             None => sqlx::query(
-                &format!("{} ORDER BY d.last_seen DESC", base_sql),
+                "SELECT d.id, d.name, d.version, d.online, d.busy, d.last_seen, d.registered_at, d.user_id, COALESCE(u.username, '') AS username FROM devices d LEFT JOIN users u ON d.user_id = u.id ORDER BY d.last_seen DESC",
             )
             .fetch_all(&self.pool)
             .await
