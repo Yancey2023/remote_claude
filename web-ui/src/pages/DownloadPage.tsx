@@ -12,6 +12,11 @@ function formatSize(bytes: number): string {
   return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+function isWindows(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /win(dows|32|64|16|ce)/i.test(navigator.platform);
+}
+
 function formatDate(iso: string): string {
   if (!iso) return '-';
   try {
@@ -241,7 +246,7 @@ export function DownloadPage() {
           </div>
           <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
             <code style={styles.code}>
-              {locale === 'zh' ? 'chmod +x desktop-client && ./desktop-client' : 'chmod +x desktop-client && ./desktop-client'}
+              {isWindows() ? 'desktop-client.exe' : 'chmod +x desktop-client && ./desktop-client'}
             </code>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
