@@ -337,7 +337,7 @@ GitHub Actions 自动构建和发布：
 
 | 触发 | 操作 |
 |------|------|
-| `push` main | 构建并推送镜像，标签：`main`、`<git-sha>` |
+| `push` main | 构建并推送镜像，标签：`latest`、`<git-sha>` |
 | `push` tag `v*` | 同上 + semver 标签：`vX.Y.Z`、`vX.Y` |
 
 仅 relay-server 发布到 Docker Hub。需要在仓库 Secrets 中配置 `DOCKER_USERNAME` 和 `DOCKER_PASSWORD`（或访问令牌），BuildKit `type=gha` 缓存加速构建。
