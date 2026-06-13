@@ -157,6 +157,26 @@ const translations = {
     fetchAllSessionsFailed: 'Failed to fetch all sessions',
     fetchSessionDetailFailed: 'Failed to fetch session detail',
 
+    // Downloads
+    downloads: 'Downloads',
+    downloadClient: 'Download Client',
+    downloadTitle: 'Download Desktop Client',
+    downloadDescription: 'Download the desktop client binary for your platform and connect it to this server.',
+    downloadPlatform: 'Platform',
+    downloadVersion: 'Version',
+    downloadArch: 'Architecture',
+    downloadSize: 'Size',
+    downloadFile: 'Download',
+    noDownloads: 'No client binaries available. Place them in the server\'s downloads directory.',
+    fetchDownloadsFailed: 'Failed to list available downloads',
+    downloadHelpTitle: 'How to use',
+    downloadHelpStep0: 'Download the appropriate binary for your operating system.',
+    downloadHelpStep1: 'Place it on the target machine and run it with:',
+    downloadHelpRun: './desktop-client',
+    downloadHelpStep2: 'Enter the client token shown on the Devices page when prompted.',
+    downloadHelpStep3: 'The device will appear in the device list and you can start sessions.',
+    downloadHelpTokenHint: '(Generate a token in the Devices section of the sidebar)',
+
     // General (used across admin)
     deviceName: 'Name',
     userId: 'User ID',
@@ -315,6 +335,26 @@ const translations = {
     noHistory: '暂无终端历史记录。',
     fetchAllSessionsFailed: '获取所有会话失败',
     fetchSessionDetailFailed: '获取会话详情失败',
+
+    // Downloads
+    downloads: '下载',
+    downloadClient: '下载客户端',
+    downloadTitle: '下载桌面客户端',
+    downloadDescription: '下载桌面客户端二进制文件，并将其连接到本服务器。',
+    downloadPlatform: '平台',
+    downloadVersion: '版本',
+    downloadArch: '架构',
+    downloadSize: '大小',
+    downloadFile: '下载',
+    noDownloads: '暂无可用客户端。请将二进制文件放入服务器的下载目录中。',
+    fetchDownloadsFailed: '获取可下载文件列表失败',
+    downloadHelpTitle: '使用说明',
+    downloadHelpStep0: '下载适合你操作系统的二进制文件。',
+    downloadHelpStep1: '将其放到目标机器上，运行以下命令：',
+    downloadHelpRun: './desktop-client',
+    downloadHelpStep2: '按提示输入设备页面上显示的客户端令牌。',
+    downloadHelpStep3: '设备将出现在设备列表中，之后可以开始会话。',
+    downloadHelpTokenHint: '（在侧边栏的设备页面生成令牌）',
 
     // General (used across admin)
     deviceName: '设备名称',

@@ -6,6 +6,7 @@ import type {
   TokenResponse,
   UserResponse,
   ApiError,
+  DownloadFileInfo,
 } from '../types/protocol';
 import { getConfig } from '../config';
 
@@ -140,6 +141,16 @@ class ApiClient {
 
   async deleteToken(token: string) {
     return this.request('DELETE', `/tokens/${encodeURIComponent(token)}`);
+  }
+
+  // Downloads
+  async listDownloads() {
+    return this.request<{ files: DownloadFileInfo[] }>('GET', '/downloads');
+  }
+
+  getDownloadUrl(filename: string): string {
+    const baseUrl = getConfig().apiBaseUrl;
+    return `${baseUrl}/downloads/${encodeURIComponent(filename)}`;
   }
 }
 

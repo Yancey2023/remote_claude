@@ -342,6 +342,18 @@ export function Layout() {
             <span style={styles.linkIcon}>●</span>
             {t('devices')}
           </NavLink>
+          <NavLink
+            to="/downloads"
+            end
+            onClick={() => setSidebarOpen(false)}
+            style={({ isActive }) => ({
+              ...styles.link,
+              ...(isActive ? styles.activeLink : {}),
+            })}
+          >
+            <span style={styles.linkIcon}>⬇</span>
+            {t('downloadClient')}
+          </NavLink>
           {user?.role === 'Admin' && (
             <NavLink
               to="/admin"

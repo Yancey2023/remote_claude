@@ -3,12 +3,15 @@ name: remote-claude
 services:
   relay-server:
     container_name: remote-claude-relay-server
-    image: ghcr.io/yancey2023/remote_claude-relay-server:main
+    build:
+      context: .
+      dockerfile: relay-server/Dockerfile
     ports:
       - "8080:8080"
     volumes:
       - relay-config:/app/config
       - relay-data:/app/data
+      - relay-downloads:/app/downloads
     environment:
       - ADMIN_USER=${RELAY_ADMIN_USER:-admin}
       - ADMIN_PASS=${RELAY_ADMIN_PASS:-admin123}
@@ -29,3 +32,4 @@ services:
 volumes:
   relay-config:
   relay-data:
+  relay-downloads:

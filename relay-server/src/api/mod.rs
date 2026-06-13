@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod auth;
 pub mod devices;
+pub mod downloads;
 pub mod rate_limit;
 pub mod sessions;
 pub mod tokens;
@@ -19,6 +20,7 @@ pub fn router() -> Router<Arc<RwLock<AppState>>> {
         .nest("/api/sessions", sessions::router())
         .nest("/api/admin", admin::router())
         .nest("/api/tokens", tokens::router())
+        .nest("/api/downloads", downloads::router())
 }
 
 async fn health() -> &'static str {

@@ -44,3 +44,12 @@ export interface AdminSessionResponse {
 export interface SessionDetailResponse extends AdminSessionResponse {
   history: string | null;
 }
+
+export interface DownloadFileInfo {
+  filename: string;
+  size: number;
+  modified: string;
+  platform: string | null;
+  arch: string | null;
+  version: string | null;
+}

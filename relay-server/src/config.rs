@@ -14,6 +14,7 @@ pub struct Config {
     pub heartbeat_interval_secs: u64,
     pub heartbeat_timeout_secs: u64,
     pub allowed_origin: String,
+    pub downloads_dir: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -28,6 +29,7 @@ struct ConfigFile {
     heartbeat_interval_secs: Option<u64>,
     heartbeat_timeout_secs: Option<u64>,
     allowed_origin: Option<String>,
+    downloads_dir: Option<String>,
 }
 
 impl Config {
@@ -88,6 +90,7 @@ impl Config {
                 u64
             ),
             allowed_origin: field_str!(allowed_origin, "ALLOWED_ORIGIN", ""),
+            downloads_dir: field_str!(downloads_dir, "DOWNLOADS_DIR", "./downloads"),
         };
 
         if modified {
@@ -164,6 +167,9 @@ impl From<ConfigFile> for Config {
             heartbeat_interval_secs: f.heartbeat_interval_secs.unwrap_or(15),
             heartbeat_timeout_secs: f.heartbeat_timeout_secs.unwrap_or(30),
             allowed_origin: f.allowed_origin.unwrap_or_default(),
+            downloads_dir: f
+                .downloads_dir
+                .unwrap_or_else(|| "./downloads".into()),
         }
     }
 }
@@ -185,6 +191,7 @@ mod tests {
             heartbeat_interval_secs: 15,
             heartbeat_timeout_secs: 30,
             allowed_origin: "".into(),
+            downloads_dir: "./downloads".into(),
         };
         assert_eq!(config.admin_user, "admin");
         assert_eq!(config.admin_pass, "admin123");
@@ -195,6 +202,7 @@ mod tests {
         assert_eq!(config.jwt_expiry_hours, 24);
         assert_eq!(config.heartbeat_interval_secs, 15);
         assert_eq!(config.heartbeat_timeout_secs, 30);
+        assert_eq!(config.downloads_dir, "./downloads");
     }
 
     #[test]
@@ -231,6 +239,7 @@ mod tests {
             heartbeat_interval_secs: Some(10),
             heartbeat_timeout_secs: Some(20),
             allowed_origin: Some("http://localhost:5173".into()),
+            downloads_dir: Some("/data/downloads".into()),
         };
         let config: Config = file_config.into();
         assert_eq!(config.admin_user, "admin");
@@ -239,6 +248,7 @@ mod tests {
         assert_eq!(config.heartbeat_interval_secs, 10);
         assert_eq!(config.heartbeat_timeout_secs, 20);
         assert_eq!(config.allowed_origin, "http://localhost:5173");
+        assert_eq!(config.downloads_dir, "/data/downloads");
     }
 
     #[test]

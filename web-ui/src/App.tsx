@@ -16,6 +16,9 @@ const TerminalPage = lazy(() =>
 const AdminPage = lazy(() =>
   import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })),
 );
+const DownloadPage = lazy(() =>
+  import('./pages/DownloadPage').then((m) => ({ default: m.DownloadPage })),
+);
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -63,6 +66,7 @@ export default function App() {
         <Route path="/devices" element={<DeviceListPage />} />
         <Route path="/devices/:id" element={<SessionListPage />} />
         <Route path="/devices/:id/sessions/:sessionId" element={<TerminalPage />} />
+        <Route path="/downloads" element={<DownloadPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/devices" replace />} />
