@@ -25,7 +25,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/remote-claude-relay-server
+          images: ${{ secrets.DOCKER_USERNAME }}/remote-claude
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
