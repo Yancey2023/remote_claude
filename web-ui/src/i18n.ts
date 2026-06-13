@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { create } from 'zustand';
 
 export type Locale = 'en' | 'zh';
@@ -404,10 +405,15 @@ export function formatI18n(key: I18nKey, vars: Record<string, string>, locale?: 
 export function useI18n() {
   const locale = useI18nStore((s) => s.locale);
   const setLocale = useI18nStore((s) => s.setLocale);
+  const t = useCallback((key: I18nKey) => translate(key, locale), [locale]);
+  const tf = useCallback(
+    (key: I18nKey, vars: Record<string, string>) => formatI18n(key, vars, locale),
+    [locale],
+  );
   return {
     locale,
     setLocale,
-    t: (key: I18nKey) => translate(key, locale),
-    tf: (key: I18nKey, vars: Record<string, string>) => formatI18n(key, vars, locale),
+    t,
+    tf,
   };
 }
