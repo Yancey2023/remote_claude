@@ -48,7 +48,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:7}"
           IMAGE="${{ secrets.DOCKER_USERNAME }}/remote-claude:${SHORT_SHA}"
           docker tag "$IMAGE" "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest"
-          docker save "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest" | gzip > /tmp/remote-claude.tar.gz
+          docker save "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest" | gzip > remote-claude.tar.gz
 
       - name: Copy image to server
         uses: appleboy/scp-action@v0.1.7
@@ -56,7 +56,7 @@ jobs:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.ACCESS_TOKEN }}
-          source: /tmp/remote-claude.tar.gz
+          source: remote-claude.tar.gz
           target: /tmp/
 
       - name: Load and restart on server
