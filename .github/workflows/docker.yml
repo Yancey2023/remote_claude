@@ -20,6 +20,8 @@ jobs:
             name: linux-arm64
           - os: windows-latest
             name: windows-x64
+          - os: windows-11-arm
+            name: windows-arm64
           - os: macos-13
             name: darwin-x64
           - os: macos-14
@@ -66,10 +68,11 @@ jobs:
           mv downloads/linux-x64/desktop-client "downloads/remote-claude-desktop-client-v${version}-linux-x64"
           mv downloads/linux-arm64/desktop-client "downloads/remote-claude-desktop-client-v${version}-linux-arm64"
           mv downloads/windows-x64/desktop-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-x64.exe"
+          mv downloads/windows-arm64/desktop-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-arm64.exe"
           mv downloads/darwin-x64/desktop-client "downloads/remote-claude-desktop-client-v${version}-darwin-x64"
           mv downloads/darwin-arm64/desktop-client "downloads/remote-claude-desktop-client-v${version}-darwin-arm64"
           chmod +x downloads/*
-          rm -rf downloads/linux-x64 downloads/linux-arm64 downloads/windows-x64 downloads/darwin-x64 downloads/darwin-arm64
+          rm -rf downloads/linux-x64 downloads/linux-arm64 downloads/windows-x64 downloads/windows-arm64 downloads/darwin-x64 downloads/darwin-arm64
           ls -la downloads/
 
       - name: Set up Docker Buildx

@@ -248,7 +248,7 @@ docker start remote-claude-relay-server
 | `ADMIN_PASS` | `admin123` | 管理员密码 |
 | `JWT_SECRET` | `change-me` | JWT 签名密钥 |
 
-> 客户端二进制文件由 GitHub Actions 在原生 runner 上编译（见 `.github/workflows/docker.yml` 的 `desktop-client` 矩阵任务），构建 Docker 镜像时自动打包进 `/app/downloads` 目录。支持平台：Linux (x64/arm64)、Windows x64、macOS (x64/arm64)。
+> 客户端二进制文件由 GitHub Actions 在原生 runner 上编译（见 `.github/workflows/docker.yml` 的 `desktop-client` 矩阵任务），构建 Docker 镜像时自动打包进 `/app/downloads` 目录。支持平台：Linux (x64/arm64)、Windows (x64/arm64)、macOS (x64/arm64)。
 
 ## 迁移说明
 
