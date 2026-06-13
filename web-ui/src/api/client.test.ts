@@ -57,7 +57,7 @@ describe('apiClient', () => {
   describe('listDevices', () => {
     it('returns device list', async () => {
       const mockDevices = [
-        { id: 'd1', name: 'pc-1', version: '1.0', online: true, busy: false, last_seen: 1000 },
+        { id: 'd1', name: 'pc-1', version: '1.0', online: true, busy: false, last_seen: 1000, user_id: 'u1', username: 'alice' },
       ];
       mockFetch.mockResolvedValueOnce(mockResponse(200, mockDevices));
 

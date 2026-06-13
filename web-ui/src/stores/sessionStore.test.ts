@@ -11,8 +11,8 @@ vi.mock('../api/client', () => ({
 }));
 
 const baseSessions = [
-  { id: 's1', device_id: 'd1', user_id: 'u1', created_at: 1000, cwd: 'C:\\repo\\a' },
-  { id: 's2', device_id: 'd1', user_id: 'u1', created_at: 1001, cwd: 'C:\\repo\\b' },
+  { id: 's1', device_id: 'd1', device_name: null, user_id: 'u1', created_at: 1000, cwd: 'C:\\repo\\a' },
+  { id: 's2', device_id: 'd1', device_name: null, user_id: 'u1', created_at: 1001, cwd: 'C:\\repo\\b' },
 ];
 
 beforeEach(() => {

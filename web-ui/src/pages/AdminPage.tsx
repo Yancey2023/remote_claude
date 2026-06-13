@@ -498,7 +498,7 @@ function DevicesTab({ t, tf, isMobile }: { t: any; tf: any; isMobile: boolean })
                 <th style={styles.th}>{t('status')}</th>
                 <th style={styles.th}>{t('lastSeen')}</th>
                 <th style={styles.th}>{t('registeredAt')}</th>
-                <th style={styles.th}>{t('userId')}</th>
+                <th style={styles.th}>{t('user')}</th>
                 <th style={styles.th}>{t('actions')}</th>
               </tr>
             </thead>
@@ -522,7 +522,7 @@ function DevicesTab({ t, tf, isMobile }: { t: any; tf: any; isMobile: boolean })
                   <td style={{ ...styles.td, color: '#65719c', fontSize: '0.78rem' }}>
                     {new Date(d.registered_at * 1000).toLocaleString()}
                   </td>
-                  <td style={styles.tdMono}>{d.user_id}</td>
+                  <td style={styles.td}>{d.username || d.user_id}</td>
                   <td style={styles.td}>
                     <button style={{ ...styles.actionBtn, ...styles.deleteBtn }} onClick={() => handleDelete(d.id, d.name)}>
                       {t('delete')}
@@ -591,8 +591,8 @@ function SessionsTab({ t, tf, isMobile }: { t: any; tf: any; isMobile: boolean }
             <thead>
               <tr>
                 <th style={styles.th}>{t('sessionId')}</th>
-                <th style={styles.th}>{t('deviceId')}</th>
-                <th style={styles.th}>{t('userId')}</th>
+                <th style={styles.th}>{t('device')}</th>
+                <th style={styles.th}>{t('user')}</th>
                 <th style={styles.th}>{t('createdAt')}</th>
                 <th style={styles.th}>{t('status')}</th>
                 <th style={styles.th}>{t('cwd')}</th>
@@ -605,8 +605,8 @@ function SessionsTab({ t, tf, isMobile }: { t: any; tf: any; isMobile: boolean }
                 return (
                   <tr key={s.id}>
                     <td style={styles.tdMono}>{s.id}</td>
-                    <td style={styles.tdMono}>{s.device_id}</td>
-                    <td style={styles.tdMono}>{s.user_id}</td>
+                    <td style={styles.td}>{s.device_name || s.device_id}</td>
+                    <td style={styles.td}>{s.username || s.user_id}</td>
                     <td style={{ ...styles.td, color: '#65719c', fontSize: '0.78rem' }}>
                       {new Date(s.created_at * 1000).toLocaleString()}
                     </td>
@@ -641,10 +641,10 @@ function SessionsTab({ t, tf, isMobile }: { t: any; tf: any; isMobile: boolean }
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.4rem 1rem', fontSize: '0.82rem', marginBottom: '1rem' }}>
                   <span style={{ color: '#727ea6' }}>ID:</span>
                   <span style={{ color: '#c8cce0', fontFamily: 'monospace' }}>{detail.id}</span>
-                  <span style={{ color: '#727ea6' }}>{t('deviceId')}:</span>
-                  <span style={{ color: '#c8cce0', fontFamily: 'monospace' }}>{detail.device_id}</span>
-                  <span style={{ color: '#727ea6' }}>{t('userId')}:</span>
-                  <span style={{ color: '#c8cce0', fontFamily: 'monospace' }}>{detail.user_id}</span>
+                  <span style={{ color: '#727ea6' }}>{t('device')}:</span>
+                  <span style={{ color: '#c8cce0' }}>{detail.device_name || detail.device_id}</span>
+                  <span style={{ color: '#727ea6' }}>{t('user')}:</span>
+                  <span style={{ color: '#c8cce0' }}>{detail.username || detail.user_id}</span>
                   <span style={{ color: '#727ea6' }}>{t('createdAt')}:</span>
                   <span style={{ color: '#c8cce0' }}>{new Date(detail.created_at * 1000).toLocaleString()}</span>
                   <span style={{ color: '#727ea6' }}>{t('status')}:</span>

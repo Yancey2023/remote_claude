@@ -4,7 +4,11 @@ use serde::{Deserialize, Serialize};
 pub struct Session {
     pub id: String,
     pub device_id: String,
+    #[serde(default)]
+    pub device_name: Option<String>,
     pub user_id: String,
+    #[serde(default)]
+    pub username: String,
     pub created_at: i64,
     pub closed: bool,
     pub cwd: Option<String>,
@@ -15,7 +19,9 @@ impl Session {
         Self {
             id,
             device_id,
+            device_name: None,
             user_id,
+            username: String::new(),
             created_at: chrono::Utc::now().timestamp(),
             closed: false,
             cwd,

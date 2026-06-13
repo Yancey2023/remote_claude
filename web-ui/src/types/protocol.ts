@@ -28,13 +28,16 @@ export interface AdminDeviceResponse {
   busy: boolean;
   last_seen: number;
   user_id: string;
+  username: string;
   registered_at: number;
 }
 
 export interface AdminSessionResponse {
   id: string;
   device_id: string;
+  device_name: string | null;
   user_id: string;
+  username: string;
   created_at: number;
   closed: boolean;
   active: boolean;

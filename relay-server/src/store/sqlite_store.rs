@@ -234,10 +234,31 @@ impl SqliteStore {
         .ok();
     }
 
+    pub async fn get_username(&self, user_id: &str) -> Option<String> {
+        sqlx::query("SELECT username FROM users WHERE id = ?")
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .ok()
+            .flatten()
+            .map(|row: sqlx::sqlite::SqliteRow| row.get("username"))
+    }
+
+    pub async fn get_device_name(&self, device_id: &str) -> Option<String> {
+        sqlx::query("SELECT name FROM devices WHERE id = ?")
+            .bind(device_id)
+            .fetch_optional(&self.pool)
+            .await
+            .ok()
+            .flatten()
+            .map(|row: sqlx::sqlite::SqliteRow| row.get("name"))
+    }
+
     pub async fn list_devices(&self, user_id: Option<&str>) -> Vec<Device> {
+        let base_sql = "SELECT d.id, d.name, d.version, d.online, d.busy, d.last_seen, d.registered_at, d.user_id, COALESCE(u.username, '') AS username FROM devices d LEFT JOIN users u ON d.user_id = u.id";
         match user_id {
             Some(uid) => sqlx::query(
-                "SELECT id, name, version, online, busy, last_seen, registered_at, user_id FROM devices WHERE user_id = ? ORDER BY last_seen DESC",
+                &format!("{} WHERE d.user_id = ? ORDER BY d.last_seen DESC", base_sql),
             )
             .bind(uid)
             .fetch_all(&self.pool)
@@ -246,7 +267,7 @@ impl SqliteStore {
             .map(|rows| rows.into_iter().map(row_to_device).collect())
             .unwrap_or_default(),
             None => sqlx::query(
-                "SELECT id, name, version, online, busy, last_seen, registered_at, user_id FROM devices ORDER BY last_seen DESC",
+                &format!("{} ORDER BY d.last_seen DESC", base_sql),
             )
             .fetch_all(&self.pool)
             .await
@@ -344,7 +365,7 @@ impl SqliteStore {
 
     pub async fn list_sessions(&self, user_id: &str) -> Vec<Session> {
         sqlx::query(
-            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE user_id = ? AND closed = 0 ORDER BY created_at DESC",
+            "SELECT s.id, s.device_id, COALESCE(d.name, '') AS device_name, s.user_id, '' AS username, s.created_at, s.closed, s.cwd FROM sessions s LEFT JOIN devices d ON s.device_id = d.id WHERE s.user_id = ? AND s.closed = 0 ORDER BY s.created_at DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -356,7 +377,7 @@ impl SqliteStore {
 
     pub async fn get_session(&self, id: &str) -> Option<Session> {
         sqlx::query(
-            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions WHERE id = ?",
+            "SELECT s.id, s.device_id, COALESCE(d.name, '') AS device_name, s.user_id, COALESCE(u.username, '') AS username, s.created_at, s.closed, s.cwd FROM sessions s LEFT JOIN devices d ON s.device_id = d.id LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ?",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -367,7 +388,7 @@ impl SqliteStore {
 
     pub async fn list_all_sessions(&self) -> Vec<Session> {
         sqlx::query(
-            "SELECT id, device_id, user_id, created_at, closed, cwd FROM sessions ORDER BY created_at DESC",
+            "SELECT s.id, s.device_id, COALESCE(d.name, '') AS device_name, s.user_id, COALESCE(u.username, '') AS username, s.created_at, s.closed, s.cwd FROM sessions s LEFT JOIN devices d ON s.device_id = d.id LEFT JOIN users u ON s.user_id = u.id ORDER BY s.created_at DESC",
         )
         .fetch_all(&self.pool)
         .await
@@ -437,10 +458,13 @@ impl SqliteStore {
 // ── Row mappers ──
 
 fn row_to_session(row: sqlx::sqlite::SqliteRow) -> Session {
+    let device_name: String = row.get("device_name");
     Session {
         id: row.get("id"),
         device_id: row.get("device_id"),
+        device_name: if device_name.is_empty() { None } else { Some(device_name) },
         user_id: row.get("user_id"),
+        username: row.get("username"),
         created_at: row.get("created_at"),
         closed: row.get::<i32, _>("closed") != 0,
         cwd: row.get("cwd"),
@@ -473,6 +497,7 @@ fn row_to_device(row: sqlx::sqlite::SqliteRow) -> Device {
         last_seen: row.get("last_seen"),
         registered_at: row.get("registered_at"),
         user_id: row.get("user_id"),
+        username: row.get("username"),
     }
 }
 

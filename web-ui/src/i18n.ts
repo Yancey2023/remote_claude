@@ -181,6 +181,8 @@ const translations = {
     // General (used across admin)
     deviceName: 'Name',
     userId: 'User ID',
+    user: 'User',
+    device: 'Device',
     cwd: 'CWD',
     close: 'Close',
     loading: 'Loading...',
@@ -360,6 +362,8 @@ const translations = {
     // General (used across admin)
     deviceName: '设备名称',
     userId: '用户 ID',
+    user: '用户',
+    device: '设备',
     cwd: '工作目录',
     close: '关闭',
     loading: '加载中...',

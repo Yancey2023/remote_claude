@@ -16,7 +16,7 @@ const authState = {
 };
 
 const sessionState = {
-  sessions: [] as Array<{ id: string; device_id: string; user_id: string; created_at: number; cwd: string | null }>,
+  sessions: [] as Array<{ id: string; device_id: string; device_name: string | null; user_id: string; created_at: number; cwd: string | null }>,
   fetchSessions: mockFetchSessions,
   deleteSession: mockDeleteSession,
 };
@@ -91,9 +91,9 @@ afterEach(() => {
 describe('Layout', () => {
   it('renders desktop sidebar with sorted sessions and count', () => {
     sessionState.sessions = [
-      { id: 's1', device_id: 'd1', user_id: 'u1', created_at: 1000, cwd: '/work/alpha' },
-      { id: 's2', device_id: 'd1', user_id: 'u1', created_at: 2000, cwd: '/work/beta' },
-      { id: 's3', device_id: 'd2', user_id: 'u1', created_at: 3000, cwd: '/other/gamma' },
+      { id: 's1', device_id: 'd1', device_name: null, user_id: 'u1', created_at: 1000, cwd: '/work/alpha' },
+      { id: 's2', device_id: 'd1', device_name: null, user_id: 'u1', created_at: 2000, cwd: '/work/beta' },
+      { id: 's3', device_id: 'd2', device_name: null, user_id: 'u1', created_at: 3000, cwd: '/other/gamma' },
     ];
 
     renderLayout('/devices/d1/sessions/s1');
@@ -112,7 +112,7 @@ describe('Layout', () => {
   it('shows mobile topbar and starts new session from top action', () => {
     mockIsMobile = true;
     sessionState.sessions = [
-      { id: 's1', device_id: 'd1', user_id: 'u1', created_at: 1000, cwd: '/work/mobile' },
+      { id: 's1', device_id: 'd1', device_name: null, user_id: 'u1', created_at: 1000, cwd: '/work/mobile' },
     ];
 
     renderLayout('/devices/d1/sessions/s1');
@@ -127,7 +127,7 @@ describe('Layout', () => {
 
   it('deletes current session and navigates back to device page', async () => {
     sessionState.sessions = [
-      { id: 's1', device_id: 'd1', user_id: 'u1', created_at: 1000, cwd: '/work/current' },
+      { id: 's1', device_id: 'd1', device_name: null, user_id: 'u1', created_at: 1000, cwd: '/work/current' },
     ];
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 

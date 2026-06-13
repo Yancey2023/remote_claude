@@ -29,6 +29,7 @@ pub struct CreateSessionResponse {
 pub struct SessionInfo {
     pub id: String,
     pub device_id: String,
+    pub device_name: Option<String>,
     pub user_id: String,
     pub created_at: i64,
     pub cwd: Option<String>,
@@ -93,11 +94,13 @@ async fn list_sessions(
 
     let mut visible = Vec::with_capacity(active_ids.len());
     let mut stale_ids = Vec::new();
+
     for s in sessions {
         if active_ids.contains(&s.id) {
             visible.push(SessionInfo {
                 id: s.id,
                 device_id: s.device_id,
+                device_name: s.device_name,
                 user_id: s.user_id,
                 created_at: s.created_at,
                 cwd: s.cwd,
@@ -133,6 +136,7 @@ async fn get_session(
     Ok(Json(SessionInfo {
         id: s.id,
         device_id: s.device_id,
+        device_name: s.device_name,
         user_id: s.user_id,
         created_at: s.created_at,
         cwd: s.cwd,

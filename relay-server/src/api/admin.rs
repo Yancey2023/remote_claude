@@ -216,6 +216,7 @@ pub struct AdminDeviceResponse {
     pub busy: bool,
     pub last_seen: i64,
     pub user_id: String,
+    pub username: String,
     pub registered_at: i64,
 }
 
@@ -230,22 +231,21 @@ async fn list_all_devices(
     let online_ids: HashSet<String> = state.client_hub.list_online().await
         .into_iter().map(|e| e.id).collect();
 
-    let result: Vec<AdminDeviceResponse> = store_devices
-        .into_iter()
-        .map(|d| {
-            let online = online_ids.contains(&d.id);
-            AdminDeviceResponse {
-                id: d.id,
-                name: d.name,
-                version: d.version,
-                online,
-                busy: d.busy,
-                last_seen: d.last_seen,
-                user_id: d.user_id,
-                registered_at: d.registered_at,
-            }
-        })
-        .collect();
+    let mut result = Vec::with_capacity(store_devices.len());
+    for d in store_devices {
+        let online = online_ids.contains(&d.id);
+        result.push(AdminDeviceResponse {
+            id: d.id,
+            name: d.name,
+            version: d.version,
+            online,
+            busy: d.busy,
+            last_seen: d.last_seen,
+            user_id: d.user_id,
+            username: d.username,
+            registered_at: d.registered_at,
+        });
+    }
 
     Ok(Json(result))
 }
@@ -277,7 +277,9 @@ async fn admin_delete_device(
 pub struct AdminSessionResponse {
     pub id: String,
     pub device_id: String,
+    pub device_name: Option<String>,
     pub user_id: String,
+    pub username: String,
     pub created_at: i64,
     pub closed: bool,
     pub cwd: Option<String>,
@@ -288,7 +290,9 @@ pub struct AdminSessionResponse {
 pub struct SessionDetailResponse {
     pub id: String,
     pub device_id: String,
+    pub device_name: Option<String>,
     pub user_id: String,
+    pub username: String,
     pub created_at: i64,
     pub closed: bool,
     pub cwd: Option<String>,
@@ -314,7 +318,9 @@ async fn list_all_sessions(
         result.push(AdminSessionResponse {
             id: s.id,
             device_id: s.device_id,
+            device_name: s.device_name,
             user_id: s.user_id,
+            username: s.username,
             created_at: s.created_at,
             closed: s.closed,
             cwd: s.cwd,
@@ -349,7 +355,9 @@ async fn get_session_detail(
     Ok(Json(SessionDetailResponse {
         id: session.id,
         device_id: session.device_id,
+        device_name: session.device_name,
         user_id: session.user_id,
+        username: session.username,
         created_at: session.created_at,
         closed: session.closed,
         cwd: session.cwd,

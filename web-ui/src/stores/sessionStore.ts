@@ -60,6 +60,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const newSession: SessionInfo = {
       id: info.session_id,
       device_id: info.device_id,
+      device_name: null,
       user_id: '',
       created_at: Date.now() / 1000,
       cwd: info.cwd ?? null,

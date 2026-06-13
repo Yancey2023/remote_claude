@@ -10,6 +10,8 @@ pub struct Device {
     pub last_seen: i64,
     pub registered_at: i64,
     pub user_id: String,
+    #[serde(default)]
+    pub username: String,
 }
 
 impl Device {
@@ -24,6 +26,7 @@ impl Device {
             last_seen: now,
             registered_at: now,
             user_id,
+            username: String::new(),
         }
     }
 }

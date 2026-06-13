@@ -23,6 +23,7 @@ pub struct DeviceResponse {
     pub busy: bool,
     pub last_seen: i64,
     pub user_id: String,
+    pub username: String,
 }
 
 async fn list_devices(
@@ -48,6 +49,7 @@ async fn list_devices(
             busy: d.busy,
             last_seen: d.last_seen,
             user_id: d.user_id,
+            username: d.username,
         });
     }
 
@@ -88,12 +90,14 @@ mod tests {
             busy: false,
             last_seen: 1700000000,
             user_id: "user-42".into(),
+            username: "alice".into(),
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["id"], "dev-1");
         assert_eq!(json["name"], "my-pc");
         assert_eq!(json["online"], true);
         assert_eq!(json["user_id"], "user-42");
+        assert_eq!(json["username"], "alice");
     }
 
     #[test]
@@ -106,6 +110,7 @@ mod tests {
             busy: false,
             last_seen: 1690000000,
             user_id: String::new(),
+            username: String::new(),
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["online"], false);

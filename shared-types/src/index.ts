@@ -53,6 +53,7 @@ export interface DeviceResponse {
   busy: boolean;
   last_seen: number;
   user_id: string;
+  username: string;
 }
 
 export interface SessionResponse {
@@ -63,6 +64,7 @@ export interface SessionResponse {
 export interface SessionInfo {
   id: string;
   device_id: string;
+  device_name: string | null;
   user_id: string;
   created_at: number;
   cwd: string | null;
