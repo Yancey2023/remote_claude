@@ -27,7 +27,7 @@ jobs:
         with:
           images: ${{ secrets.DOCKER_USERNAME }}/remote-claude
           tags: |
-            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=,suffix=,format=short
@@ -42,13 +42,29 @@ jobs:
           cache-from: type=gha,scope=relay-server
           cache-to: type=gha,mode=max,scope=relay-server
 
-      - name: Deploy to server
+      - name: Save image for transfer
+        run: |
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/remote-claude:${{ github.sha }}"
+          docker tag "$IMAGE" "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest"
+          docker save "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest" | gzip > /tmp/remote-claude.tar.gz
+
+      - name: Copy image to server
+        uses: appleboy/scp-action@v0
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.ACCESS_TOKEN }}
+          source: /tmp/remote-claude.tar.gz
+          target: /tmp/
+
+      - name: Load and restart on server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.ACCESS_TOKEN }}
           script: |
+            sudo docker load -i /tmp/remote-claude.tar.gz
+            rm -f /tmp/remote-claude.tar.gz
             cd /home/ubuntu/server
-            sudo docker compose pull remote-claude
             sudo docker compose up -d --no-deps remote-claude
