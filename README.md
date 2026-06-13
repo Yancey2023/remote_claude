@@ -76,8 +76,11 @@ pnpm dev          # → http://localhost:5173 (Vite proxy → localhost:8080)
 ### 5. Docker 部署
 
 ```bash
-# 构建镜像（自动编译 desktop-client 二进制到 /app/downloads）
-docker build -t remote-claude .
+# 从 Docker Hub 拉取（推荐）
+docker pull yanceyawa/remote-claude
+
+# 或自行构建（自动编译 desktop-client 二进制到 /app/downloads）
+docker build -t yanceyawa/remote-claude .
 
 # 运行
 docker run -d --name remote-claude -p 8080:8080 \
@@ -86,7 +89,7 @@ docker run -d --name remote-claude -p 8080:8080 \
   -e JWT_SECRET=change-me \
   -v claude-config:/app/config \
   -v claude-data:/app/data \
-  remote-claude
+  yanceyawa/remote-claude
 ```
 
 如需使用 Docker Compose，可自行创建 `docker-compose.yml`：
@@ -94,7 +97,7 @@ docker run -d --name remote-claude -p 8080:8080 \
 ```yaml
 services:
   remote-claude:
-    build: .
+    image: yanceyawa/remote-claude
     ports:
       - "8080:8080"
     volumes:
