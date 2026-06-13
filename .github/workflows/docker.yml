@@ -16,10 +16,14 @@ jobs:
         include:
           - os: ubuntu-latest
             name: linux-x64
+          - os: ubuntu-24.04-arm
+            name: linux-arm64
           - os: windows-latest
             name: windows-x64
           - os: macos-13
             name: darwin-x64
+          - os: macos-14
+            name: darwin-arm64
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -34,7 +38,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             desktop-client/target
-          key: ${{ runner.os }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
 
       - name: Build
         run: cargo build --release
@@ -60,10 +64,12 @@ jobs:
         run: |
           version=$(grep '^version' desktop-client/Cargo.toml | head -1 | cut -d'"' -f2)
           mv downloads/linux-x64/desktop-client "downloads/remote-claude-desktop-client-v${version}-linux-x64"
+          mv downloads/linux-arm64/desktop-client "downloads/remote-claude-desktop-client-v${version}-linux-arm64"
           mv downloads/windows-x64/desktop-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-x64.exe"
           mv downloads/darwin-x64/desktop-client "downloads/remote-claude-desktop-client-v${version}-darwin-x64"
+          mv downloads/darwin-arm64/desktop-client "downloads/remote-claude-desktop-client-v${version}-darwin-arm64"
           chmod +x downloads/*
-          rm -rf downloads/linux-x64 downloads/windows-x64 downloads/darwin-x64
+          rm -rf downloads/linux-x64 downloads/linux-arm64 downloads/windows-x64 downloads/darwin-x64 downloads/darwin-arm64
           ls -la downloads/
 
       - name: Set up Docker Buildx
