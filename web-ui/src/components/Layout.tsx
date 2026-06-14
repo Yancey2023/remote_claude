@@ -245,9 +245,7 @@ export function Layout() {
 
   const currentDevice = devices.find((d) => d.id === deviceId);
 
-  const topTitle = activeSessionId
-    ? activeSessionId.slice(0, 8)
-    : (currentDevice?.name || deviceId || t('devices'));
+  const topTitle = t('appName');
   const topSubtitle = activeSessionId
     ? `${t('sessions')} · ${activeSessionId.slice(0, 8)}`
     : deviceId
