@@ -12,6 +12,7 @@ describe('DeviceCard', () => {
     busy: false,
     last_seen: 1000,
     user_id: 'u1',
+    username: 'user1',
   };
 
   it('renders device name and version', () => {
