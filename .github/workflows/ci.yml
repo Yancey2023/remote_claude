@@ -10,8 +10,40 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      relay-server: ${{ steps.filter.outputs.relay-server }}
+      desktop-client: ${{ steps.filter.outputs.desktop-client }}
+      web-ui: ${{ steps.filter.outputs.web-ui }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relay-server:
+              - 'relay-server/**'
+              - 'shared-types/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/workflows/ci.yml'
+            desktop-client:
+              - 'desktop-client/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/workflows/ci.yml'
+            web-ui:
+              - 'web-ui/**'
+              - 'shared-types/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci.yml'
+
   relay-server:
     name: relay-server
+    needs: [changes]
+    if: ${{ needs.changes.outputs.relay-server == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,6 +68,8 @@ jobs:
 
   desktop-client:
     name: desktop-client
+    needs: [changes]
+    if: ${{ needs.changes.outputs.desktop-client == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -60,6 +94,8 @@ jobs:
 
   web-ui:
     name: web-ui
+    needs: [changes]
+    if: ${{ needs.changes.outputs.web-ui == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:

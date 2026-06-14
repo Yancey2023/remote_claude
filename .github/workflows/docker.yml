@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths:
+      - 'relay-server/**'
+      - 'desktop-client/**'
+      - 'shared-types/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/docker.yml'
 
 env:
   CARGO_TERM_COLOR: always
