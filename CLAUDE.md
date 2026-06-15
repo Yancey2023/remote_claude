@@ -302,6 +302,8 @@ docker start remote-claude-relay-server
 | `session_closed` | S→C | `{ session_id }` |
 | `result_chunk` | C→S | `{ session_id, chunk, done }` |
 | `status_update` | C→S | `{ online, busy }` |
+| `list_directory` | S→C | `{ request_id, path }` |
+| `directory_list` | C→S | `{ request_id, path, entries: [{ name, is_dir, size? }] }` |
 
 **网页 ↔ 服务器** (`/ws/web`)：
 
@@ -318,6 +320,8 @@ docker start remote-claude-relay-server
 | `close_session` | C→S | `{ session_id }` |
 | `result_chunk` | S→C | `{ session_id, chunk, done }` |
 | `device_status` | S→C | `{ device_id, online }` |
+| `list_directory` | C→S | `{ device_id, path }` |
+| `directory_list` | S→C | `{ request_id, path, entries: [{ name, is_dir, size? }] }` |
 | `error` | S→C | `{ code, message }` |
 
 ## CI/CD
@@ -356,8 +360,8 @@ GitHub Actions 自动构建和发布：
 ```bash
 # 运行全部
 cd relay-server && cargo test    # 94 tests
-cd desktop-client && cargo test  # 32 tests
-cd web-ui && pnpm test           # 102 tests
+cd desktop-client && cargo test  # 35 tests
+cd web-ui && pnpm test           # 101 tests
 
 # 运行单个测试文件（Rust）
 cd relay-server && cargo test test_config_default_values

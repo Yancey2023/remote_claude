@@ -7,6 +7,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::timeout;
 use tracing::{error, info, warn};
+use uuid::Uuid;
 
 use crate::auth::jwt::verify_token;
 use crate::config::Config;
@@ -73,6 +74,7 @@ pub async fn handle_web_ws(
     client_hub: ClientHub,
     store: SqliteStore,
     config: Config,
+    pending_dir_requests: Arc<std::sync::Mutex<HashMap<String, String>>>,
 ) {
     let (mut ws_sender, mut ws_receiver) = ws.split();
 
@@ -93,6 +95,7 @@ pub async fn handle_web_ws(
     let client_hub_clone = client_hub.clone();
     let store_clone = store.clone();
     let user_id_clone = user_id.clone();
+    let pending_reqs_clone = pending_dir_requests.clone();
 
     let recv_handle = tokio::spawn(async move {
         loop {
@@ -113,7 +116,7 @@ pub async fn handle_web_ws(
                                 continue;
                             }
                             if let Err(e) = handle_web_message(
-                                &text, &user_id_clone, &hub_clone, &client_hub_clone, &store_clone
+                                &text, &user_id_clone, &hub_clone, &client_hub_clone, &store_clone, &pending_reqs_clone
                             ).await {
                                 warn!(error = %e, "handling web message");
                             }
@@ -174,6 +177,7 @@ async fn handle_web_message(
     hub: &WebHub,
     client_hub: &ClientHub,
     _store: &SqliteStore,
+    pending_reqs: &Arc<std::sync::Mutex<HashMap<String, String>>>,
 ) -> Result<(), String> {
     let parsed: serde_json::Value =
         serde_json::from_str(text).map_err(|e| format!("invalid JSON: {}", e))?;
@@ -300,6 +304,44 @@ async fn handle_web_message(
             }
 
             hub.session_registry.unregister(session_id).await;
+        }
+        "list_directory" => {
+            let payload = parsed.get("payload").ok_or("missing payload")?;
+            let device_id = payload
+                .get("device_id")
+                .and_then(|d| d.as_str())
+                .ok_or("missing device_id")?;
+            let path = payload
+                .get("path")
+                .and_then(|p| p.as_str())
+                .unwrap_or("");
+
+            // Verify device is online
+            client_hub
+                .get_by_device_id(device_id)
+                .await
+                .ok_or("device not found or offline")?;
+
+            let request_id = Uuid::new_v4().to_string();
+
+            // Track this request for routing the response back
+            pending_reqs
+                .lock()
+                .map_err(|e| format!("lock error: {}", e))?
+                .insert(request_id.clone(), user_id.to_string());
+
+            // Forward to device with request_id
+            let fwd_msg = serde_json::json!({
+                "type": "list_directory",
+                "payload": {
+                    "path": path,
+                    "request_id": request_id,
+                }
+            });
+
+            client_hub
+                .send_to_device(device_id, &fwd_msg.to_string())
+                .await?;
         }
         _ => {
             warn!(type = %msg_type, "unknown web message type");

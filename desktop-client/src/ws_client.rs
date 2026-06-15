@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tokio_tungstenite::connect_async;
@@ -5,7 +7,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tracing::{error, info, warn};
 
 use crate::config::Config;
-use crate::protocol::{ClientMessage, ServerMessage};
+use crate::protocol::{ClientMessage, DirectoryEntry, ServerMessage};
 use crate::pty_session::PtySessionManager;
 
 /// Connect to the relay server and run the message loop.
@@ -156,6 +158,88 @@ async fn receive_registered(
 
 const DEFAULT_PROGRAM: &str = "claude";
 
+/// List contents of a directory. Returns entries sorted: directories first, then files.
+/// When path is empty or None, returns platform-appropriate roots:
+/// - Unix: ["/"]
+/// - Windows: drive letters like "C:\", "D:\", etc.
+fn list_directory_contents(path: Option<&str>) -> Vec<DirectoryEntry> {
+    let path_str = match path {
+        Some(p) if !p.is_empty() => p,
+        _ => return list_roots(),
+    };
+
+    let dir_path = Path::new(path_str);
+    if !dir_path.exists() || !dir_path.is_dir() {
+        return Vec::new();
+    }
+
+    let mut entries = Vec::new();
+
+    // Add parent directory entry if not at root
+    if let Some(parent) = dir_path.parent() {
+        if parent != dir_path {
+            entries.push(DirectoryEntry {
+                name: "..".into(),
+                is_dir: true,
+                size: None,
+            });
+        }
+    }
+
+    // Read directory contents
+    if let Ok(read_dir) = std::fs::read_dir(dir_path) {
+        for entry in read_dir.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            let size = if !is_dir {
+                entry.metadata().ok().map(|m| m.len())
+            } else {
+                None
+            };
+            entries.push(DirectoryEntry { name, is_dir, size });
+        }
+    }
+
+    // Sort: directories first, then files, alphabetically
+    entries.sort_by(|a, b| {
+        if a.is_dir != b.is_dir {
+            b.is_dir.cmp(&a.is_dir)
+        } else {
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+        }
+    });
+
+    entries
+}
+
+fn list_roots() -> Vec<DirectoryEntry> {
+    #[cfg(windows)]
+    {
+        let mut entries = Vec::new();
+        // List all available drive letters
+        for letter in 'A'..='Z' {
+            let drive = format!("{}:\\", letter);
+            let path = Path::new(&drive);
+            if path.exists() {
+                entries.push(DirectoryEntry {
+                    name: drive,
+                    is_dir: true,
+                    size: None,
+                });
+            }
+        }
+        entries
+    }
+    #[cfg(not(windows))]
+    {
+        vec![DirectoryEntry {
+            name: "/".into(),
+            is_dir: true,
+            size: None,
+        }]
+    }
+}
+
 async fn handle_server_message(
     text: &str,
     outbound_tx: &mpsc::UnboundedSender<String>,
@@ -202,6 +286,15 @@ async fn handle_server_message(
             }
             ServerMessage::Ping => {
                 let _ = outbound_tx.send(ClientMessage::pong());
+            }
+            ServerMessage::ListDirectory { payload } => {
+                let entries = list_directory_contents(payload.path.as_deref());
+                let resp = ClientMessage::directory_list(
+                    &payload.request_id,
+                    payload.path.as_deref().unwrap_or(""),
+                    &entries,
+                );
+                let _ = outbound_tx.send(resp);
             }
             _ => {
                 warn!(msg = %text, "unexpected server message");

@@ -17,6 +17,8 @@ pub enum ServerMessage {
     TerminalResize { payload: TerminalResizePayload },
     #[serde(rename = "session_closed")]
     SessionClosed { payload: SessionClosedPayload },
+    #[serde(rename = "list_directory")]
+    ListDirectory { payload: ListDirectoryPayload },
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,6 +50,21 @@ pub struct TerminalResizePayload {
 #[derive(Debug, Deserialize)]
 pub struct SessionClosedPayload {
     pub session_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListDirectoryPayload {
+    pub request_id: String,
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DirectoryEntry {
+    pub name: String,
+    #[serde(rename = "is_dir")]
+    pub is_dir: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
 }
 
 /// Messages sent to the server.
@@ -114,6 +131,18 @@ impl ClientMessage {
             payload: Payload { online, busy },
         })
         .expect("status_update serialization")
+    }
+
+    pub fn directory_list(request_id: &str, path: &str, entries: &[DirectoryEntry]) -> String {
+        serde_json::json!({
+            "type": "directory_list",
+            "payload": {
+                "request_id": request_id,
+                "path": path,
+                "entries": entries
+            }
+        })
+        .to_string()
     }
 }
 
@@ -264,6 +293,47 @@ mod tests {
                 assert_eq!(payload.session_id, "s1");
             }
             _ => panic!("expected SessionClosed variant"),
+        }
+    }
+
+    #[test]
+    fn test_directory_list_message() {
+        let entries = vec![
+            DirectoryEntry { name: "..".into(), is_dir: true, size: None },
+            DirectoryEntry { name: "projects".into(), is_dir: true, size: None },
+            DirectoryEntry { name: "file.txt".into(), is_dir: false, size: Some(1024) },
+        ];
+        let msg = ClientMessage::directory_list("req-1", "/home/user", &entries);
+        let parsed: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        assert_eq!(parsed["type"], "directory_list");
+        assert_eq!(parsed["payload"]["request_id"], "req-1");
+        assert_eq!(parsed["payload"]["path"], "/home/user");
+        assert_eq!(parsed["payload"]["entries"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_deserialize_list_directory() {
+        let json = r#"{"type":"list_directory","payload":{"request_id":"req-1","path":"/home/user"}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::ListDirectory { payload } => {
+                assert_eq!(payload.request_id, "req-1");
+                assert_eq!(payload.path, Some("/home/user".into()));
+            }
+            _ => panic!("expected ListDirectory variant"),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_list_directory_empty_path() {
+        let json = r#"{"type":"list_directory","payload":{"request_id":"req-2","path":null}}"#;
+        let msg: ServerMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ServerMessage::ListDirectory { payload } => {
+                assert_eq!(payload.request_id, "req-2");
+                assert_eq!(payload.path, None);
+            }
+            _ => panic!("expected ListDirectory variant"),
         }
     }
 }

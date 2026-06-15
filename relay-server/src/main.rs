@@ -6,6 +6,7 @@ mod models;
 mod store;
 mod ws;
 
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -75,6 +76,7 @@ async fn main() {
         login_rate_limiter,
         ws_rate_limiter,
         register_rate_limiter,
+        pending_dir_requests: Arc::new(std::sync::Mutex::new(HashMap::new())),
     }));
 
     // Build router

@@ -1,9 +1,10 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDeviceStore } from '../stores/deviceStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { DirectoryBrowser } from '../components/DirectoryBrowser';
 
 export function SessionListPage() {
   const { t } = useI18n();
@@ -20,6 +21,7 @@ export function SessionListPage() {
   const [showNew, setShowNew] = useState(false);
   const [cwd, setCwd] = useState('');
   const [program, setProgram] = useState('claude');
+  const [showDirBrowser, setShowDirBrowser] = useState(false);
   const isMobile = useIsMobile(900);
 
   const PROGRAMS = [
@@ -66,6 +68,24 @@ export function SessionListPage() {
   };
 
   const deviceSessions = sessions.filter((s) => s.device_id === deviceId);
+
+  // Recent distinct paths from this device's sessions, most recent first
+  const recentPaths = useMemo(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    // Iterate in reverse (most recent sessions last in array after filtering)
+    const sorted = [...deviceSessions]
+      .filter((s) => s.cwd)
+      .sort((a, b) => b.created_at - a.created_at);
+    for (const s of sorted) {
+      const path = s.cwd!;
+      if (!seen.has(path)) {
+        seen.add(path);
+        result.push(path);
+      }
+    }
+    return result;
+  }, [deviceSessions]);
 
   const handleDelete = useCallback((sessionId: string) => {
     deleteSession(sessionId);
@@ -125,25 +145,88 @@ export function SessionListPage() {
           <div style={{ marginBottom: '0.75rem', color: '#e0e0e0', fontSize: '0.9rem' }}>
             {t('sessionNewTitle')}
           </div>
-          <input
-            type="text"
-            value={cwd}
-            onChange={(e) => setCwd(e.target.value)}
-            placeholder={t('workingDirPlaceholder')}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              background: '#0f0f23',
-              border: '1px solid #16213e',
-              borderRadius: '6px',
-              color: '#e0e0e0',
-              fontSize: '0.85rem',
-              outline: 'none',
-              boxSizing: 'border-box',
-              marginBottom: '0.75rem',
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          />
+          <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.5rem' }}>
+            <input
+              type="text"
+              value={cwd}
+              onChange={(e) => setCwd(e.target.value)}
+              placeholder={t('workingDirPlaceholder')}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                background: '#0f0f23',
+                border: '1px solid #16213e',
+                borderRadius: '6px',
+                color: '#e0e0e0',
+                fontSize: '0.85rem',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            />
+            <button
+              onClick={() => setShowDirBrowser(true)}
+              title={t('browseDirectory')}
+              style={{
+                padding: '0.5rem 0.65rem',
+                background: '#1d2a4b',
+                border: '1px solid #2f4778',
+                color: '#b0b8d0',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              }}
+            >
+              <span>📂</span>
+              <span className="btn-label">{t('browse')}</span>
+            </button>
+          </div>
+
+          {/* Recent paths */}
+          {recentPaths.length > 0 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ color: '#a0a0a0', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
+                {t('recentPaths')}
+              </div>
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {recentPaths.slice(0, 6).map((path) => (
+                  <button
+                    key={path}
+                    onClick={() => setCwd(path)}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      background: '#0f0f23',
+                      border: '1px solid #1d2a4b',
+                      color: '#8ab4f8',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontFamily: 'monospace',
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      transition: 'border-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = '#e94560';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = '#1d2a4b';
+                    }}
+                    title={path}
+                  >
+                    📁 {path}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginBottom: '0.75rem' }}>
             <div style={{ color: '#a0a0a0', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
               {t('program')}
@@ -227,6 +310,19 @@ export function SessionListPage() {
           />
         ))}
       </div>
+
+      {/* Directory browser modal */}
+      {showDirBrowser && deviceId && (
+        <DirectoryBrowser
+          deviceId={deviceId}
+          initialPath={cwd || ''}
+          onSelect={(path) => {
+            setCwd(path);
+            setShowDirBrowser(false);
+          }}
+          onClose={() => setShowDirBrowser(false)}
+        />
+      )}
     </div>
   );
 }

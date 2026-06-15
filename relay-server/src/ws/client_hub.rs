@@ -17,6 +17,9 @@ use crate::store::SqliteStore;
 
 use super::web_hub::WebHub;
 
+/// Maximum age for pending directory listing requests before cleanup (30 seconds)
+const DIR_LIST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 #[derive(Clone)]
 pub struct ClientHub {
     /// device_id → device info + sender channel (primary map for hot-path lookups)
@@ -145,6 +148,7 @@ pub async fn handle_client_ws(
     config: Config,
     register_rate_limiter: Arc<LoginRateLimiter>,
     client_ip: IpAddr,
+    pending_dir_requests: Arc<std::sync::Mutex<HashMap<String, String>>>,
 ) {
     let (mut ws_sender, mut ws_receiver) = ws.split();
 
@@ -223,6 +227,7 @@ pub async fn handle_client_ws(
     let device_id_fwd = device_id.clone();
     let last_pong_fwd = last_pong.clone();
     let web_hub_fwd = web_hub.clone();
+    let pending_reqs_fwd = pending_dir_requests.clone();
     let forward_handle = tokio::spawn(async move {
         let mut ping_timer = tokio::time::interval(heartbeat_interval);
         ping_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -304,6 +309,22 @@ pub async fn handle_client_ws(
                                 }
                                 if matches!(msg_type, Some("pong") | Some("status_update")) {
                                     // heartbeat already updated above; nothing to forward
+                                    continue;
+                                }
+                                if msg_type == Some("directory_list") {
+                                    if let Some(payload) = parsed.get("payload") {
+                                        if let Some(request_id) = payload.get("request_id").and_then(|r| r.as_str()) {
+                                            if let Some(user_id) = pending_reqs_fwd
+                                                .lock()
+                                                .ok()
+                                                .and_then(|mut map| map.remove(request_id))
+                                            {
+                                                if let Err(e) = web_hub_fwd.send_to_user(&user_id, &text).await {
+                                                    warn!(request_id = %request_id, user_id = %user_id, error = %e, "failed to forward directory_list");
+                                                }
+                                            }
+                                        }
+                                    }
                                     continue;
                                 }
                             }

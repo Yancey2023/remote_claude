@@ -2,9 +2,11 @@ pub mod client_hub;
 pub mod session;
 pub mod web_hub;
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use axum::extract::ws::WebSocket;
 use std::net::IpAddr;
-use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::Instrument;
 
@@ -20,6 +22,8 @@ pub struct AppState {
     pub login_rate_limiter: LoginRateLimiter,
     pub ws_rate_limiter: Arc<LoginRateLimiter>,
     pub register_rate_limiter: Arc<LoginRateLimiter>,
+    /// Maps list_directory request_id → web user_id for routing responses back
+    pub pending_dir_requests: Arc<std::sync::Mutex<HashMap<String, String>>>,
 }
 
 /// Handle a raw WebSocket connection, routing by URL path.
@@ -37,8 +41,9 @@ pub async fn ws_handler(
             let store = s.store.clone();
             let config = s.config.clone();
             let register_limiter = s.register_rate_limiter.clone();
+            let pending_reqs = s.pending_dir_requests.clone();
             drop(s);
-            client_hub::handle_client_ws(ws, client_hub, web_hub, store, (*config).clone(), register_limiter, client_ip)
+            client_hub::handle_client_ws(ws, client_hub, web_hub, store, (*config).clone(), register_limiter, client_ip, pending_reqs)
                 .instrument(tracing::info_span!("client_ws"))
                 .await;
         }
@@ -47,8 +52,9 @@ pub async fn ws_handler(
             let client_hub = s.client_hub.clone();
             let store = s.store.clone();
             let config = s.config.clone();
+            let pending_reqs = s.pending_dir_requests.clone();
             drop(s);
-            web_hub::handle_web_ws(ws, web_hub, client_hub, store, (*config).clone())
+            web_hub::handle_web_ws(ws, web_hub, client_hub, store, (*config).clone(), pending_reqs)
                 .instrument(tracing::info_span!("web_ws"))
                 .await;
         }
