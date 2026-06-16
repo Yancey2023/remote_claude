@@ -4,11 +4,14 @@
 FROM rust:bookworm AS relay-builder
 
 WORKDIR /app
+RUN apt-get update && apt-get install -y musl-tools && rm -rf /var/lib/apt/lists/* && \
+    rustup target add x86_64-unknown-linux-musl
 COPY relay-server/Cargo.toml relay-server/Cargo.lock ./relay-server/
 RUN mkdir -p relay-server/src && echo "fn main() {}" > relay-server/src/main.rs && \
-    cd relay-server && cargo build --release && cd .. && rm -rf relay-server/src
+    cd relay-server && cargo build --release --target x86_64-unknown-linux-musl && cd .. && rm -rf relay-server/src
 COPY relay-server/src ./relay-server/src
-RUN cd relay-server && touch src/main.rs && cargo build --release && cp target/release/relay-server /relay-server
+RUN cd relay-server && touch src/main.rs && cargo build --release --target x86_64-unknown-linux-musl && \
+    cp target/x86_64-unknown-linux-musl/release/relay-server /relay-server
 
 # ── desktop-client binaries ──
 # Pre-built by GitHub Actions on native runners (see .github/workflows/docker.yml).

@@ -24,10 +24,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             name: linux-x64
-          - os: ubuntu-22.04-arm
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-24.04-arm
             name: linux-arm64
+            target: aarch64-unknown-linux-musl
           - os: windows-latest
             name: windows-x64
           - os: windows-11-arm
@@ -48,16 +50,25 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             desktop-client/target
-          key: ${{ runner.os }}-${{ runner.arch }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-client${{ runner.os == 'Linux' && '-musl' || '' }}-${{ hashFiles('desktop-client/Cargo.lock') }}
+
+      - name: Install musl target
+        if: runner.os == 'Linux'
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build
+        if: runner.os != 'Linux'
         run: cargo build --release
+
+      - name: Build (musl)
+        if: runner.os == 'Linux'
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: desktop-client/target/release/desktop-client${{ runner.os == 'Windows' && '.exe' || '' }}
+          path: desktop-client/target/${{ runner.os == 'Linux' && format('{0}/release/', matrix.target) || 'release/' }}desktop-client${{ runner.os == 'Windows' && '.exe' || '' }}
 
   relay-server:
     runs-on: ubuntu-latest
