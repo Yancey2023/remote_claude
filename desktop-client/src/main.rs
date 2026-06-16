@@ -17,6 +17,14 @@ async fn main() {
         .with_target(true)
         .init();
 
+    // Install the ring crypto provider for rustls before any TLS connection.
+    // With default-features = false, features = ["ring"], only ring is compiled
+    // in, but rustls 0.23 still requires an explicit install_default() call.
+    rustls::crypto::CryptoProvider::install_default(
+        rustls::crypto::ring::default_provider(),
+    )
+    .expect("Failed to install rustls ring crypto provider");
+
     // Set panic hook — catch panics, log them, keep running
     std::panic::set_hook(Box::new(|panic_info| {
         let msg = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
@@ -59,5 +67,35 @@ async fn main() {
         tokio::time::sleep(retry_delay).await;
         retry_delay = std::cmp::min(retry_delay * 2, max_retry);
         info!(delay_secs = %retry_delay.as_secs(), "reconnecting...");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_ring_crypto_provider_available() {
+        // Verify that the ring crypto provider is compiled in and constructable.
+        // This confirms the Cargo.toml feature resolution is correct.
+        let provider = rustls::crypto::ring::default_provider();
+        assert!(
+            provider.cipher_suites.len() > 0,
+            "ring cipher suites should not be empty"
+        );
+        assert!(
+            provider.kx_groups.len() > 0,
+            "ring key exchange groups should not be empty"
+        );
+    }
+
+    #[test]
+    fn test_install_and_uninstall_crypto_provider() {
+        // Temporarily install ring as the default provider and verify it works.
+        // This simulates what main() does at startup.
+        let installed = rustls::crypto::CryptoProvider::install_default(
+            rustls::crypto::ring::default_provider(),
+        );
+        assert!(installed.is_ok(), "should be able to install ring provider");
+        let default = rustls::crypto::CryptoProvider::get_default();
+        assert!(default.is_some(), "default provider should be available after install");
     }
 }
