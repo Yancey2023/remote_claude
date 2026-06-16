@@ -58,13 +58,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             relay-server/target
-          key: ${{ runner.os }}-cargo-relay-${{ hashFiles('relay-server/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-relay-musl-${{ hashFiles('relay-server/Cargo.lock') }}
+
+      - name: Install musl target
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Build
-        run: cargo build --release --workspace
+        run: cargo build --release --target x86_64-unknown-linux-musl
 
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --target x86_64-unknown-linux-musl
 
   desktop-client:
     name: desktop-client
@@ -77,6 +82,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install musl target
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          sudo apt-get update && sudo apt-get install -y musl-tools
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -84,13 +94,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             desktop-client/target
-          key: ${{ runner.os }}-cargo-client-${{ hashFiles('desktop-client/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-client-musl-${{ hashFiles('desktop-client/Cargo.lock') }}
 
       - name: Build
-        run: cargo build --release --workspace
+        run: cargo build --release --target x86_64-unknown-linux-musl
 
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --target x86_64-unknown-linux-musl
 
   web-ui:
     name: web-ui
