@@ -7,10 +7,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y musl-tools && rm -rf /var/lib/apt/lists/* && \
     rustup target add x86_64-unknown-linux-musl
 
-# Copy workspace root + member Cargo.toml and lockfile for dependency caching
+# Copy workspace root + all member Cargo.tomls and lockfile for dependency caching
 COPY Cargo.toml ./Cargo.toml
 COPY Cargo.lock ./Cargo.lock
 COPY apps/server/Cargo.toml ./apps/server/Cargo.toml
+COPY apps/client/Cargo.toml ./apps/client/Cargo.toml
 
 # Build dependencies with dummy main.rs
 RUN mkdir -p apps/server/src && echo "fn main() {}" > apps/server/src/main.rs && \
