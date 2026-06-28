@@ -371,11 +371,18 @@ export function DownloadPage() {
             <span style={styles.stepNum}>3</span>
             <span>{t('downloadHelpStep2')}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
             <span style={styles.stepNum}>4</span>
             <span>{t('downloadHelpStep3')}</span>
           </div>
-          <div style={styles.hint}>{t('downloadHelpTokenHint')}</div>
+          <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
+            <code style={styles.code}>curl -s -X POST /api/admin/tokens \
+  -H "Authorization: Bearer &lt;your-jwt&gt;"</code>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <span style={styles.stepNum}>5</span>
+            <span>{t('downloadHelpStep4')}</span>
+          </div>
         </div>
       </div>
     </div>

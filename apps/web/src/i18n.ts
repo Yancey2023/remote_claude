@@ -182,9 +182,9 @@ const translations = {
     downloadHelpStep0: 'Download the appropriate binary for your operating system.',
     downloadHelpStep1: 'Place it on the target machine and run it with:',
     downloadHelpRun: './remote-claude-client',
-    downloadHelpStep2: 'Enter the client token shown on the Devices page when prompted.',
-    downloadHelpStep3: 'The device will appear in the device list and you can start sessions.',
-    downloadHelpTokenHint: '(Generate a token in the Devices section of the sidebar)',
+    downloadHelpStep2: 'Enter a name for this device when prompted.',
+    downloadHelpStep3: 'Enter the client token when prompted. Generate one from the Devices page or via the admin API:',
+    downloadHelpStep4: 'The device will appear in the device list and you can start sessions.',
 
     // General (used across admin)
     deviceName: 'Name',
@@ -371,9 +371,9 @@ const translations = {
     downloadHelpStep0: '下载适合你操作系统的二进制文件。',
     downloadHelpStep1: '将其放到目标机器上，运行以下命令：',
     downloadHelpRun: './remote-claude-client',
-    downloadHelpStep2: '按提示输入设备页面上显示的客户端令牌。',
-    downloadHelpStep3: '设备将出现在设备列表中，之后可以开始会话。',
-    downloadHelpTokenHint: '（在侧边栏的设备页面生成令牌）',
+    downloadHelpStep2: '按提示输入此设备的名称。',
+    downloadHelpStep3: '按提示输入客户端令牌。令牌可在设备页面生成，或通过管理 API 获取：',
+    downloadHelpStep4: '设备将出现在设备列表中，之后可以开始会话。',
 
     // General (used across admin)
     deviceName: '设备名称',
