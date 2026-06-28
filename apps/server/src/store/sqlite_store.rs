@@ -777,6 +777,58 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_increment_token_version() {
+        let store = test_store().await;
+        let user = User::new("u-tv".into(), "tvuser".into(), "hash".into(), UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        let u = store.get_user("u-tv").await.unwrap();
+        assert_eq!(u.token_version, 0);
+
+        store.increment_token_version("u-tv").await.unwrap();
+        let u = store.get_user("u-tv").await.unwrap();
+        assert_eq!(u.token_version, 1);
+
+        store.increment_token_version("u-tv").await.unwrap();
+        let u = store.get_user("u-tv").await.unwrap();
+        assert_eq!(u.token_version, 2);
+    }
+
+    #[tokio::test]
+    async fn test_increment_token_version_nonexistent_user() {
+        let store = test_store().await;
+        let result = store.increment_token_version("ghost").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_bind_client_token_device() {
+        let store = test_store().await;
+        store.create_client_token("bind-me", "user-1").await.unwrap();
+
+        // Initially device_id is None
+        let t = store.get_client_token("bind-me").await.unwrap();
+        assert!(t.device_id.is_none());
+
+        // Bind to a device
+        store.bind_client_token_device("bind-me", "dev-42").await.unwrap();
+        let t = store.get_client_token("bind-me").await.unwrap();
+        assert_eq!(t.device_id.as_deref(), Some("dev-42"));
+
+        // Second bind with same token should be a no-op (device_id already set)
+        store.bind_client_token_device("bind-me", "dev-99").await.unwrap();
+        let t = store.get_client_token("bind-me").await.unwrap();
+        assert_eq!(t.device_id.as_deref(), Some("dev-42"));
+    }
+
+    #[tokio::test]
+    async fn test_bind_client_token_device_not_found() {
+        let store = test_store().await;
+        // Binding a non-existent token should succeed silently (no-op)
+        store.bind_client_token_device("ghost", "dev-1").await.unwrap();
+    }
+
+    #[tokio::test]
     async fn test_list_client_tokens() {
         let store = test_store().await;
         store.create_client_token("tok-a", "owner").await.unwrap();

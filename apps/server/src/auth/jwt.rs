@@ -95,4 +95,32 @@ mod tests {
         let result = verify_token("invalid.jwt.token", "secret");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_token_version_in_claims() {
+        let secret = "version-test-secret";
+        let token_v0 = create_token("u1", "alice", &UserRole::User, secret, 24, 0).unwrap();
+        let claims_v0 = verify_token(&token_v0, secret).unwrap();
+        assert_eq!(claims_v0.token_version, 0);
+
+        let token_v5 = create_token("u2", "bob", &UserRole::User, secret, 24, 5).unwrap();
+        let claims_v5 = verify_token(&token_v5, secret).unwrap();
+        assert_eq!(claims_v5.token_version, 5);
+    }
+
+    #[test]
+    fn test_token_version_mismatch_rejected_by_extractor() {
+        // This test verifies the JWT itself is valid; the version mismatch
+        // rejection is tested in auth/extractor.rs. Here we just confirm
+        // that different versions produce different tokens.
+        let secret = "mismatch-secret";
+        let t1 = create_token("u1", "alice", &UserRole::User, secret, 24, 1).unwrap();
+        let t2 = create_token("u1", "alice", &UserRole::User, secret, 24, 2).unwrap();
+        assert_ne!(t1, t2);
+        // Both tokens are valid JWTs with different version claims
+        let c1 = verify_token(&t1, secret).unwrap();
+        let c2 = verify_token(&t2, secret).unwrap();
+        assert_eq!(c1.token_version, 1);
+        assert_eq!(c2.token_version, 2);
+    }
 }

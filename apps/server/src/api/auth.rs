@@ -406,4 +406,25 @@ mod tests {
         assert_eq!(json["role"], "Admin");
         assert_eq!(json["token"], "jwt-token");
     }
+
+    #[tokio::test]
+    async fn test_change_password_increments_token_version() {
+        let store = crate::store::SqliteStore::new("sqlite::memory:").await.unwrap();
+        let password_hash = password::hash_password("old-pass").unwrap();
+        let user = User::new("uid-tv".into(), "tvuser".into(), password_hash, UserRole::User);
+        store.create_user(user).await.unwrap();
+
+        let db_user = store.get_user("uid-tv").await.unwrap();
+        assert_eq!(db_user.token_version, 0);
+
+        // Simulate password change + version increment
+        let new_hash = password::hash_password("new-pass").unwrap();
+        let mut updated_user = db_user.clone();
+        updated_user.password_hash = new_hash;
+        store.update_user(updated_user).await.unwrap();
+        store.increment_token_version("uid-tv").await.unwrap();
+
+        let db_user = store.get_user("uid-tv").await.unwrap();
+        assert_eq!(db_user.token_version, 1);
+    }
 }

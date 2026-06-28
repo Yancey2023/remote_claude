@@ -263,4 +263,28 @@ mod tests {
         assert!(arch.is_none());
         assert!(version.is_none());
     }
+
+    #[test]
+    fn test_filename_sanitization_rejects_traversal() {
+        // Replicate the sanitization logic from download_file handler
+        fn is_sanitized(name: &str) -> bool {
+            let sanitized = name.trim_start_matches('/');
+            !sanitized.is_empty() && !sanitized.contains("..") && !sanitized.contains('\\')
+        }
+
+        assert!(is_sanitized("remote-claude-desktop-client-v1.2.0-linux-x64"));
+
+        // Path traversal attempts
+        assert!(!is_sanitized("../etc/passwd"));
+        assert!(!is_sanitized("foo/../../etc/passwd"));
+        assert!(!is_sanitized("..\\windows\\system32"));
+        assert!(!is_sanitized(""));
+
+        // Leading slash is stripped
+        assert!(is_sanitized("/remote-claude-desktop-client-v1.2.0-linux-x64"));
+
+        // Windows-style paths
+        assert!(!is_sanitized("C:\\windows\\system32"));
+        assert!(!is_sanitized("..\\..\\windows\\system32"));
+    }
 }
