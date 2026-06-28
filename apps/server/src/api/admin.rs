@@ -201,6 +201,11 @@ async fn reset_user_password(
         .update_user(db_user)
         .await
         .map_err(|e| AppError::Internal(e))?;
+    state
+        .store
+        .increment_token_version(&id)
+        .await
+        .map_err(|e| AppError::Internal(e))?;
 
     Ok(Json(serde_json::json!({ "message": "password reset successfully" })))
 }

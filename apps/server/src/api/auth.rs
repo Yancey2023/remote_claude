@@ -83,6 +83,7 @@ async fn login(
             &UserRole::Admin,
             &config.jwt_secret,
             config.jwt_expiry_hours,
+            0,
         )
         .map_err(|e| AppError::Internal(e))?;
 
@@ -132,6 +133,7 @@ async fn login(
         &user.role,
         &config.jwt_secret,
         config.jwt_expiry_hours,
+        user.token_version,
     )
     .map_err(|e| AppError::Internal(e))?;
 
@@ -203,11 +205,10 @@ async fn change_password(
 
     db_user.password_hash = new_hash;
 
-    state
-        .read()
-        .await
-        .store
-        .update_user(db_user)
+    let store = state.read().await.store.clone();
+    store.update_user(db_user).await.map_err(|e| AppError::Internal(e))?;
+    store
+        .increment_token_version(&user.user_id)
         .await
         .map_err(|e| AppError::Internal(e))?;
 

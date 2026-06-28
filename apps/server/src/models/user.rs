@@ -14,6 +14,7 @@ pub struct User {
     pub role: UserRole,
     pub enabled: bool,
     pub created_at: i64,
+    pub token_version: i64,
 }
 
 impl UserRole {
@@ -34,6 +35,7 @@ impl User {
             role,
             enabled: true,
             created_at: chrono::Utc::now().timestamp(),
+            token_version: 0,
         }
     }
 }

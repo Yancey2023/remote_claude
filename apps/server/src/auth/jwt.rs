@@ -11,6 +11,7 @@ pub struct Claims {
     pub role: String,  // "Admin" or "User"
     pub exp: usize,
     pub iat: usize,
+    pub token_version: i64,
 }
 
 fn ensure_provider() {
@@ -26,6 +27,7 @@ pub fn create_token(
     role: &UserRole,
     secret: &str,
     expiry_hours: i64,
+    token_version: i64,
 ) -> Result<String, String> {
     ensure_provider();
     let now = chrono::Utc::now().timestamp() as usize;
@@ -36,6 +38,7 @@ pub fn create_token(
         role: role.as_str().to_string(),
         exp,
         iat: now,
+        token_version,
     };
     encode(
         &Header::default(),
@@ -63,24 +66,26 @@ mod tests {
     #[test]
     fn test_create_and_verify_token() {
         let secret = "test-secret-key";
-        let token = create_token("user-1", "alice", &UserRole::User, secret, 24).unwrap();
+        let token = create_token("user-1", "alice", &UserRole::User, secret, 24, 0).unwrap();
         let claims = verify_token(&token, secret).unwrap();
         assert_eq!(claims.sub, "user-1");
         assert_eq!(claims.username, "alice");
         assert_eq!(claims.role, "User");
+        assert_eq!(claims.token_version, 0);
     }
 
     #[test]
     fn test_create_admin_token() {
         let secret = "admin-secret";
-        let token = create_token("admin-id", "root", &UserRole::Admin, secret, 1).unwrap();
+        let token = create_token("admin-id", "root", &UserRole::Admin, secret, 1, 1).unwrap();
         let claims = verify_token(&token, secret).unwrap();
         assert_eq!(claims.role, "Admin");
+        assert_eq!(claims.token_version, 1);
     }
 
     #[test]
     fn test_verify_wrong_secret_fails() {
-        let token = create_token("u1", "bob", &UserRole::User, "correct-secret", 24).unwrap();
+        let token = create_token("u1", "bob", &UserRole::User, "correct-secret", 24, 0).unwrap();
         let result = verify_token(&token, "wrong-secret");
         assert!(result.is_err());
     }

@@ -81,6 +81,24 @@ impl FromRequestParts<Arc<RwLock<AppState>>> for AuthUser {
                 message: format!("invalid token: {}", e),
             }.into_response())?;
 
+        // For config-file admin users, token_version is always 0 and there is no DB record.
+        // For DB-stored users, verify token_version matches to catch password-change invalidation.
+        if claims.sub != "admin" {
+            let state_lock = state.read().await;
+            let user = state_lock.store.get_user(&claims.sub).await.ok_or_else(|| {
+                AuthError {
+                    code: "ERR_USER_NOT_FOUND".into(),
+                    message: "user not found".into(),
+                }.into_response()
+            })?;
+            if user.token_version != claims.token_version {
+                return Err(AuthError {
+                    code: "ERR_TOKEN_EXPIRED".into(),
+                    message: "token invalidated by password change".into(),
+                }.into_response());
+            }
+        }
+
         Ok(AuthUser {
             user_id: claims.sub,
             username: claims.username,

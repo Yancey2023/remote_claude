@@ -118,6 +118,11 @@ impl SqliteStore {
             .execute(&self.pool)
             .await;
 
+        // Add token_version column for token invalidation on password change
+        let _ = sqlx::query("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
+            .execute(&self.pool)
+            .await;
+
         Ok(())
     }
 
@@ -126,7 +131,7 @@ impl SqliteStore {
     pub async fn create_user(&self, user: User) -> Result<(), String> {
         let role_str = user.role.as_str().to_string();
         sqlx::query(
-            "INSERT INTO users (id, username, password_hash, role, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (id, username, password_hash, role, enabled, created_at, token_version) VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&user.id)
         .bind(&user.username)
@@ -134,6 +139,7 @@ impl SqliteStore {
         .bind(&role_str)
         .bind(user.enabled as i32)
         .bind(user.created_at)
+        .bind(user.token_version)
         .execute(&self.pool)
         .await
         .map_err(|e| {
@@ -147,7 +153,7 @@ impl SqliteStore {
     }
 
     pub async fn get_user(&self, id: &str) -> Option<User> {
-        sqlx::query("SELECT id, username, password_hash, role, enabled, created_at FROM users WHERE id = ?")
+        sqlx::query("SELECT id, username, password_hash, role, enabled, created_at, token_version FROM users WHERE id = ?")
             .bind(id)
             .fetch_optional(&self.pool)
             .await
@@ -156,7 +162,7 @@ impl SqliteStore {
     }
 
     pub async fn get_user_by_username(&self, username: &str) -> Option<User> {
-        sqlx::query("SELECT id, username, password_hash, role, enabled, created_at FROM users WHERE username = ?")
+        sqlx::query("SELECT id, username, password_hash, role, enabled, created_at, token_version FROM users WHERE username = ?")
             .bind(username)
             .fetch_optional(&self.pool)
             .await
@@ -165,7 +171,7 @@ impl SqliteStore {
     }
 
     pub async fn list_users(&self) -> Vec<User> {
-        sqlx::query("SELECT id, username, password_hash, role, enabled, created_at FROM users ORDER BY created_at DESC")
+        sqlx::query("SELECT id, username, password_hash, role, enabled, created_at, token_version FROM users ORDER BY created_at DESC")
             .fetch_all(&self.pool)
             .await
             .ok()
@@ -176,13 +182,31 @@ impl SqliteStore {
     pub async fn update_user(&self, user: User) -> Result<(), String> {
         let role_str = user.role.as_str().to_string();
         let affected = sqlx::query(
-            "UPDATE users SET username = ?, password_hash = ?, role = ?, enabled = ? WHERE id = ?",
+            "UPDATE users SET username = ?, password_hash = ?, role = ?, enabled = ?, token_version = ? WHERE id = ?",
         )
         .bind(&user.username)
         .bind(&user.password_hash)
         .bind(&role_str)
         .bind(user.enabled as i32)
+        .bind(user.token_version)
         .bind(&user.id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("database error: {}", e))?
+        .rows_affected();
+
+        if affected == 0 {
+            return Err("user not found".into());
+        }
+        Ok(())
+    }
+
+    /// Increment token_version for a user, invalidating all existing JWTs.
+    pub async fn increment_token_version(&self, id: &str) -> Result<(), String> {
+        let affected = sqlx::query(
+            "UPDATE users SET token_version = token_version + 1 WHERE id = ?",
+        )
+        .bind(id)
         .execute(&self.pool)
         .await
         .map_err(|e| format!("database error: {}", e))?
@@ -463,6 +487,7 @@ fn row_to_user(row: sqlx::sqlite::SqliteRow) -> User {
         role,
         enabled: row.get::<i32, _>("enabled") != 0,
         created_at: row.get("created_at"),
+        token_version: row.get("token_version"),
     }
 }
 
