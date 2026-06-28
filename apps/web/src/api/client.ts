@@ -6,7 +6,6 @@ import type {
   TokenResponse,
   UserResponse,
   ApiError,
-  DownloadFileInfo,
 } from '../types/protocol';
 import { getConfig } from '../config';
 
@@ -144,8 +143,8 @@ class ApiClient {
   }
 
   // Downloads
-  async listDownloads() {
-    return this.request<{ files: DownloadFileInfo[] }>('GET', '/downloads');
+  async fetchDownloadSizes(): Promise<Record<string, number>> {
+    return this.request<Record<string, number>>('GET', '/downloads/sizes');
   }
 
   getDownloadUrl(filename: string): string {

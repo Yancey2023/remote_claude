@@ -4,6 +4,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -30,7 +31,47 @@ pub struct DownloadListResponse {
 pub fn router() -> Router<Arc<RwLock<AppState>>> {
     Router::new()
         .route("/", get(list_downloads))
+        .route("/sizes", get(download_sizes))
         .route("/{*filename}", get(download_file))
+}
+
+/// GET /api/downloads/sizes — returns filename → size mapping for all client binaries.
+async fn download_sizes(
+    State(state): State<Arc<RwLock<AppState>>>,
+    _user: AuthUser,
+) -> Result<Json<HashMap<String, u64>>, AppError> {
+    let config = {
+        let s = state.read().await;
+        s.config.downloads_dir.clone()
+    };
+
+    let dir = PathBuf::from(&config);
+    if !dir.exists() || !dir.is_dir() {
+        return Ok(Json(HashMap::new()));
+    }
+
+    let mut sizes = HashMap::new();
+    let mut read_dir = tokio::fs::read_dir(&dir)
+        .await
+        .map_err(|e| AppError::Internal(format!("failed to read downloads dir: {}", e)))?;
+
+    while let Some(entry) = read_dir
+        .next_entry()
+        .await
+        .map_err(|e| AppError::Internal(format!("failed to read entry: {}", e)))?
+    {
+        let metadata = entry
+            .metadata()
+            .await
+            .map_err(|e| AppError::Internal(format!("failed to get metadata: {}", e)))?;
+
+        if metadata.is_file() {
+            let filename = entry.file_name().to_string_lossy().to_string();
+            sizes.insert(filename, metadata.len());
+        }
+    }
+
+    Ok(Json(sizes))
 }
 
 /// GET /api/downloads — list available client binaries

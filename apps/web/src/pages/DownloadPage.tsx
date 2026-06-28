@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { apiClient } from '../api/client';
 import { getConfig } from '../config';
 import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -161,6 +162,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
+function formatSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const val = bytes / Math.pow(1024, i);
+  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 function runCommand(file: DownloadFileInfo): string {
   const isWindows = file.platform?.toLowerCase() === 'windows';
   if (isWindows) return file.filename;
@@ -171,12 +180,30 @@ function downloadUrl(filename: string): string {
   return `${getConfig().apiBaseUrl}/downloads/${encodeURIComponent(filename)}`;
 }
 
-const sortedDownloads = [...DOWNLOADS].sort((a, b) => comparePlatform(a.platform, b.platform));
+const sortedBase = [...DOWNLOADS].sort((a, b) => comparePlatform(a.platform, b.platform));
 
 export function DownloadPage() {
   const { t } = useI18n();
   const isMobile = useIsMobile(900);
+  const [files, setFiles] = useState(sortedBase);
   const [fileTab, setFileTab] = useState(0);
+
+  // Fetch real file sizes from server, fall back to 0 on failure
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.fetchDownloadSizes()
+      .then((sizes) => {
+        if (cancelled) return;
+        setFiles(sortedBase.map((f) => ({
+          ...f,
+          size: sizes[f.filename] ?? 0,
+        })));
+      })
+      .catch(() => {
+        // Sizes stay 0 — non-critical
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const containerStyle = isMobile
     ? { ...styles.container, padding: '0.9rem 0.75rem' }
@@ -202,11 +229,12 @@ export function DownloadPage() {
                 <th style={styles.th}>{t('downloadPlatform')}</th>
                 <th style={styles.th}>{t('downloadVersion')}</th>
                 <th style={styles.th}>{t('downloadArch')}</th>
+                <th style={styles.th}>{t('downloadSize')}</th>
                 <th style={{ ...styles.th, textAlign: 'right' }}>{/* Action */}</th>
               </tr>
             </thead>
             <tbody>
-              {sortedDownloads.map((f) => (
+              {files.map((f) => (
                 <tr key={f.filename}>
                   <td style={styles.td}>
                     <PlatformLogo platform={f.platform} />
@@ -216,6 +244,7 @@ export function DownloadPage() {
                     {f.version || '-'}
                   </td>
                   <td style={styles.td}>{f.arch || '-'}</td>
+                  <td style={{ ...styles.td, color: '#8d95b8' }}>{formatSize(f.size)}</td>
                   <td style={{ ...styles.td, textAlign: 'right' }}>
                     <a
                       href={downloadUrl(f.filename)}
@@ -248,7 +277,7 @@ export function DownloadPage() {
 
           {/* File tabs with per-file run command */}
           <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.5rem', paddingLeft: '2.1rem', flexWrap: 'wrap' }}>
-            {sortedDownloads.map((f, idx) => (
+            {files.map((f, idx) => (
               <button
                 key={f.filename}
                 onClick={() => setFileTab(idx)}
@@ -272,7 +301,7 @@ export function DownloadPage() {
             ))}
           </div>
           <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
-            <code style={styles.code}>{runCommand(sortedDownloads[fileTab])}</code>
+            <code style={styles.code}>{runCommand(files[fileTab])}</code>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
