@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { getConfig } from '../config';
 import { useI18n } from '../i18n';
@@ -310,11 +311,21 @@ export function DownloadPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
             <span style={styles.stepNum}>4</span>
-            <span>{t('downloadHelpStep3')}</span>
+            <span>
+              {t('downloadHelpStep3')}
+              {' '}
+              <Link to="/devices" style={{ color: '#8fcbff', textDecoration: 'underline' }}>{t('downloadHelpStep3Link')}</Link>
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start' }}>
             <span style={styles.stepNum}>5</span>
-            <span>{t('downloadHelpStep4')}</span>
+            <span>
+              {t('downloadHelpStep4')}
+              {' '}
+              <Link to="/devices" style={{ color: '#8fcbff', textDecoration: 'underline' }}>{t('downloadHelpStep4Link')}</Link>
+              {' '}
+              {t('downloadHelpStep4Suffix')}
+            </span>
           </div>
         </div>
       </div>
