@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
-import { apiClient } from '../api/client';
+import { useState } from 'react';
+import { getConfig } from '../config';
 import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { DownloadFileInfo } from '../types/protocol';
 
-type OsTab = 'windows' | 'macos' | 'linux';
+const CLIENT_VERSION = '1.1.0';
+
+const DOWNLOADS: DownloadFileInfo[] = [
+  { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-linux-x64`,       size: 0, modified: '', platform: 'linux',   arch: 'x64',   version: CLIENT_VERSION },
+  { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-linux-arm64`,     size: 0, modified: '', platform: 'linux',   arch: 'arm64', version: CLIENT_VERSION },
+  { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-windows-x64.exe`, size: 0, modified: '', platform: 'windows', arch: 'x64',   version: CLIENT_VERSION },
+  { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-windows-arm64.exe`,size: 0, modified: '', platform: 'windows', arch: 'arm64', version: CLIENT_VERSION },
+  { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-darwin-arm64`,    size: 0, modified: '', platform: 'darwin',  arch: 'arm64', version: CLIENT_VERSION },
+];
 
 const PLATFORM_DISPLAY: Record<string, string> = {
   windows: 'Windows',
@@ -29,22 +37,6 @@ function comparePlatform(a: string | null, b: string | null): number {
   const ai = PLATFORM_ORDER[a?.toLowerCase() ?? ''] ?? 99;
   const bi = PLATFORM_ORDER[b?.toLowerCase() ?? ''] ?? 99;
   return ai - bi;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const val = bytes / Math.pow(1024, i);
-  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
-
-function detectOsTab(): OsTab {
-  if (typeof navigator === 'undefined') return 'linux';
-  const p = navigator.platform.toLowerCase();
-  if (p.startsWith('win')) return 'windows';
-  if (p.startsWith('mac')) return 'macos';
-  return 'linux';
 }
 
 function PlatformLogo({ platform, size = 14 }: { platform: string | null; size?: number }) {
@@ -82,22 +74,6 @@ function PlatformLogo({ platform, size = 14 }: { platform: string | null; size?:
           <path fill="currentColor" d="M3 3v18h18V3H3zm16 16H5V5h14v14z" />
         </svg>
       );
-  }
-}
-
-function formatDate(iso: string): string {
-  if (!iso) return '-';
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
   }
 }
 
@@ -183,87 +159,24 @@ const styles: Record<string, React.CSSProperties> = {
     marginRight: '0.5rem',
     flexShrink: 0,
   },
-  hint: {
-    fontSize: '0.78rem',
-    color: '#65719c',
-    marginTop: '0.35rem',
-  },
-  osTabRow: {
-    display: 'flex',
-    gap: '0.35rem',
-    marginBottom: '0.75rem',
-  } as const,
-  osTab: {
-    border: '1px solid #1d2b50',
-    borderRadius: '6px',
-    padding: '0.35rem 0.7rem',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    background: 'transparent',
-    color: '#8d95b8',
-    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-  } as const,
 };
 
-const OS_TABS: OsTab[] = ['windows', 'macos', 'linux'];
-
-const OS_TAB_LABEL: Record<OsTab, React.ReactNode> = {
-  windows: <><PlatformLogo platform="windows" /> Windows</>,
-  macos: <><PlatformLogo platform="macos" /> MacOS</>,
-  linux: <><PlatformLogo platform="linux" /> Linux</>,
-};
-
-function osCommand(osTab: OsTab, file: DownloadFileInfo | undefined): string {
-  if (!file) {
-    // Fallback when no file matches the selected platform
-    switch (osTab) {
-      case 'linux': return 'chmod +x <filename> && ./<filename>';
-      case 'windows': return '<filename>.exe';
-      case 'macos': return 'chmod +x <filename> && ./<filename>';
-    }
-  }
-  const fn = file.filename;
-  switch (osTab) {
-    case 'linux': return `chmod +x ${fn} && ./${fn}`;
-    case 'windows': return fn;
-    case 'macos': return `chmod +x ${fn} && ./${fn}`;
-  }
+function runCommand(file: DownloadFileInfo): string {
+  const isWindows = file.platform?.toLowerCase() === 'windows';
+  if (isWindows) return file.filename;
+  return `chmod +x ${file.filename} && ./${file.filename}`;
 }
 
-/** Map OS tab to the platform value reported by the server. */
-function platformForOsTab(osTab: OsTab): string {
-  // Server reports "darwin" for macOS binaries
-  return osTab === 'macos' ? 'darwin' : osTab;
+function downloadUrl(filename: string): string {
+  return `${getConfig().apiBaseUrl}/downloads/${encodeURIComponent(filename)}`;
 }
+
+const sortedDownloads = [...DOWNLOADS].sort((a, b) => comparePlatform(a.platform, b.platform));
 
 export function DownloadPage() {
   const { t } = useI18n();
   const isMobile = useIsMobile(900);
-  const [files, setFiles] = useState<DownloadFileInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [osTab, setOsTab] = useState<OsTab>(detectOsTab);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    apiClient
-      .listDownloads()
-      .then((res) => {
-        if (!cancelled) setFiles(res.files);
-      })
-      .catch(() => {
-        if (!cancelled) setError(t('fetchDownloadsFailed'));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+  const [fileTab, setFileTab] = useState(0);
 
   const containerStyle = isMobile
     ? { ...styles.container, padding: '0.9rem 0.75rem' }
@@ -282,55 +195,41 @@ export function DownloadPage() {
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>{t('downloadClient')}</h3>
 
-        {error && (
-          <div style={{ color: '#e74c3c', fontSize: '0.82rem', marginBottom: '0.5rem' }}>{error}</div>
-        )}
-
-        {loading && <p style={{ color: '#666', fontSize: '0.85rem' }}>{t('loading')}</p>}
-
-        {!loading && files.length === 0 && (
-          <p style={{ color: '#666', fontSize: '0.85rem' }}>{t('noDownloads')}</p>
-        )}
-
-        {files.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>{t('downloadPlatform')}</th>
-                  <th style={styles.th}>{t('downloadVersion')}</th>
-                  <th style={styles.th}>{t('downloadArch')}</th>
-                  <th style={styles.th}>{t('downloadSize')}</th>
-                  <th style={{ ...styles.th, textAlign: 'right' }}>{/* Action */}</th>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>{t('downloadPlatform')}</th>
+                <th style={styles.th}>{t('downloadVersion')}</th>
+                <th style={styles.th}>{t('downloadArch')}</th>
+                <th style={{ ...styles.th, textAlign: 'right' }}>{/* Action */}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedDownloads.map((f) => (
+                <tr key={f.filename}>
+                  <td style={styles.td}>
+                    <PlatformLogo platform={f.platform} />
+                    {platformDisplayName(f.platform)}
+                  </td>
+                  <td style={{ ...styles.td, color: '#8fcbff', fontFamily: 'ui-monospace, monospace' }}>
+                    {f.version || '-'}
+                  </td>
+                  <td style={styles.td}>{f.arch || '-'}</td>
+                  <td style={{ ...styles.td, textAlign: 'right' }}>
+                    <a
+                      href={downloadUrl(f.filename)}
+                      download={f.filename}
+                      style={styles.downloadBtn}
+                    >
+                      {t('downloadFile')}
+                    </a>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {[...files].sort((a, b) => comparePlatform(a.platform, b.platform)).map((f) => (
-                  <tr key={f.filename}>
-                    <td style={styles.td}>
-                      <PlatformLogo platform={f.platform} />
-                      {platformDisplayName(f.platform)}
-                    </td>
-                    <td style={{ ...styles.td, color: '#8fcbff', fontFamily: 'ui-monospace, monospace' }}>
-                      {f.version || '-'}
-                    </td>
-                    <td style={styles.td}>{f.arch || '-'}</td>
-                    <td style={{ ...styles.td, color: '#8d95b8' }}>{formatSize(f.size)}</td>
-                    <td style={{ ...styles.td, textAlign: 'right' }}>
-                      <a
-                        href={apiClient.getDownloadUrl(f.filename)}
-                        download={f.filename}
-                        style={styles.downloadBtn}
-                      >
-                        {t('downloadFile')}
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Help section */}
@@ -346,27 +245,36 @@ export function DownloadPage() {
             <span style={styles.stepNum}>2</span>
             <span>{t('downloadHelpStep1')}</span>
           </div>
-          <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
-            <div style={styles.osTabRow}>
-              {OS_TABS.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setOsTab(key)}
-                  style={{
-                    ...styles.osTab,
-                    background: osTab === key ? '#1d2a4b' : 'transparent',
-                    color: osTab === key ? '#f17a8e' : '#8d95b8',
-                    borderColor: osTab === key ? '#2f4778' : '#1d2b50',
-                  }}
-                >
-                  {OS_TAB_LABEL[key]}
-                </button>
-              ))}
-            </div>
-            <code style={styles.code}>
-              {osCommand(osTab, files.find(f => f.platform?.toLowerCase() === platformForOsTab(osTab)))}
-            </code>
+
+          {/* File tabs with per-file run command */}
+          <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.5rem', paddingLeft: '2.1rem', flexWrap: 'wrap' }}>
+            {sortedDownloads.map((f, idx) => (
+              <button
+                key={f.filename}
+                onClick={() => setFileTab(idx)}
+                style={{
+                  border: '1px solid ' + (fileTab === idx ? '#2f4778' : '#1d2b50'),
+                  borderRadius: '6px',
+                  padding: '0.35rem 0.7rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: fileTab === idx ? '#1d2a4b' : 'transparent',
+                  color: fileTab === idx ? '#f17a8e' : '#8d95b8',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                }}
+              >
+                <PlatformLogo platform={f.platform} size={12} />
+                {platformDisplayName(f.platform)} {f.arch || ''}
+              </button>
+            ))}
           </div>
+          <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
+            <code style={styles.code}>{runCommand(sortedDownloads[fileTab])}</code>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
             <span style={styles.stepNum}>3</span>
             <span>{t('downloadHelpStep2')}</span>
