@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { WebSocketClient } from '../api/ws';
 import { getConfig } from '../config';
 import { translate } from '../i18n';
+import { useDeviceStore } from './deviceStore';
 import { useSessionStore } from './sessionStore';
 
 interface TerminalState {
@@ -97,11 +98,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
 
       // Track device status — mark session disconnected when device goes offline,
-      // and auto-reconnect when it comes back online
+      // update shared deviceStore, and auto-reconnect when device comes back online
       const unsubDeviceStatus = ws.on('device_status', (payload) => {
         const did = payload.device_id as string | undefined;
         const online = payload.online as boolean | undefined;
         if (!did || online === undefined) return;
+        // Sync deviceStore for real-time indicator everywhere
+        useDeviceStore.getState().updateDeviceStatus(did, online);
         const state = get();
         if (state.deviceId !== did) return;
         if (!online) {
@@ -126,11 +129,20 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         if (connected && savedReconnect) {
           const ctx = savedReconnect;
           savedReconnect = null;
+          // Check device status: if the device is known to be offline, don't
+          // claim the session is connected until we get a device_status:online.
+          const device = useDeviceStore.getState().devices.find(d => d.id === ctx.deviceId);
+          const deviceOnline = device?.online ?? true; // assume online if unknown
           if (ctx.sessionId === 'new') {
             ws.send('create_session', { device_id: ctx.deviceId, cwd: ctx.cwd ?? null, program: ctx.program ?? null });
           } else {
             ws.send('attach_session', { session_id: ctx.sessionId });
-            set({ sessionId: ctx.sessionId, connected: true });
+            if (deviceOnline) {
+              set({ sessionId: ctx.sessionId, connected: true });
+            } else {
+              // Device is offline — keep sessionId for re-attach later, but stay disconnected
+              set({ sessionId: ctx.sessionId, connected: false });
+            }
           }
         }
         set({ wsConnected: connected });

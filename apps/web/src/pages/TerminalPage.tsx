@@ -16,7 +16,9 @@ export function TerminalPage() {
   const program = (searchParams.get('program') || 'claude') as string;
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
-  const deviceName = useDeviceStore((s) => s.devices.find((d) => d.id === deviceId)?.name);
+  const device = useDeviceStore((s) => s.devices.find((d) => d.id === deviceId));
+  const deviceName = device?.name;
+  const deviceOnline = device?.online;
   const connect = useTerminalStore((s) => s.connect);
   const sendRawInput = useTerminalStore((s) => s.sendRawInput);
   const sendResize = useTerminalStore((s) => s.sendResize);
@@ -191,13 +193,13 @@ export function TerminalPage() {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: connected ? '#27ae60' : '#e74c3c',
+              background: connected && deviceOnline !== false ? '#27ae60' : '#e74c3c',
               display: 'inline-block',
               flexShrink: 0,
             }}
           />
           <span style={{ color: '#666', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-            {connected ? t('connected') : error ? t('error') : t('disconnected')}
+            {deviceOnline === false ? t('deviceOffline') : connected ? t('connected') : error ? t('error') : t('disconnected')}
           </span>
         </div>
         {isMobile && (
