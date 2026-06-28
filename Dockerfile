@@ -13,10 +13,12 @@ COPY Cargo.lock ./Cargo.lock
 COPY apps/server/Cargo.toml ./apps/server/Cargo.toml
 COPY apps/client/Cargo.toml ./apps/client/Cargo.toml
 
-# Build dependencies with dummy main.rs
-RUN mkdir -p apps/server/src && echo "fn main() {}" > apps/server/src/main.rs && \
+# Build dependencies with dummy main.rs for all workspace members
+RUN mkdir -p apps/server/src apps/client/src && \
+    echo "fn main() {}" > apps/server/src/main.rs && \
+    echo "fn main() {}" > apps/client/src/main.rs && \
     cargo build -p remote-claude-server --release --target x86_64-unknown-linux-musl && \
-    rm -rf apps/server/src
+    rm -rf apps/server/src apps/client/src
 
 # Copy real source and rebuild (dependencies are cached)
 COPY apps/server/src ./apps/server/src
