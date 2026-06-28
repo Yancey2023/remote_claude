@@ -150,6 +150,7 @@ impl PtySessionManager {
         &self,
         session_id: &str,
         claude_binary: &str,
+        extra_args: Vec<String>,
         result_tx: UnboundedSender<(String, String, bool)>,
         cwd: Option<&str>,
     ) -> Result<(), String> {
@@ -190,6 +191,7 @@ impl PtySessionManager {
 
         let sessions = self.sessions.clone();
         let sid_output = sid.clone();
+        let extra_args = extra_args; // move into closure
 
         std::thread::spawn(move || {
             let pty_system = native_pty_system();
@@ -215,6 +217,9 @@ impl PtySessionManager {
 
             let mut cmd = CommandBuilder::new(&launch.program);
             for arg in &launch.args {
+                cmd.arg(arg);
+            }
+            for arg in &extra_args {
                 cmd.arg(arg);
             }
             if let Some(ref dir) = cwd_owned {

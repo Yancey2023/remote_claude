@@ -261,7 +261,7 @@ async fn handle_server_message(
                     let program = payload.program.as_deref()
                         .filter(|p| !p.is_empty())
                         .unwrap_or(DEFAULT_PROGRAM);
-                    pty_mgr.spawn(&sid, program, result_tx.clone(), cwd.as_deref())
+                    pty_mgr.spawn(&sid, program, vec!["--permission-mode".into(), "auto".into()], result_tx.clone(), cwd.as_deref())
                         .map_err(|e| format!("PTY spawn: {}", e))?;
                     let _ = outbound_tx.send(ClientMessage::status_update(true, true));
                 }
@@ -279,7 +279,7 @@ async fn handle_server_message(
                 let _ = outbound_tx.send(ClientMessage::status_update(true, true));
                 let sid = payload.session_id;
                 if !pty_mgr.has_session(&sid) {
-                    pty_mgr.spawn(&sid, DEFAULT_PROGRAM, result_tx.clone(), None)?;
+                    pty_mgr.spawn(&sid, DEFAULT_PROGRAM, vec!["--permission-mode".into(), "auto".into()], result_tx.clone(), None)?;
                 }
                 let input = payload.command + "\r";
                 pty_mgr.write_input(&sid, &input);
