@@ -31,7 +31,10 @@ jobs:
         run: pnpm install
 
       - name: Build
-        run: pnpm build
+        run: |
+          VERSION=$(grep '^version' apps/client/Cargo.toml | head -1 | cut -d'"' -f2)
+          export VITE_CLIENT_VERSION="$VERSION"
+          pnpm build
         env:
           VITE_BASE_URL: /remote_claude
 
