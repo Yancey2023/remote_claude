@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { DownloadFileInfo } from '../types/protocol';
 
-const CLIENT_VERSION = import.meta.env.VITE_CLIENT_VERSION ?? '0.0.0';
+const CLIENT_VERSION = import.meta.env.VITE_CLIENT_VERSION || '0.0.0';
 
 const DOWNLOADS: DownloadFileInfo[] = [
   { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-linux-x64`,       size: 0, modified: '', platform: 'linux',   arch: 'x64',   version: CLIENT_VERSION },
@@ -315,6 +315,7 @@ export function DownloadPage() {
               {t('downloadHelpStep3')}
               {' '}
               <Link to="/devices" style={{ color: '#8fcbff', textDecoration: 'underline' }}>{t('downloadHelpStep3Link')}</Link>
+              {t('downloadHelpStep3Suffix') && <>{' '}{t('downloadHelpStep3Suffix')}</>}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start' }}>
