@@ -57,7 +57,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            apps/server/target
+            target
           key: ${{ runner.os }}-cargo-relay-musl-${{ hashFiles('Cargo.lock') }}
 
       - name: Install musl target
@@ -93,7 +93,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            apps/client/target
+            target
           key: ${{ runner.os }}-cargo-client-musl-${{ hashFiles('Cargo.lock') }}
 
       - name: Build
