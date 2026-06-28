@@ -123,6 +123,11 @@ impl SqliteStore {
             .execute(&self.pool)
             .await;
 
+        // Add device_id column for token-to-device binding (prevents token reuse on different devices)
+        let _ = sqlx::query("ALTER TABLE client_tokens ADD COLUMN device_id TEXT")
+            .execute(&self.pool)
+            .await;
+
         Ok(())
     }
 
@@ -418,7 +423,7 @@ impl SqliteStore {
 
     pub async fn get_client_token(&self, token: &str) -> Option<ClientToken> {
         sqlx::query(
-            "SELECT token, created_at, user_id FROM client_tokens WHERE token = ?",
+            "SELECT token, created_at, user_id, device_id FROM client_tokens WHERE token = ?",
         )
         .bind(token)
         .fetch_optional(&self.pool)
@@ -429,7 +434,7 @@ impl SqliteStore {
 
     pub async fn list_client_tokens(&self, user_id: &str) -> Vec<ClientToken> {
         sqlx::query(
-            "SELECT token, created_at, user_id FROM client_tokens WHERE user_id = ? ORDER BY created_at DESC",
+            "SELECT token, created_at, user_id, device_id FROM client_tokens WHERE user_id = ? ORDER BY created_at DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -453,6 +458,20 @@ impl SqliteStore {
         if affected == 0 {
             return Err("token not found".into());
         }
+        Ok(())
+    }
+
+    /// Bind a token to a specific device_id after first successful registration.
+    /// Subsequent registration attempts with the same token but different device_id will be rejected.
+    pub async fn bind_client_token_device(&self, token: &str, device_id: &str) -> Result<(), String> {
+        sqlx::query(
+            "UPDATE client_tokens SET device_id = ? WHERE token = ? AND device_id IS NULL",
+        )
+        .bind(device_id)
+        .bind(token)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("database error: {}", e))?;
         Ok(())
     }
 
@@ -510,6 +529,7 @@ fn row_to_client_token(row: sqlx::sqlite::SqliteRow) -> ClientToken {
         token: row.get("token"),
         created_at: row.get("created_at"),
         user_id: row.get("user_id"),
+        device_id: row.get("device_id"),
     }
 }
 

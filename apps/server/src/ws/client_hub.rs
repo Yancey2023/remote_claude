@@ -175,7 +175,23 @@ pub async fn handle_client_ws(
 
     // Validate registration token against database
     let client_token = match store.get_client_token(&token).await {
-        Some(t) => t,
+        Some(t) => {
+            // If token is already bound to a device_id, verify it matches the connecting device.
+            // This prevents token reuse on a different device.
+            if let Some(ref bound_device_id) = t.device_id {
+                if bound_device_id != &device_id {
+                    warn!(token = %token, expected = %bound_device_id, got = %device_id, "token bound to different device, rejecting");
+                    let err = serde_json::json!({
+                        "type": "error",
+                        "payload": { "code": "ERR_TOKEN_BOUND", "message": "token already bound to a different device" }
+                    });
+                    let _ = ws_sender.send(Message::Text(err.to_string().into())).await;
+                    let _ = ws_sender.close().await;
+                    return;
+                }
+            }
+            t
+        }
         None => {
             warn!(token = %token, "invalid registration token, rejecting connection");
             let err = serde_json::json!({
@@ -213,6 +229,9 @@ pub async fn handle_client_ws(
     let device = Device::new(entry.id.clone(), name.clone(), version.clone(), client_token.user_id.clone());
     store.upsert_device(device).await;
     store.set_device_online(&entry.id, true).await;
+
+    // Bind token to device_id to prevent reuse on different devices
+    let _ = store.bind_client_token_device(&token, &entry.id).await;
 
     // Notify web UI that device is online
     let online_msg = format!(r#"{{"type":"device_status","payload":{{"device_id":"{}","online":true}}}}"#, entry.id);

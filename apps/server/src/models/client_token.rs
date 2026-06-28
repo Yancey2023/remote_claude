@@ -5,5 +5,6 @@ pub struct ClientToken {
     pub token: String,
     pub created_at: i64,
     pub user_id: String,
+    pub device_id: Option<String>,
 }
 
