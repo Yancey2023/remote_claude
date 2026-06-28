@@ -62,13 +62,37 @@ impl Config {
             }};
         }
 
+        // DEVICE_NAME: prompt user on first launch if not set via config or env
+        let device_name = file_config
+            .device_name
+            .clone()
+            .or_else(|| env::var("DEVICE_NAME").ok())
+            .unwrap_or_else(|| {
+                eprintln!("Device name is not set.");
+                eprint!("Please enter a name for this device: ");
+                let mut input = String::new();
+                std::io::stdin()
+                    .read_line(&mut input)
+                    .expect("failed to read device name from stdin");
+                let trimmed = input.trim().to_string();
+                if trimmed.is_empty() {
+                    eprintln!("Device name cannot be empty. Exiting.");
+                    std::process::exit(1);
+                }
+                trimmed
+            });
+        if file_config.device_name.is_none() {
+            modified = true;
+            file_config.device_name = Some(device_name.clone());
+        }
+
         // CLIENT_TOKEN is required — prompt user if missing from both file and env
         let client_token = file_config
             .client_token
             .clone()
             .or_else(|| env::var("CLIENT_TOKEN").ok())
             .unwrap_or_else(|| {
-                eprintln!("CLIENT_TOKEN is not set in config file or environment variable.");
+                eprintln!("Client token is not set in config file or environment variable.");
                 eprint!("Please enter your client token: ");
                 let mut input = String::new();
                 std::io::stdin()
@@ -103,7 +127,7 @@ impl Config {
                 "wss://www.yanceymc.cn/remote_claude/ws/client"
             ),
             client_token,
-            device_name: field_str!(device_name, "DEVICE_NAME", hostname()),
+            device_name,
             client_version: env!("CARGO_PKG_VERSION").to_string(),
             max_retry_delay_secs: field_num!(max_retry_delay_secs, "MAX_RETRY_DELAY_SECS", 60, u64),
             device_id,
@@ -173,15 +197,6 @@ impl Config {
     }
 }
 
-/// Cross-platform hostname detection:
-///   - `HOSTNAME` (Linux/macOS) or `COMPUTERNAME` (Windows) env var
-///   - Fallback: `"unknown-device"`
-fn hostname() -> String {
-    env::var("HOSTNAME")
-        .or_else(|_| env::var("COMPUTERNAME"))
-        .unwrap_or_else(|_| "unknown-device".to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,10 +258,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_hostname_fallback() {
-        // Should return either an env var or the fallback string
-        let name = hostname();
-        assert!(!name.is_empty());
-    }
 }
