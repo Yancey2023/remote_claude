@@ -39,7 +39,7 @@ jobs:
           VITE_BASE_URL: /remote_claude
 
       - name: Deploy
-        uses: easingthemes/ssh-deploy@v5
+        uses: easingthemes/ssh-deploy@v5.1.1
         env:
           SSH_PRIVATE_KEY: ${{ secrets.ACCESS_TOKEN }}
           ARGS: "-avz --delete"
