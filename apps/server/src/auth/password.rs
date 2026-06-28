@@ -5,7 +5,7 @@ use argon2::{
 use rand::rngs::OsRng;
 
 pub fn hash_password(password: &str) -> Result<String, String> {
-    let salt = SaltString::generate(&mut OsRng);
+    let salt = SaltString::generate(&mut rand::rngs::OsRng);
     let argon2 = Argon2::default();
     let hash = argon2
         .hash_password(password.as_bytes(), &salt)

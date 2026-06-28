@@ -41,7 +41,7 @@ jobs:
       run:
         working-directory: apps/client
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -73,7 +73,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }} -p remote-claude-client
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: target/${{ runner.os == 'Linux' && format('{0}/release/', matrix.target) || 'release/' }}remote-claude-client${{ runner.os == 'Windows' && '.exe' || '' }}
@@ -82,10 +82,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [remote-claude-client]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download client binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: downloads
 
@@ -140,7 +140,7 @@ jobs:
           docker save "${{ secrets.DOCKER_USERNAME }}/remote-claude:latest" | gzip > remote-claude.tar.gz
 
       - name: Copy image to server
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}

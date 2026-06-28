@@ -17,7 +17,7 @@ jobs:
       remote-claude-client: ${{ steps.filter.outputs.remote-claude-client }}
       web-ui: ${{ steps.filter.outputs.web-ui }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -49,7 +49,7 @@ jobs:
       run:
         working-directory: apps/server
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -80,7 +80,7 @@ jobs:
       run:
         working-directory: apps/client
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install musl target
         run: |
@@ -111,7 +111,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

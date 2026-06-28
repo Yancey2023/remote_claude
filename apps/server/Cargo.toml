@@ -9,7 +9,7 @@ tokio = { version = "1", features = ["full"] }
 
 # web framework
 axum = { version = "0.8", features = ["ws"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
 
 # serialization
 serde = { version = "1", features = ["derive"] }
@@ -20,7 +20,7 @@ jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 argon2 = "0.5"
 
 # database
-sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
+sqlx = { version = "0.9", features = ["sqlite", "runtime-tokio", "chrono"] }
 
 # utilities
 uuid = { version = "1", features = ["v4"] }
@@ -29,4 +29,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 rand = "0.8"
 futures-util = "0.3"
-toml = "0.8"
+toml = "1.1"
