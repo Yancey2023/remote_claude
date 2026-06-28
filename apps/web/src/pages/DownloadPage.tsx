@@ -6,7 +6,8 @@ import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { DownloadFileInfo } from '../types/protocol';
 
-const CLIENT_VERSION = import.meta.env.VITE_CLIENT_VERSION || '0.0.0';
+// Matches version in apps/client/Cargo.toml. Override via VITE_CLIENT_VERSION env var.
+const CLIENT_VERSION = import.meta.env.VITE_CLIENT_VERSION || '1.1.0';
 
 const DOWNLOADS: DownloadFileInfo[] = [
   { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-linux-x64`,       size: 0, modified: '', platform: 'linux',   arch: 'x64',   version: CLIENT_VERSION },

@@ -30,9 +30,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Extract version
-        run: echo "VITE_CLIENT_VERSION=$(grep '^version' apps/client/Cargo.toml | head -1 | cut -d'\"' -f2)" >> $GITHUB_ENV
-
       - name: Build
         run: pnpm build
         env:

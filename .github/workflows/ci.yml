@@ -125,9 +125,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Extract version
-        run: echo "VITE_CLIENT_VERSION=$(grep '^version' apps/client/Cargo.toml | head -1 | cut -d'\"' -f2)" >> $GITHUB_ENV
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
