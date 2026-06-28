@@ -13,6 +13,7 @@ export interface TerminalHandle {
   write: (data: string) => void;
   writeln: (data: string) => void;
   clear: () => void;
+  scrollLines: (count: number) => void;
 }
 
 export const Terminal = forwardRef<TerminalHandle, Props>(
@@ -32,6 +33,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
       write: (data: string) => xtermRef.current?.write(data),
       writeln: (data: string) => xtermRef.current?.writeln(data),
       clear: () => xtermRef.current?.clear(),
+      scrollLines: (count: number) => xtermRef.current?.scrollLines(count),
     }));
 
     useEffect(() => {

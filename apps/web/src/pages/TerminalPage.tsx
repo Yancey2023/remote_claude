@@ -4,6 +4,7 @@ import { useTerminalStore } from '../stores/terminalStore';
 import { useAuthStore } from '../stores/authStore';
 import { useDeviceStore } from '../stores/deviceStore';
 import { Terminal, type TerminalHandle } from '../components/Terminal';
+import { JoystickScroll } from '../components/JoystickScroll';
 import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -114,6 +115,13 @@ export function TerminalPage() {
     [connected, sendRawInput],
   );
 
+  const handleScroll = useCallback(
+    (delta: number) => {
+      terminalRef.current?.scrollLines(delta);
+    },
+    [],
+  );
+
   const handleResize = useCallback(
     (cols: number, rows: number) => {
       terminalSizeRef.current = { cols, rows };
@@ -208,7 +216,7 @@ export function TerminalPage() {
         )}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '0.35rem' : '0.5rem', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '0.35rem' : '0.5rem', overflow: 'hidden', position: 'relative' }}>
         <Terminal
           key={displayedSessionId ?? 'pending'}
           ref={terminalRef}
@@ -216,6 +224,26 @@ export function TerminalPage() {
           onResize={handleResize}
           readOnly={!connected}
         />
+        {isMobile && (
+          <div
+            style={{
+              position: 'absolute',
+              right: '6px',
+              bottom: '6px',
+              width: '44px',
+              height: '100px',
+              borderRadius: '8px',
+              background: 'rgba(26,26,46,0.85)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+              zIndex: 10,
+              opacity: 0.7,
+            }}
+          >
+            <JoystickScroll onScroll={handleScroll} />
+          </div>
+        )}
       </div>
     </div>
   );
