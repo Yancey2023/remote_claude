@@ -104,7 +104,7 @@ impl Config {
             ),
             client_token,
             device_name: field_str!(device_name, "DEVICE_NAME", hostname()),
-            client_version: env::var("CLIENT_VERSION").unwrap_or_else(|_| "0.1.0".to_string()),
+            client_version: env!("CARGO_PKG_VERSION").to_string(),
             max_retry_delay_secs: field_num!(max_retry_delay_secs, "MAX_RETRY_DELAY_SECS", 60, u64),
             device_id,
         };
