@@ -22,7 +22,8 @@ RUN mkdir -p apps/server/src apps/client/src && \
 
 # Copy real source and rebuild (dependencies are cached)
 COPY apps/server/src ./apps/server/src
-RUN touch apps/server/src/main.rs && \
+RUN mkdir -p apps/client/src && echo "fn main() {}" > apps/client/src/main.rs && \
+    touch apps/server/src/main.rs && \
     cargo build -p remote-claude-server --release --target x86_64-unknown-linux-musl && \
     cp target/x86_64-unknown-linux-musl/release/remote-claude-server /remote-claude-server
 
