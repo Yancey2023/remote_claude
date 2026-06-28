@@ -176,7 +176,7 @@ async fn handle_web_message(
     user_id: &str,
     hub: &WebHub,
     client_hub: &ClientHub,
-    _store: &SqliteStore,
+    store: &SqliteStore,
     pending_reqs: &Arc<std::sync::Mutex<HashMap<String, String>>>,
 ) -> Result<(), String> {
     let parsed: serde_json::Value =
@@ -258,6 +258,11 @@ async fn handle_web_message(
                 .filter(|p| !p.is_empty())
                 .map(|s| s.to_string());
 
+            // Verify device belongs to the authenticated user
+            if !store.device_belongs_to_user(device_id, user_id).await {
+                return Err("not your device".to_string());
+            }
+
             let device = client_hub
                 .get_by_device_id(device_id)
                 .await
@@ -275,7 +280,7 @@ async fn handle_web_message(
                 user_id.to_string(),
                 cwd.clone(),
             );
-            let _ = _store.create_session(db_session).await;
+            let _ = store.create_session(db_session).await;
 
             // Notify the web about the new session
             let msg = serde_json::json!({
@@ -300,10 +305,11 @@ async fn handle_web_message(
             if let Some(session) = hub.session_registry.get(session_id).await {
                 if session.user_id == user_id {
                     let _ = client_hub.send_to_device(&session.device_id, text).await;
+                    hub.session_registry.unregister(session_id).await;
+                } else {
+                    return Err("not your session".to_string());
                 }
             }
-
-            hub.session_registry.unregister(session_id).await;
         }
         "list_directory" => {
             let payload = parsed.get("payload").ok_or("missing payload")?;
@@ -315,6 +321,11 @@ async fn handle_web_message(
                 .get("path")
                 .and_then(|p| p.as_str())
                 .unwrap_or("");
+
+            // Verify device belongs to the authenticated user
+            if !store.device_belongs_to_user(device_id, user_id).await {
+                return Err("not your device".to_string());
+            }
 
             // Verify device is online
             client_hub
