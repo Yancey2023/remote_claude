@@ -504,7 +504,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("relay-server-store-dir-{nanos}"));
+        let root = std::env::temp_dir().join(format!("remote-claude-server-store-dir-{nanos}"));
         let db_path = root.join("nested").join("data.db");
         let parent = db_path.parent().unwrap();
         let options = SqliteConnectOptions::new().filename(&db_path);
@@ -524,7 +524,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("relay-server-store-db-{nanos}"));
+        let root = std::env::temp_dir().join(format!("remote-claude-server-store-db-{nanos}"));
         let db_path = root.join("data.db");
 
         assert!(!db_path.exists(), "database file should not exist yet");
@@ -548,7 +548,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("relay-server-rel-{nanos}"));
+        let root = std::env::temp_dir().join(format!("remote-claude-server-rel-{nanos}"));
         let _ = std::fs::create_dir_all(&root);
         let old_dir = std::env::current_dir().unwrap();
 

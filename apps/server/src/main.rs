@@ -31,7 +31,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "relay_server=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "remote_claude_server=debug,tower_http=debug".into()),
         )
         .with_target(true)
         .init();
@@ -82,7 +82,7 @@ async fn main() {
     // Build router
     let app = api::router()
         .route("/ws/{*path}", get(ws_upgrade))
-        .route("/", get(|| async { "Relay Server" }))
+        .route("/", get(|| async { "Remote Claude Server" }))
         .layer({
             use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
             use axum::http::Method;
@@ -105,7 +105,7 @@ async fn main() {
         .with_state(state);
 
     let addr = format!("{}:{}", config.host, config.port);
-    info!("relay-server starting on {}", addr);
+    info!("remote-claude-server starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr)
         .await

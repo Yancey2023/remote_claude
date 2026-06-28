@@ -122,7 +122,7 @@ impl Config {
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| PathBuf::from("."));
-        exe_dir.join("config").join("desktop-client.toml")
+        exe_dir.join("config").join("remote-claude-client.toml")
     }
 
     fn load_file(path: &PathBuf) -> ConfigFile {
@@ -196,7 +196,7 @@ mod tests {
         let saved = env::var("CONFIG_PATH").ok();
         unsafe { env::remove_var("CONFIG_PATH") };
         let path = Config::config_path();
-        assert_eq!(path.file_name().unwrap(), "desktop-client.toml");
+        assert_eq!(path.file_name().unwrap(), "remote-claude-client.toml");
         if let Some(v) = saved {
             unsafe { env::set_var("CONFIG_PATH", v) };
         }

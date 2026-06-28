@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "apps/server",
+    "apps/client",
+]
+resolver = "2"

@@ -1,3 +1,3 @@
 packages:
-  - 'shared-types'
-  - 'web-ui'
+  - 'package/shared-types'
+  - 'apps/web'

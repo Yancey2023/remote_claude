@@ -5,9 +5,9 @@ on:
     branches: [main]
     tags: ["v*"]
     paths:
-      - 'relay-server/**'
-      - 'desktop-client/**'
-      - 'shared-types/**'
+      - 'apps/server/**'
+      - 'apps/client/**'
+      - 'package/shared-types/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'Dockerfile'
@@ -39,7 +39,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: desktop-client
+        working-directory: apps/client
     steps:
       - uses: actions/checkout@v4
 
@@ -49,8 +49,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            desktop-client/target
-          key: ${{ runner.os }}-${{ runner.arch }}-cargo-client${{ runner.os == 'Linux' && '-musl' || '' }}-${{ hashFiles('desktop-client/Cargo.lock') }}
+            apps/client/target
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-client${{ runner.os == 'Linux' && '-musl' || '' }}-${{ hashFiles('Cargo.lock') }}
 
       - name: Install musl target
         if: runner.os == 'Linux'
@@ -66,17 +66,17 @@ jobs:
 
       - name: Build
         if: runner.os != 'Linux'
-        run: cargo build --release
+        run: cargo build --release -p remote-claude-client
 
       - name: Build (musl)
         if: runner.os == 'Linux'
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} -p remote-claude-client
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: desktop-client/target/${{ runner.os == 'Linux' && format('{0}/release/', matrix.target) || 'release/' }}desktop-client${{ runner.os == 'Windows' && '.exe' || '' }}
+          path: apps/client/target/${{ runner.os == 'Linux' && format('{0}/release/', matrix.target) || 'release/' }}remote-claude-client${{ runner.os == 'Windows' && '.exe' || '' }}
 
   relay-server:
     runs-on: ubuntu-latest
@@ -91,12 +91,12 @@ jobs:
 
       - name: Rename binaries to release naming
         run: |
-          version=$(grep '^version' desktop-client/Cargo.toml | head -1 | cut -d'"' -f2)
-          mv downloads/linux-x64/desktop-client "downloads/remote-claude-desktop-client-v${version}-linux-x64"
-          mv downloads/linux-arm64/desktop-client "downloads/remote-claude-desktop-client-v${version}-linux-arm64"
-          mv downloads/windows-x64/desktop-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-x64.exe"
-          mv downloads/windows-arm64/desktop-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-arm64.exe"
-          mv downloads/darwin-arm64/desktop-client "downloads/remote-claude-desktop-client-v${version}-darwin-arm64"
+          version=$(grep '^version' apps/client/Cargo.toml | head -1 | cut -d'"' -f2)
+          mv downloads/linux-x64/remote-claude-client "downloads/remote-claude-desktop-client-v${version}-linux-x64"
+          mv downloads/linux-arm64/remote-claude-client "downloads/remote-claude-desktop-client-v${version}-linux-arm64"
+          mv downloads/windows-x64/remote-claude-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-x64.exe"
+          mv downloads/windows-arm64/remote-claude-client.exe "downloads/remote-claude-desktop-client-v${version}-windows-arm64.exe"
+          mv downloads/darwin-arm64/remote-claude-client "downloads/remote-claude-desktop-client-v${version}-darwin-arm64"
           chmod +x downloads/*
           rm -rf downloads/linux-x64 downloads/linux-arm64 downloads/windows-x64 downloads/windows-arm64 downloads/darwin-arm64
           ls -la downloads/

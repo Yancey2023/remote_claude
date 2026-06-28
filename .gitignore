@@ -1,11 +1,10 @@
 # Rust
-relay-server/target/
-desktop-client/target/
+/target/
 
 # Node
 node_modules/
-web-ui/dist/
-web-ui/.vite/
+apps/web/dist/
+apps/web/.vite/
 
 # IDE
 .vscode/

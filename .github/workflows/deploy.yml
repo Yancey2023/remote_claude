@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'web-ui/**'
-      - 'shared-types/**'
+      - 'apps/web/**'
+      - 'package/shared-types/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/deploy.yml'
@@ -40,7 +40,7 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.ACCESS_TOKEN }}
           ARGS: "-avz --delete"
-          SOURCE: "web-ui/dist/"
+          SOURCE: "apps/web/dist/"
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
           TARGET: ${{ secrets.TARGET }}

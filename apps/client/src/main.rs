@@ -12,7 +12,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "desktop_client=debug".into()),
+                .unwrap_or_else(|_| "remote_claude_client=debug".into()),
         )
         .with_target(true)
         .init();
@@ -47,7 +47,7 @@ async fn main() {
     info!(
         server = %config.server_url,
         device = %config.device_name,
-        "desktop-client starting"
+        "remote-claude-client starting"
     );
 
     let mut retry_delay = Duration::from_secs(1);

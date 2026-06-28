@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cd web-ui && pnpm dev",
-    "build": "cd web-ui && pnpm build"
+    "dev": "cd apps/web && pnpm dev",
+    "build": "cd apps/web && pnpm build"
   }
 }

@@ -102,8 +102,7 @@ impl Config {
 
     /// Resolve config file path:
     ///   - `CONFIG_PATH` env var override, or
-    ///   - Platform-specific: Linux: `~/.config/remote-claude/relay-server.toml`
-    ///     Windows: `%APPDATA%/remote-claude/relay-server.toml`
+    ///   - Platform-specific: `{exe_dir}/config/remote-claude-server.toml`
     fn config_path() -> PathBuf {
         if let Ok(path) = env::var("CONFIG_PATH") {
             return PathBuf::from(path);
@@ -112,7 +111,7 @@ impl Config {
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| PathBuf::from("."));
-        exe_dir.join("config").join("relay-server.toml")
+        exe_dir.join("config").join("remote-claude-server.toml")
     }
 
     fn load_file(path: &PathBuf) -> ConfigFile {
@@ -214,7 +213,7 @@ mod tests {
     #[test]
     fn test_config_path_default() {
         let path = Config::config_path();
-        assert!(path.ends_with("relay-server.toml"));
+        assert!(path.ends_with("remote-claude-server.toml"));
     }
 
     #[test]

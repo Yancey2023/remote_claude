@@ -215,9 +215,9 @@ const OS_TAB_LABEL: Record<OsTab, React.ReactNode> = {
 };
 
 const OS_COMMANDS: Record<OsTab, string> = {
-  linux: 'chmod +x desktop-client && ./desktop-client',
-  windows: 'desktop-client.exe',
-  macos: 'chmod +x desktop-client && ./desktop-client',
+  linux: 'chmod +x remote-claude-client && ./remote-claude-client',
+  windows: 'remote-claude-client.exe',
+  macos: 'chmod +x remote-claude-client && ./remote-claude-client',
 };
 
 export function DownloadPage() {

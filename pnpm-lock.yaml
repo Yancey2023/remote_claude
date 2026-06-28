@@ -8,13 +8,11 @@ importers:
 
   .: {}
 
-  shared-types: {}
-
-  web-ui:
+  apps/web:
     dependencies:
       '@remote-claude/shared-types':
         specifier: workspace:*
-        version: link:../shared-types
+        version: link:../../package/shared-types
       react:
         specifier: ^19.2.5
         version: 19.2.5
@@ -61,6 +59,8 @@ importers:
       vitest:
         specifier: ^4.1.5
         version: 4.1.5(jsdom@29.1.1)(vite@8.0.10)
+
+  package/shared-types: {}
 
 packages:
 
