@@ -214,11 +214,28 @@ const OS_TAB_LABEL: Record<OsTab, React.ReactNode> = {
   linux: <><PlatformLogo platform="linux" /> Linux</>,
 };
 
-const OS_COMMANDS: Record<OsTab, string> = {
-  linux: 'chmod +x remote-claude-client && ./remote-claude-client',
-  windows: 'remote-claude-client.exe',
-  macos: 'chmod +x remote-claude-client && ./remote-claude-client',
-};
+function osCommand(osTab: OsTab, file: DownloadFileInfo | undefined): string {
+  if (!file) {
+    // Fallback when no file matches the selected platform
+    switch (osTab) {
+      case 'linux': return 'chmod +x <filename> && ./<filename>';
+      case 'windows': return '<filename>.exe';
+      case 'macos': return 'chmod +x <filename> && ./<filename>';
+    }
+  }
+  const fn = file.filename;
+  switch (osTab) {
+    case 'linux': return `chmod +x ${fn} && ./${fn}`;
+    case 'windows': return fn;
+    case 'macos': return `chmod +x ${fn} && ./${fn}`;
+  }
+}
+
+/** Map OS tab to the platform value reported by the server. */
+function platformForOsTab(osTab: OsTab): string {
+  // Server reports "darwin" for macOS binaries
+  return osTab === 'macos' ? 'darwin' : osTab;
+}
 
 export function DownloadPage() {
   const { t } = useI18n();
@@ -346,7 +363,9 @@ export function DownloadPage() {
                 </button>
               ))}
             </div>
-            <code style={styles.code}>{OS_COMMANDS[osTab]}</code>
+            <code style={styles.code}>
+              {osCommand(osTab, files.find(f => f.platform?.toLowerCase() === platformForOsTab(osTab)))}
+            </code>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
             <span style={styles.stepNum}>3</span>
