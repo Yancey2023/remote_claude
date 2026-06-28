@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
+use tracing::warn;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -36,6 +37,7 @@ impl Config {
     /// Load config with priority: config file > env var > hardcoded default.
     /// Missing fields are populated from env vars (or defaults) and saved to the config file.
     pub fn load() -> Self {
+        Self::migrate_old_config();
         let path = Self::config_path();
         let mut file_config = Self::load_file(&path);
         let mut modified = false;
@@ -112,6 +114,32 @@ impl Config {
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| PathBuf::from("."));
         exe_dir.join("config").join("remote-claude-server.toml")
+    }
+
+    /// Migrate old config file name to the new one.
+    /// If `CONFIG_PATH` is explicitly set, skip migration.
+    fn migrate_old_config() {
+        if env::var("CONFIG_PATH").is_ok() {
+            return;
+        }
+        let new_path = Self::config_path();
+        if new_path.exists() {
+            return;
+        }
+        let old_path = new_path.with_file_name("relay-server.toml");
+        if old_path.exists() {
+            warn!(
+                "Migrating config: {} -> {}",
+                old_path.display(),
+                new_path.display()
+            );
+            if let Some(parent) = new_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            if std::fs::rename(&old_path, &new_path).is_ok() {
+                warn!("Config migrated successfully");
+            }
+        }
     }
 
     fn load_file(path: &PathBuf) -> ConfigFile {

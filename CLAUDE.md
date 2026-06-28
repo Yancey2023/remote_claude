@@ -248,7 +248,7 @@ docker start remote-claude-relay-server
 | `ADMIN_PASS` | `admin123` | 管理员密码 |
 | `JWT_SECRET` | `change-me` | JWT 签名密钥 |
 
-> 客户端二进制文件由 GitHub Actions 在原生 runner 上编译（见 `.github/workflows/docker.yml` 的 `desktop-client` 矩阵任务），构建 Docker 镜像时自动打包进 `/app/downloads` 目录。支持平台：Linux (x64/arm64)、Windows (x64/arm64)、macOS arm64。
+> 客户端二进制文件由 GitHub Actions 在原生 runner 上编译（见 `.github/workflows/docker.yml` 的 `remote-claude-client` 矩阵任务），构建 Docker 镜像时自动打包进 `/app/downloads` 目录。支持平台：Linux (x64/arm64)、Windows (x64/arm64)、macOS arm64。
 
 ## 迁移说明
 
@@ -335,7 +335,7 @@ GitHub Actions 自动构建和发布：
 | `push` main | 构建 + 测试全部三个项目 |
 | `pull_request` main | 同上 |
 
-三个并行 job：`relay-server`（`cargo test`）、`desktop-client`（`cargo test`）、`web-ui`（`pnpm test`）。Rust 使用 cargo 缓存加速，前端使用 pnpm 缓存。
+三个并行 job：`remote-claude-server`（`cargo test`）、`remote-claude-client`（`cargo test`）、`web-ui`（`pnpm test`）。Rust 使用 cargo 缓存加速，前端使用 pnpm 缓存。
 
 ### Docker 发布（`.github/workflows/docker.yml`）
 

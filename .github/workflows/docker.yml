@@ -19,7 +19,7 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "11.0"
 
 jobs:
-  desktop-client:
+  remote-claude-client:
     name: client-${{ matrix.name }}
     strategy:
       matrix:
@@ -78,9 +78,9 @@ jobs:
           name: ${{ matrix.name }}
           path: apps/client/target/${{ runner.os == 'Linux' && format('{0}/release/', matrix.target) || 'release/' }}remote-claude-client${{ runner.os == 'Windows' && '.exe' || '' }}
 
-  relay-server:
+  remote-claude-server:
     runs-on: ubuntu-latest
-    needs: [desktop-client]
+    needs: [remote-claude-client]
     steps:
       - uses: actions/checkout@v4
 
@@ -129,8 +129,8 @@ jobs:
           load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=relay-server
-          cache-to: type=gha,mode=max,scope=relay-server
+          cache-from: type=gha,scope=remote-claude-server
+          cache-to: type=gha,mode=max,scope=remote-claude-server
 
       - name: Save image for transfer
         run: |

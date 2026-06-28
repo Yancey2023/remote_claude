@@ -5,16 +5,16 @@
 ## 架构
 
 ```
-┌─────────────┐    REST/WS     ┌──────────────────┐      WS      ┌──────────────────┐
-│   Web UI    │ ─────────────> │   Relay Server   │ ───────────> │  Desktop Client  │
-│  (React)    │                │  (Rust / Axum)   │              │ (Rust/tungstenite│
-│             │ <───────────── │                  │ <─────────── │   → Claude CLI)  │
-│  xterm.js   │   JSON proto   │   SQLite store   │  JSON proto  │                  │
-└─────────────┘                └──────────────────┘              └──────────────────┘
+┌─────────────┐    REST/WS     ┌──────────────────────┐      WS      ┌────────────────────┐
+│   Web UI    │ ─────────────> │  remote-claude-server │ ───────────> │ remote-claude-client│
+│  (React)    │                │   (Rust / Axum)      │              │ (Rust/tungstenite │
+│             │ <───────────── │                      │ <─────────── │   → Claude CLI)   │
+│  xterm.js   │   JSON proto   │   SQLite store       │  JSON proto  │                   │
+└─────────────┘                └──────────────────────┘              └────────────────────┘
 ```
 
-- **relay-server** — Rust 中转服务器，管理设备连接、会话路由和用户鉴权
-- **desktop-client** — Rust 桌面客户端，连接到 relay-server 并在本地执行 Claude CLI 命令
+- **remote-claude-server** — Rust 中转服务器，管理设备连接、会话路由和用户鉴权
+- **remote-claude-client** — Rust 桌面客户端，连接到 remote-claude-server 并在本地执行 Claude CLI 命令
 - **web-ui** — React 前端，通过浏览器远程创建会话、下发命令、查看实时输出
 
 ## 界面截图
@@ -140,7 +140,7 @@ git tag v0.1.0
 git push --tags
 ```
 
-GitHub Actions 自动构建 relay-server 和 desktop-client 的 Linux/Windows 二进制文件、web-ui 静态资源包，并创建 Release 页面。
+GitHub Actions 自动构建 remote-claude-server 和 remote-claude-client 的 Linux/Windows 二进制文件、web-ui 静态资源包，并创建 Release 页面。
 
 ## 配置
 

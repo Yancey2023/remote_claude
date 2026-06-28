@@ -13,8 +13,8 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      relay-server: ${{ steps.filter.outputs.relay-server }}
-      desktop-client: ${{ steps.filter.outputs.desktop-client }}
+      remote-claude-server: ${{ steps.filter.outputs.remote-claude-server }}
+      remote-claude-client: ${{ steps.filter.outputs.remote-claude-client }}
       web-ui: ${{ steps.filter.outputs.web-ui }}
     steps:
       - uses: actions/checkout@v4
@@ -22,13 +22,13 @@ jobs:
         id: filter
         with:
           filters: |
-            relay-server:
+            remote-claude-server:
               - 'apps/server/**'
               - 'package/shared-types/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.github/workflows/ci.yml'
-            desktop-client:
+            remote-claude-client:
               - 'apps/client/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -43,7 +43,7 @@ jobs:
   remote-claude-server:
     name: remote-claude-server
     needs: [changes]
-    if: ${{ needs.changes.outputs.relay-server == 'true' }}
+    if: ${{ needs.changes.outputs.remote-claude-server == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,7 +74,7 @@ jobs:
   remote-claude-client:
     name: remote-claude-client
     needs: [changes]
-    if: ${{ needs.changes.outputs.desktop-client == 'true' }}
+    if: ${{ needs.changes.outputs.remote-claude-client == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
