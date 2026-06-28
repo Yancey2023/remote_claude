@@ -85,11 +85,11 @@ describe('模块名', () => {
 });
 ```
 
-| 项目 | 框架 | 测试数量 | 位置 |
-|------|------|----------|------|
-| remote-claude-server | `cargo test` / `tokio::test` | 94 | `#[cfg(test)]` 内联在源文件中 |
-| remote-claude-client | `cargo test` / `tokio::test` | 32 | `#[cfg(test)]` 内联在源文件中 |
-| web-ui | `vitest` / `pnpm test` | 102 | `*.test.ts` 和测试文件同目录 |
+| 项目 | 框架 | 位置 |
+|------|------|------|
+| remote-claude-server | `cargo test` / `tokio::test` | `#[cfg(test)]` 内联在源文件中 |
+| remote-claude-client | `cargo test` / `tokio::test` | `#[cfg(test)]` 内联在源文件中 |
+| web-ui | `vitest` / `pnpm test` | `*.test.ts` 和测试文件同目录 |
 
 ## 配置系统
 
@@ -359,9 +359,9 @@ GitHub Actions 自动构建和发布：
 
 ```bash
 # 运行全部
-cd remote-claude-server && cargo test    # 94 tests
-cd remote-claude-client && cargo test  # 35 tests
-cd apps/web && pnpm test           # 101 tests
+cd remote-claude-server && cargo test
+cd remote-claude-client && cargo test
+cd apps/web && pnpm test
 
 # 运行单个测试文件（Rust）
 cd remote-claude-server && cargo test test_config_default_values

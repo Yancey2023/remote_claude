@@ -189,9 +189,9 @@ GitHub Actions 自动构建 remote-claude-server 和 remote-claude-client 的 Li
 ## 运行测试
 
 ```bash
-cd apps/server && cargo test    # 94 个测试
-cd apps/client && cargo test  # 32 个测试
-cd apps/web && pnpm test           # 101 个测试
+cd apps/server && cargo test
+cd apps/client && cargo test
+cd apps/web && pnpm test
 ```
 
 ## 技术栈
