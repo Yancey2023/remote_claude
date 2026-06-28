@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { DownloadFileInfo } from '../types/protocol';
 
-const CLIENT_VERSION = '1.1.0';
+const CLIENT_VERSION = import.meta.env.VITE_CLIENT_VERSION ?? '0.0.0';
 
 const DOWNLOADS: DownloadFileInfo[] = [
   { filename: `remote-claude-desktop-client-v${CLIENT_VERSION}-linux-x64`,       size: 0, modified: '', platform: 'linux',   arch: 'x64',   version: CLIENT_VERSION },
@@ -311,10 +311,6 @@ export function DownloadPage() {
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
             <span style={styles.stepNum}>4</span>
             <span>{t('downloadHelpStep3')}</span>
-          </div>
-          <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
-            <code style={styles.code}>curl -s -X POST /api/admin/tokens \
-  -H "Authorization: Bearer &lt;your-jwt&gt;"</code>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start' }}>
             <span style={styles.stepNum}>5</span>

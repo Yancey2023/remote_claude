@@ -30,10 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Extract version
+        run: echo "VITE_CLIENT_VERSION=$(grep '^version' apps/client/Cargo.toml | head -1 | cut -d'\"' -f2)" >> $GITHUB_ENV
+
       - name: Build
         run: pnpm build
         env:
           VITE_BASE_URL: /remote_claude
+          VITE_CLIENT_VERSION: ${{ env.VITE_CLIENT_VERSION }}
 
       - name: Deploy
         uses: easingthemes/ssh-deploy@main

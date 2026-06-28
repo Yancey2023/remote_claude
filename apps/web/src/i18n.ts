@@ -184,7 +184,7 @@ const translations = {
     downloadHelpStep1: 'Place it on the target machine and run it with:',
     downloadHelpRun: './remote-claude-client',
     downloadHelpStep2: 'Enter a name for this device when prompted.',
-    downloadHelpStep3: 'Enter the client token when prompted. Generate one from the Devices page or via the admin API:',
+    downloadHelpStep3: 'Enter the client token when prompted. Generate a new token from the Devices page.',
     downloadHelpStep4: 'The device will appear in the device list and you can start sessions.',
 
     // General (used across admin)
@@ -374,7 +374,7 @@ const translations = {
     downloadHelpStep1: '将其放到目标机器上，运行以下命令：',
     downloadHelpRun: './remote-claude-client',
     downloadHelpStep2: '按提示输入此设备的名称。',
-    downloadHelpStep3: '按提示输入客户端令牌。令牌可在设备页面生成，或通过管理 API 获取：',
+    downloadHelpStep3: '按提示输入客户端令牌。在设备页面上可以生成新令牌。',
     downloadHelpStep4: '设备将出现在设备列表中，之后可以开始会话。',
 
     // General (used across admin)
