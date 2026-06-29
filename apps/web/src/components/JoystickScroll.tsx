@@ -18,7 +18,8 @@ export function JoystickScroll({ onScroll, onRelease }: Props) {
   const updateKnob = useCallback((offset: number) => {
     knobOffset.current = offset;
     if (knobRef.current) {
-      knobRef.current.style.transform = `translate(-50%, ${offset}px)`;
+      // Start from center (-50% = half knob height up) then add drag offset
+      knobRef.current.style.transform = `translate(-50%, calc(-50% + ${offset}px))`;
     }
   }, []);
 
@@ -38,8 +39,8 @@ export function JoystickScroll({ onScroll, onRelease }: Props) {
     const dy = lastY.current - currentY; // positive = drag up → scroll up
     lastY.current = currentY;
 
-    // Visual feedback: accumulate offset, clamp to knob range
-    const newOffset = Math.max(-20, Math.min(20, knobOffset.current + dy));
+    // Visual feedback: negate dy so the knob follows finger direction (drag up → knob up)
+    const newOffset = Math.max(-20, Math.min(20, knobOffset.current - dy));
     updateKnob(newOffset);
 
     // Map drag distance to scroll lines
@@ -104,6 +105,7 @@ export function JoystickScroll({ onScroll, onRelease }: Props) {
           transition: 'background 0.15s',
           willChange: 'transform',
           pointerEvents: 'none',
+          transform: 'translate(-50%, -50%)',
         }}
       />
     </div>

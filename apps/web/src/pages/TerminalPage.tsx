@@ -119,9 +119,21 @@ export function TerminalPage() {
 
   const handleScroll = useCallback(
     (delta: number) => {
-      terminalRef.current?.scrollLines(delta);
+      // Send SGR mouse wheel escape sequences to the remote PTY.
+      // The CLI program (Claude) uses mouse tracking to handle scrolling,
+      // so we simulate mouse wheel events instead of scrolling the local viewport.
+      //
+      // SGR mouse format: ESC[<{button};{col};{row}M
+      //   button 64 = wheel up, button 65 = wheel down
+      if (delta === 0 || !connected) return;
+      const col = 1;
+      const row = 1;
+      const steps = Math.ceil(Math.abs(delta));
+      const button = delta > 0 ? 64 : 65;
+      const seq = `\x1b[<${button};${col};${row}M`.repeat(steps);
+      sendRawInput(seq);
     },
-    [],
+    [connected, sendRawInput],
   );
 
   const handleResize = useCallback(

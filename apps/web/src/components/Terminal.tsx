@@ -14,6 +14,8 @@ export interface TerminalHandle {
   writeln: (data: string) => void;
   clear: () => void;
   scrollLines: (count: number) => void;
+  /** Simulate mouse wheel scroll on the xterm viewport element */
+  scrollByLines: (count: number) => void;
 }
 
 export const Terminal = forwardRef<TerminalHandle, Props>(
@@ -29,11 +31,27 @@ export const Terminal = forwardRef<TerminalHandle, Props>(
     onResizeRef.current = onResize;
     readOnlyRef.current = readOnly;
 
+    const getLineHeight = () => {
+      const term = xtermRef.current;
+      if (!term) return 17.5;
+      // Try reading the actual row pixel height from the renderer
+      const rowEl = term.element?.querySelector('.xterm-rows > div');
+      if (rowEl) return rowEl.clientHeight || 17.5;
+      return 17.5; // fallback: fontSize 14 * lineHeight 1.25
+    };
+
     useImperativeHandle(ref, () => ({
       write: (data: string) => xtermRef.current?.write(data),
       writeln: (data: string) => xtermRef.current?.writeln(data),
       clear: () => xtermRef.current?.clear(),
       scrollLines: (count: number) => xtermRef.current?.scrollLines(count),
+      scrollByLines: (count: number) => {
+        const term = xtermRef.current;
+        if (!term?.element) return;
+        const viewport = term.element.querySelector<HTMLElement>('.xterm-viewport');
+        if (!viewport) return;
+        viewport.scrollBy(0, count * getLineHeight());
+      },
     }));
 
     useEffect(() => {
