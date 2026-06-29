@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'apps/web/**'
+      - 'apps/client/Cargo.toml'
       - 'package/shared-types/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
