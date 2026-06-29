@@ -47,4 +47,34 @@ mod tests {
         let result = verify_password("password", "not-a-valid-hash");
         assert!(result.is_err());
     }
+
+    /// Verify backward compatibility with argon2 0.5 hashes.
+    /// Uses the same test vectors from the upstream crate.
+    const OLD_ARGON2_HASHES: &[(&str, &str)] = &[
+        ("password", "$argon2i$v=19$m=65536,t=1,p=1$c29tZXNhbHQAAAAAAAAAAA$+r0d29hqEB0yasKr55ZgICsQGSkl0v0kgwhd+U3wyRo"),
+        ("password", "$argon2id$v=19$m=262144,t=2,p=1$c29tZXNhbHQ$eP4eyR+zqlZX1y5xCFTkw9m5GYx0L5YWwvCFvtlbLow"),
+        ("password", "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc"),
+    ];
+
+    #[test]
+    fn test_backward_compat_with_argon2_v05() {
+        for (password, hash) in OLD_ARGON2_HASHES {
+            assert!(
+                verify_password(password, hash).unwrap(),
+                "should verify hash: {}",
+                hash
+            );
+        }
+    }
+
+    #[test]
+    fn test_backward_compat_wrong_password_rejected() {
+        for (_, hash) in OLD_ARGON2_HASHES {
+            assert!(
+                !verify_password("wrong-password", hash).unwrap(),
+                "should reject wrong password for hash: {}",
+                hash
+            );
+        }
+    }
 }
