@@ -4,6 +4,200 @@
 
 ### Bug Fixes
 
+- Bind registration tokens to device_id to prevent reuse
+
+- Token invalidation on password change (token_version)
+
+- Critical auth bypasses in WebSocket handlers
+
+
+### Documentation
+
+- Remove hardcoded test counts from CLAUDE.md and README.md
+
+
+### Miscellaneous
+
+- Bump version to 1.2.1
+
+
+### Testing
+
+- Add permission-related tests and cover missing scenarios
+
+
+### Bug Fixes
+
+- Recreate client dummy in final build step too
+
+- Docker build needs dummy main.rs for all workspace members
+
+- Use easingthemes/ssh-deploy@v5.1.1 instead of @v5
+
+- Docker build needs all workspace member Cargo.tomls
+
+- Compile-time VITE_CLIENT_VERSION injection verified
+
+- Use hardcoded version fallback 1.1.0 instead of 0.0.0
+
+- Workspace target path in CI/CD workflows
+
+- Only link the Devices page text in download help
+
+- Update download help for device name + token flow
+
+- Download page shows correct run command per actual file
+
+- Real-time terminal indicator reflects device offline status
+
+- Install ring crypto provider explicitly to resolve rustls panic
+
+- Switch from native-tls to rustls for Linux compatibility
+
+- Mobile topbar always shows Remote Claude, device name only in sidebar
+
+- Add missing username field in DeviceCard test mock data
+
+- Add logo-text spacing and use solid Linux icon
+
+- Show platform-specific run command in download help
+
+- Stabilize t function references in useI18n to prevent infinite re-fetch
+
+- Save image in workspace instead of /tmp for SCP access
+
+- Load image into local Docker after build for save/SCP
+
+- Use short SHA for image tag in save step
+
+- Use appleboy/scp-action@v0.1.7 instead of invalid @v0
+
+- Use latest tag for Docker Hub, add sudo to server commands
+
+- Use sudo for docker commands on deploy
+
+- Use SSH key auth instead of password for deploy
+
+- Correct client binary path in Docker build
+
+- Rename Docker Hub image to remote-claude
+
+- Add ?mode=rwc to default sqlite database_url
+
+- Build desktop-client on ubuntu:22.04 for glibc 2.35 compatibility
+
+
+### CI/CD
+
+- Fix aarch64 musl build by installing C cross-compiler for ring
+
+- Switch Docker builds to musl targets
+
+- Switch Linux builds to musl target for full static linking
+
+- Add path-based triggers to all workflows
+
+- Add SSH deploy step after Docker push
+
+- Switch Docker publish target from ghcr.io to Docker Hub
+
+- Remove build artifacts from release workflow
+
+
+### Documentation
+
+- Update tag reference from main to latest in CLAUDE.md
+
+- Hardcode yanceyawa/remote-claude in README Docker section
+
+- Update CHANGELOG.md [skip ci]
+
+
+### Features
+
+- Add links to Devices page from download help
+
+- Fetch real file sizes from server, fallback to 0
+
+- Prompt for device name before client token on first launch
+
+- Add joystick scroll for mobile terminal users
+
+- Add --permission-mode auto to claude launch
+
+- Add visual directory browser and recent paths for session creation
+
+- Use Simple Icons SVG brand logos for platforms
+
+- Use proper platform display names (Windows/MacOS/Linux) and sort order
+
+- Replace emoji platform icons with SVG logos
+
+- Add manual OS tab switcher to download help command
+
+- Add Windows ARM64 desktop-client build
+
+- Add ARM64 support for desktop-client CI builds
+
+- Cross-compile Windows x64 desktop-client in Docker build
+
+- Add desktop client download feature to web UI
+
+
+### Miscellaneous
+
+- Bump version to 1.2.0
+
+- Adapt to updated pnpm dependencies
+
+- Migrate xterm to scoped @xterm/ packages
+
+- Update GitHub Actions to latest versions
+
+- Use build-time CLIENT_VERSION, simplify download help
+
+- Derive client_version from CARGO_PKG_VERSION at compile time
+
+- Stop persisting client_version to config file
+
+- Replace remaining old name refs, add config file migration
+
+- Restructure project directory and rename packages
+
+- Reorder desktop-client build matrix
+
+- Replace N+1 queries with SQL JOINs for username/device_name
+
+- Remove macOS x64, keep macOS ARM64 only
+
+- Reorder OS tabs to Windows → macOS → Linux
+
+- Remove down arrow from download button
+
+- Use macos-latest for darwin-arm64 runner
+
+- Set MACOSX_DEPLOYMENT_TARGET=11.0 for macOS desktop-client builds
+
+- Use ubuntu-22.04 runners for Linux desktop-client builds
+
+- Rename SSH secrets to REMOTE_HOST/REMOTE_USER/ACCESS_TOKEN
+
+- Remove VOLUME declaration for /app/downloads
+
+
+### Refactoring
+
+- Hardcode download list instead of fetching from server
+
+- Build desktop-client in CI matrix instead of Dockerfile
+
+- Remove docker-compose.yml, add compose example to README
+
+- Consolidate to single root Dockerfile, remove unused Docker configs
+
+
+### Bug Fixes
+
 - Update job names and caching keys to use short target identifiers for relay-server and desktop-client
 
 - Device status indicator and session persistence on disconnect
