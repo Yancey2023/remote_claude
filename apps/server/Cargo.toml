@@ -17,7 +17,7 @@ serde_json = "1"
 
 # auth
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
-argon2 = "0.5"
+argon2 = { version = "0.6.0-rc.8" }
 
 # database
 sqlx = { version = "0.9", features = ["sqlite", "runtime-tokio", "chrono"] }
@@ -27,7 +27,6 @@ uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-rand = "0.10"
-rand-08 = { package = "rand", version = "0.8", features = ["std_rng"] }
+getrandom = { version = "0.4", features = ["std"] }
 futures-util = "0.3"
 toml = "1.1"

@@ -167,7 +167,8 @@ impl Config {
         if !self.jwt_secret.is_empty() {
             return false;
         }
-        let bytes: [u8; 32] = rand::random();
+        let mut bytes = [0u8; 32];
+        getrandom::fill(&mut bytes).expect("rng failure");
         self.jwt_secret = bytes.iter().map(|b| format!("{:02x}", b)).collect();
 
         let path = Self::config_path();
