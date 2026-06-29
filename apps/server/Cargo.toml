@@ -27,6 +27,7 @@ uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-rand = "0.8"
+rand = "0.10"
+rand-08 = { package = "rand", version = "0.8", features = ["std_rng"] }
 futures-util = "0.3"
 toml = "1.1"
