@@ -174,8 +174,9 @@ function formatSize(bytes: number): string {
 
 function runCommand(file: DownloadFileInfo): string {
   const isWindows = file.platform?.toLowerCase() === 'windows';
-  if (isWindows) return file.filename;
-  return `chmod +x ${file.filename} && ./${file.filename}`;
+  const basename = file.filename;
+  if (isWindows) return `./${basename}`;
+  return `chmod +x ${basename} && ./${basename}`;
 }
 
 function downloadUrl(filename: string): string {
