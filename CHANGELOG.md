@@ -1,6 +1,10 @@
 # Changelog
 
+## [1.2.2] - 2026-06-29
 
+### Refactoring
+
+- Consolidate connection management in ClientHub with unique connection IDs
 
 ### Bug Fixes
 
