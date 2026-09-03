@@ -1,387 +1,56 @@
 # Remote Control Claude Code
 
-三个独立程序组成的中转远程控制系统，通过 JSON WebSocket/REST 协议实现对 Claude CLI 的远程控制。
+这是一个由三个独立程序组成的远程控制系统，通过 JSON WebSocket/REST 协议控制 Claude CLI。
 
-## 项目结构
+## 仓库结构
 
-```
-├── apps/server/       Rust 中转服务器 (axum + tokio)
-├── apps/client/     Rust 电脑客户端 (tokio-tungstenite)
-├── apps/web/            React 前端 (Vite + TypeScript + xterm.js)
-├── package/shared-types/      共享 TypeScript 类型定义
-├── Dockerfile         多阶段构建镜像（中转服务器 + 客户端二进制）
-├── .dockerignore      根级别构建上下文过滤
-├── pnpm-workspace.yaml
-└── CLAUDE.md
+```text
+apps/server/          Rust 中转服务器
+apps/client/          Rust 电脑客户端
+apps/web/             React 前端
+package/shared-types/ 共享 TypeScript 类型
+Dockerfile            多阶段构建文件
+doc/                  详细项目文档
 ```
 
-## 开发约定
+## 开发要求
 
-最高优先级的开发规则，任何代码变更必须遵守：
+1. 代码变更同步更新相关文档和单元测试。
+2. 修改后先运行受影响项目测试，再提交清晰的 Conventional Commits。
+3. 保持实现、配置字段、API 和 WebSocket 协议文档一致。
+4. 不提交密钥、令牌、数据库或构建产物。
 
-1. **每次代码变更必须同步更新文档和单元测试**。新增功能、修改接口、修复 bug 后，先确认所有测试通过，再提交。
-2. **代码变更后自动提交 git**。每完成一组相关联的更改后，创建有意义的 commit，包含变更范围和原因的说明。
-3. **保持依赖最新**。定期运行 `cargo update`（Rust）和 `pnpm update --latest`（前端）更新依赖到最新兼容版本。如有大版本变更导致编译失败，需要同步修复代码。
+## 测试约定
 
-### 测试约定
-
-测试覆盖范围：核心数据结构、鉴权逻辑、存储 CRUD、消息序列化。WebSocket handler 等集成环节至少要有 happy path 覆盖。
-
-```rust
-// Rust: 内联在源文件末尾，使用 #[cfg(test)] mod tests
-// 同步测试
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_some_behavior() {
-        // Arrange
-        let input = "test";
-        // Act
-        let result = process(input);
-        // Assert
-        assert_eq!(result, expected);
-    }
-}
-
-// 异步测试
-#[cfg(test)]
-mod async_tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_async_behavior() {
-        let result = some_async_fn().await;
-        assert!(result.is_ok());
-    }
-}
-```
-
-```typescript
-// TypeScript: 使用 vitest，文件命名 *.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-describe('模块名', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('描述具体行为', async () => {
-    // Arrange
-    const mockFn = vi.fn().mockResolvedValue(mockResponse(200, { data: 'ok' }));
-    globalThis.fetch = mockFn;
-
-    // Act
-    const result = await apiClient.someMethod();
-
-    // Assert
-    expect(result).toEqual(expected);
-    expect(mockFn).toHaveBeenCalledWith(
-      expect.stringContaining('/api/some-path'),
-      expect.objectContaining({ method: 'POST' }),
-    );
-  });
-});
-```
-
-| 项目 | 框架 | 位置 |
-|------|------|------|
-| remote-claude-server | `cargo test` / `tokio::test` | `#[cfg(test)]` 内联在源文件中 |
-| remote-claude-client | `cargo test` / `tokio::test` | `#[cfg(test)]` 内联在源文件中 |
-| web-ui | `vitest` / `pnpm test` | `*.test.ts` 和测试文件同目录 |
-
-## 配置系统
-
-所有程序采用 **配置文件优先** 的配置加载策略：
-
-1. 读取配置文件（TOML / JSON）
-2. 配置文件中缺失的字段，回退到环境变量
-3. 如果环境变量提供了初始值，自动保存到配置文件中
-4. 下次启动时配置文件已完整，不再需要环境变量
-
-配置文件路径：
-
-| 程序 | 路径 |
-|------|------|
-| remote-claude-server | `{exe_dir}/config/remote-claude-server.toml` |
-| remote-claude-client | `{exe_dir}/config/remote-claude-client.toml` |
-| web-ui | 构建时 `VITE_BASE_URL` 编译进 bundle |
-
-可通过 `CONFIG_PATH` 环境变量覆盖配置文件路径。
-
-## 启动方式
-
-### 1. 中转服务器
-
-**方式 A** — 首次运行，通过环境变量生成配置文件：
+- server/client：Rust 内联 `#[cfg(test)]`，使用 `cargo test` 和 `tokio::test`。
+- web-ui：Vitest，测试文件使用 `*.test.ts` 或 `*.test.tsx`，使用 `pnpm test`。
+- 核心数据结构、鉴权、存储 CRUD、消息序列化必须有覆盖；WebSocket handler 至少覆盖 happy path。
 
 ```bash
-cd apps/server
-ADMIN_USER=admin ADMIN_PASS=admin123 JWT_SECRET=change-me cargo run
-# 自动创建 config/remote-claude-server.toml（相对于可执行文件路径）
-```
-
-**方式 B** — 直接创建配置文件（推荐生产环境）：
-
-```toml
-# {exe_dir}/config/remote-claude-server.toml
-admin_user = "admin"
-admin_pass = "admin123"
-jwt_secret = "change-me"
-database_url = "sqlite:data.db?mode=rwc"
-host = "0.0.0.0"
-port = 8080
-jwt_expiry_hours = 24
-heartbeat_interval_secs = 15
-heartbeat_timeout_secs = 30
-```
-
-```bash
-cd apps/server
-cargo run
-```
-
-配置字段（兼容的环境变量名作为回退来源）：
-
-| 字段 | 环境变量 | 默认值 | 说明 |
-|------|----------|--------|------|
-| `admin_user` | `ADMIN_USER` | `admin` | 管理员用户名 |
-| `admin_pass` | `ADMIN_PASS` | `admin123` | 管理员密码（勿用于生产） |
-| `jwt_secret` | `JWT_SECRET` | `dev-secret-...` | JWT 签名密钥 |
-| `host` | `HOST` | `0.0.0.0` | 监听地址 |
-| `port` | `PORT` | `8080` | 监听端口 |
-| `database_url` | `DATABASE_URL` | `sqlite:data.db?mode=rwc` | SQLite 数据库路径 |
-| `heartbeat_interval_secs` | `HEARTBEAT_INTERVAL_SECS` | `15` | 设备心跳间隔（秒） |
-| `heartbeat_timeout_secs` | `HEARTBEAT_TIMEOUT_SECS` | `30` | 心跳超时断连（秒） |
-| `downloads_dir` | `DOWNLOADS_DIR` | `./downloads` | 客户端下载文件目录 |
-
-### 2. 电脑客户端
-
-**方式 A** — 首次运行，通过环境变量生成配置文件：
-
-```bash
-cd apps/client
-CLIENT_TOKEN=<token> cargo run
-# 默认连接 ws://127.0.0.1:8080/ws/client（本地开发）
-# 生产环境：SERVER_URL=wss://your-domain.com/ws/client
-# 自动创建 config/remote-claude-client.toml（相对于可执行文件路径）
-```
-
-> 如果未提供 `CLIENT_TOKEN`（配置文件和环境变量均缺失），程序会在终端交互式提示输入令牌，输入后自动保存到配置文件，后续启动无需重复填写。
-
-**方式 B** — 直接创建配置文件：
-
-```toml
-# {exe_dir}/config/remote-claude-client.toml
-server_url = "ws://127.0.0.1:8080/ws/client"
-device_name = "my-pc"
-client_version = "0.1.0"
-max_retry_delay_secs = 60
-```
-
-```bash
-cd apps/client
-cargo run
-```
-
-配置字段（兼容的环境变量名）：
-
-| 字段 | 环境变量 | 默认值 | 说明 |
-|------|----------|--------|------|
-| `server_url` | `SERVER_URL` | `ws://127.0.0.1:8080/ws/client` | 中转服务器地址（支持 `wss://`） |
-| `client_token` | `CLIENT_TOKEN` | 启动时交互式输入 | 客户端认证凭证（首次可通过交互式输入设置） |
-| `device_name` | `DEVICE_NAME` | `hostname` | 设备显示名称（Linux: `HOSTNAME`, Windows: `COMPUTERNAME`） |
-| `client_version` | `CLIENT_VERSION` | `0.1.0` | 客户端版本标识 |
-| `max_retry_delay_secs` | `MAX_RETRY_DELAY_SECS` | `60` | 最大重连间隔（秒） |
-
-> Windows 兼容说明：`remote-claude-client` 会在启动前自动清洗命令路径（去除 `\0` 和首尾空白）。当命令是 `.cmd/.bat` 或无扩展名时，会通过 `cmd.exe /D /C` 包装启动，避免 `CreateProcessW ... os error 193`。
-
-### 3. 网页前端
-
-```bash
-cd apps/web
-pnpm dev          # 开发模式（Vite proxy → localhost:8080），API/WS 无前缀
-pnpm build        # 生产构建 → dist/，部署时通过 VITE_BASE_URL 指定路径前缀
-```
-
-构建时通过 `VITE_BASE_URL` 指定路径前缀，所有 API 和 WS 请求自动拼接到该前缀下：
-
-| 构建方式 | VITE_BASE_URL | apiBaseUrl | wsBaseUrl |
-|----------|---------------|------------|-----------|
-| `pnpm dev`（默认） | 空 | `/api` | `/ws` |
-| `VITE_BASE_URL=/remote_claude pnpm build` | `/remote_claude` | `/remote_claude/api` | `/remote_claude/ws` |
-
-> 无运行时配置文件，所有配置在构建时直接编译进 bundle。
-
-开发环境通过 Vite proxy 将 `/api` 和 `/ws` 转发到 `localhost:8080`。
-
-## Docker 部署
-
-仅 remote-claude-server 提供 Docker 镜像，构建时**自动编译 remote-claude-client 二进制文件**并放入下载目录，无需手动放置。
-
-### 构建与运行
-
-```bash
-# 构建镜像
-docker build -t yanceyawa/remote-claude .
-
-# 首次运行（通过环境变量生成配置文件）
-docker run -d --name remote-claude-relay-server -p 8080:8080 \
-  -e ADMIN_USER=admin \
-  -e ADMIN_PASS=admin123 \
-  -e JWT_SECRET=change-me \
-  -v relay-config:/app/config \
-  -v relay-data:/app/data \
-  -v relay-downloads:/app/downloads \
-  yanceyawa/remote-claude
-
-# 后续运行（配置文件已持久化到 volume 中）
-docker start remote-claude-relay-server
-```
-
-环境变量：
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `ADMIN_USER` | `admin` | 管理员用户名 |
-| `ADMIN_PASS` | `admin123` | 管理员密码 |
-| `JWT_SECRET` | `change-me` | JWT 签名密钥 |
-
-> 客户端二进制文件由 GitHub Actions 在原生 runner 上编译（见 `.github/workflows/docker.yml` 的 `remote-claude-client` 矩阵任务），构建 Docker 镜像时自动打包进 `/app/downloads` 目录。支持平台：Linux (x64/arm64)、Windows (x64/arm64)、macOS arm64。
-
-## 迁移说明
-
-从旧版（纯环境变量）升级：
-
-1. **Rust 程序**：首次运行时设置所需环境变量，程序自动创建配置文件并保存所有值。后续运行无需再设置环境变量。
-2. **网页前端**：生产部署时通过 `VITE_BASE_URL` 环境变量指定路径前缀，编译进 bundle。开发环境无需配置。
-
-## 协议
-
-### REST API
-
-| 方法 | 路径 | 鉴权 | 说明 |
-|------|------|------|------|
-| POST | `/api/auth/login` | 无 | 登录，返回 JWT |
-| POST | `/api/auth/logout` | JWT | 登出 |
-| POST | `/api/auth/verify` | JWT | 验证 token 有效性 |
-| POST | `/api/auth/change-password` | JWT | 修改密码（需当前密码验证） |
-| GET | `/api/devices` | JWT | 设备列表 |
-| DELETE | `/api/devices/:id` | JWT | 删除自己的设备 |
-| POST | `/api/sessions` | JWT | 创建设备控制会话 |
-| GET | `/api/sessions` | JWT | 会话列表 |
-| GET | `/api/sessions/:id` | JWT | 获取会话详情 |
-| DELETE | `/api/sessions/:id` | JWT | 关闭会话 |
-| POST | `/api/admin/users` | Admin | 创建用户 |
-| GET | `/api/admin/users` | Admin | 用户列表 |
-| DELETE | `/api/admin/users/:id` | Admin | 删除用户 |
-| PATCH | `/api/admin/users/:id/status` | Admin | 启用/禁用用户 |
-| POST | `/api/admin/users/:id/password` | Admin | 重置用户密码 |
-| GET | `/api/admin/devices` | Admin | 所有设备列表 |
-| DELETE | `/api/admin/devices/:id` | Admin | 删除指定设备 |
-| GET | `/api/admin/sessions` | Admin | 所有会话列表 |
-| GET | `/api/admin/sessions/:id` | Admin | 会话详情（含终端历史） |
-| POST | `/api/admin/tokens` | Admin | 生成客户端令牌 |
-| GET | `/api/downloads` | JWT | 列出可下载的客户端二进制文件 |
-| GET | `/api/downloads/{filename}` | JWT | 下载客户端二进制文件 |
-
-### WebSocket 协议
-
-**设备 ↔ 服务器** (`/ws/client`)：
-
-| type | 方向 | payload |
-|------|------|---------|
-| `register` | C→S | `{ token, name, version, device_id }` |
-| `registered` | S→C | `{ device_id }` |
-| `ping` | S→C | `{}` |
-| `pong` | C→S | `{}` |
-| `command` | S→C | `{ session_id, command }` |
-| `terminal_input` | S→C | `{ session_id, data, cwd?, program? }` |
-| `terminal_resize` | S→C | `{ session_id, cols, rows }` |
-| `session_closed` | S→C | `{ session_id }` |
-| `result_chunk` | C→S | `{ session_id, chunk, done }` |
-| `status_update` | C→S | `{ online, busy }` |
-| `list_directory` | S→C | `{ request_id, path }` |
-| `directory_list` | C→S | `{ request_id, path, entries: [{ name, is_dir, size? }] }` |
-
-**网页 ↔ 服务器** (`/ws/web`)：
-
-先发送 `{ type: "auth", payload: { token } }` 鉴权，随后：
-
-| type | 方向 | payload |
-|------|------|---------|
-| `create_session` | C→S | `{ device_id, cwd?, program? }` |
-| `session_created` | S→C | `{ session_id, device_id, cwd?, program? }` |
-| `attach_session` | C→S | `{ session_id }` |
-| `command` | C→S | `{ session_id, command }` |
-| `terminal_input` | C→S | `{ session_id, data, cwd?, program? }` |
-| `terminal_resize` | C→S | `{ session_id, cols, rows }` |
-| `close_session` | C→S | `{ session_id }` |
-| `result_chunk` | S→C | `{ session_id, chunk, done }` |
-| `device_status` | S→C | `{ device_id, online }` |
-| `list_directory` | C→S | `{ device_id, path }` |
-| `directory_list` | S→C | `{ request_id, path, entries: [{ name, is_dir, size? }] }` |
-| `error` | S→C | `{ code, message }` |
-
-## CI/CD
-
-GitHub Actions 自动构建和发布：
-
-### CI（`.github/workflows/ci.yml`）
-
-| 触发 | 操作 |
-|------|------|
-| `push` main | 构建 + 测试全部三个项目 |
-| `pull_request` main | 同上 |
-
-三个并行 job：`remote-claude-server`（`cargo test`）、`remote-claude-client`（`cargo test`）、`web-ui`（`pnpm test`）。Rust 使用 cargo 缓存加速，前端使用 pnpm 缓存。
-
-### Docker 发布（`.github/workflows/docker.yml`）
-
-| 触发 | 操作 |
-|------|------|
-| `push` main | 构建并推送镜像，标签：`latest`、`<git-sha>` |
-| `push` tag `v*` | 同上 + semver 标签：`vX.Y.Z`、`vX.Y` |
-
-仅 remote-claude-server 发布到 Docker Hub。需要在仓库 Secrets 中配置 `DOCKER_USERNAME` 和 `DOCKER_PASSWORD`（或访问令牌），BuildKit `type=gha` 缓存加速构建。
-
-构建并推送成功后自动通过 SSH 部署到服务器：
-| Secret | 说明 |
-|--------|------|
-| `REMOTE_HOST` | 服务器地址 |
-| `REMOTE_USER` | SSH 用户名 |
-| `ACCESS_TOKEN` | SSH 私钥 |
-
-部署流程：GitHub Actions 构建镜像 → `docker save` → `scp` 到服务器 `/tmp/` → 服务器 `docker load` → `docker compose up -d --no-deps remote-claude`，绕过 Docker Hub 网络问题。
-
-## 运行测试
-
-```bash
-# 运行全部
-cd remote-claude-server && cargo test
-cd remote-claude-client && cargo test
+cd apps/server && cargo test
+cd apps/client && cargo test
 cd apps/web && pnpm test
-
-# 运行单个测试文件（Rust）
-cd remote-claude-server && cargo test test_config_default_values
-
-# 运行单个测试文件（前端）
-cd apps/web && pnpm test -- src/api/client.test.ts
-
-# 监听模式（前端）
-cd apps/web && pnpm test:watch
 ```
 
-## 架构要点
+## 常用开发命令
 
-- **配置系统**: 配置文件优先（TOML/JSON），环境变量仅作为首次运行的初始值来源。配置文件存放于可执行文件所在目录的 `config/` 子目录下。
-- **密码安全**: 普通用户 Argon2 哈希，管理员凭据仅环境变量
-- **心跳**: 15s 间隔 ping，30s 超时自动标记离线
-- **重连**: 指数退避 1s→2s→...→60s max
-- **错误边界**: 所有程序有 panic hook 不崩溃，前端 ErrorBoundary 防白屏
-- **JWT**: 登录后返回 HttpOnly cookie（REST API 鉴权）+ JSON body 中 token（WebSocket 鉴权）
-- **nginx 统一入口**: 所有外部流量经 nginx（TLS 终结 + 安全头），remote-claude-server 不直接对外暴露
-- **双通道**: 设备长连 WS（通过 nginx 代理 `/ws/client`），网页 REST + WS 控制通道（通过 nginx 代理 `/api/` 和 `/ws/web`）
-- **透传**: 客户端不解析 Claude 输出，只做命令下发和结果收集
-- **存储**: SQLite (sqlx)，三表 users/devices/sessions，自动迁移建表
+```bash
+cd apps/server && cargo run
+cd apps/client && cargo run
+cd apps/web && pnpm dev
+```
+
+Web 开发服务器默认代理 `/api` 和 `/ws` 到 `localhost:8080`。前端生产构建使用 `VITE_BASE_URL` 设置部署路径前缀。
+
+## 文档索引
+
+详细内容全部集中在 `doc/`：
+
+- [开发指南](doc/development.md)：结构、启动、测试和开发流程。
+- [配置说明](doc/configuration.md)：配置文件、环境变量和迁移。
+- [部署指南](doc/deployment.md)：Docker、卷、CI/CD 和 nginx。
+- [协议说明](doc/protocol.md)：REST API、设备 WS 和 Web WS。
+- [架构说明](doc/architecture.md)：数据流、安全、存储和可靠性设计。
+- [文档目录](doc/README.md)
+
+根目录 [README.md](README.md) 面向项目用户，[CHANGELOG.md](CHANGELOG.md) 记录版本历史。
