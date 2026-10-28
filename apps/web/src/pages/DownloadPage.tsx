@@ -5,6 +5,8 @@ import { getConfig } from '../config';
 import { useI18n } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { DownloadFileInfo } from '../types/protocol';
+import { downloadCommand } from './downloadCommand';
+import { showToast } from '../components/Toast';
 
 const CLIENT_VERSION = import.meta.env.VITE_CLIENT_VERSION;
 if (!CLIENT_VERSION) throw new Error('VITE_CLIENT_VERSION is not set');
@@ -172,13 +174,6 @@ function formatSize(bytes: number): string {
   return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-function runCommand(file: DownloadFileInfo): string {
-  const isWindows = file.platform?.toLowerCase() === 'windows';
-  const basename = file.filename;
-  if (isWindows) return `./${basename}`;
-  return `chmod +x ${basename} && ./${basename}`;
-}
-
 function downloadUrl(filename: string): string {
   return `${getConfig().apiBaseUrl}/downloads/${encodeURIComponent(filename)}`;
 }
@@ -190,6 +185,16 @@ export function DownloadPage() {
   const isMobile = useIsMobile(900);
   const [files, setFiles] = useState(sortedBase);
   const [fileTab, setFileTab] = useState(0);
+  const command = downloadCommand(files[fileTab], getConfig().apiBaseUrl, getConfig().wsBaseUrl, window.location.href);
+
+  async function copyCommand() {
+    try {
+      await navigator.clipboard.writeText(command);
+      showToast(t('tokenCopied'), 'success');
+    } catch {
+      showToast(t('tokenCopyFailed'), 'error');
+    }
+  }
 
   // Fetch real file sizes from server, fall back to 0 on failure
   useEffect(() => {
@@ -278,7 +283,7 @@ export function DownloadPage() {
             <span>{t('downloadHelpStep1')}</span>
           </div>
 
-          {/* File tabs with per-file run command */}
+          {/* File tabs with per-file download and launch command */}
           <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.5rem', paddingLeft: '2.1rem', flexWrap: 'wrap' }}>
             {files.map((f, idx) => (
               <button
@@ -304,7 +309,9 @@ export function DownloadPage() {
             ))}
           </div>
           <div style={{ paddingLeft: '2.1rem', marginBottom: '0.6rem' }}>
-            <code style={styles.code}>{runCommand(files[fileTab])}</code>
+            <div style={{ marginBottom: '0.4rem' }}>{files[fileTab].platform === 'windows' ? 'PowerShell' : 'Shell'}</div>
+            <code style={{ ...styles.code, display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{command}</code>
+            <button onClick={copyCommand} style={{ ...styles.downloadBtn, marginTop: '0.5rem' }}>{t('tokenCopy')}</button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.4rem' }}>

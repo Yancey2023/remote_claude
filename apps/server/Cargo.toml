@@ -30,3 +30,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 getrandom = { version = "0.4", features = ["std"] }
 futures-util = "0.3"
 toml = "1.1"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

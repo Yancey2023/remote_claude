@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Bug Fixes
+
+- Allow anonymous client downloads and download metadata for installation on new devices; keep device, session, and token APIs authenticated.
+- Add copyable download-and-launch commands for PowerShell and Linux/macOS shells using the current deployment URL.
+- Reject nested paths, unsafe filenames, and symbolic links in public file downloads.
+
 ## [1.2.2] - 2026-06-29
 
 ### Refactoring

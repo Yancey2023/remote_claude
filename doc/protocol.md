@@ -19,8 +19,11 @@
 | GET/DELETE | `/api/admin/devices`、`/api/admin/devices/:id` | Admin | 管理设备 |
 | GET | `/api/admin/sessions`、`/api/admin/sessions/:id` | Admin | 查看全部会话和历史 |
 | POST | `/api/admin/tokens` | Admin | 生成客户端令牌 |
-| GET | `/api/downloads` | JWT | 列出客户端下载文件 |
-| GET | `/api/downloads/{filename}` | JWT | 下载客户端文件 |
+| GET | `/api/downloads` | 无 | 列出客户端下载文件 |
+| GET | `/api/downloads/sizes` | 无 | 获取客户端下载文件大小 |
+| GET | `/api/downloads/{filename}` | 无 | 下载客户端文件 |
+
+下载接口公开读取 `downloads_dir` 中的发布文件，供未登录的新设备通过命令行安装。仅支持目录内的单个普通文件，拒绝路径穿越、子目录和符号链接；此目录只应存放可公开分发的安装包。设备注册仍需客户端令牌，设备、会话和令牌管理接口仍需 JWT。
 
 ## WebSocket
 

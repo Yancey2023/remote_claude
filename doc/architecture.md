@@ -15,7 +15,7 @@ Web UI ── REST/WS ──> server ── WS ──> client ──> Claude CLI
 ## 关键设计
 
 - **配置**：Rust 程序配置文件优先，环境变量用于首次初始化；Web 配置在构建时注入。
-- **鉴权**：普通用户密码使用 Argon2 哈希；REST 使用 HttpOnly cookie/JWT，WebSocket 使用 JSON token；密码变更会使旧令牌失效。
+- **鉴权**：普通用户密码使用 Argon2 哈希；受保护的 REST 使用 HttpOnly cookie/JWT，客户端下载及下载元数据允许匿名读取；设备注册仍需客户端令牌，WebSocket 使用 JSON token；密码变更会使旧令牌失效。
 - **连接**：设备每 15 秒心跳，30 秒超时标记离线；客户端按 1、2、4 秒指数退避，最大 60 秒重连。
 - **存储**：SQLite 通过 sqlx 自动迁移，核心表为 `users`、`devices`、`sessions`。
 - **安全边界**：生产环境由 nginx 统一提供 TLS 和安全头，server 不直接暴露到公网。
