@@ -17,8 +17,8 @@ jobs:
       remote-claude-client: ${{ steps.filter.outputs.remote-claude-client }}
       web-ui: ${{ steps.filter.outputs.web-ui }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v7.0.1
+      - uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -27,17 +27,22 @@ jobs:
               - 'package/shared-types/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - '.github/workflows/ci.yml'
             remote-claude-client:
               - 'apps/client/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - '.github/workflows/ci.yml'
             web-ui:
               - 'apps/web/**'
               - 'package/shared-types/**'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.node-version'
+              - '.npmrc'
               - '.github/workflows/ci.yml'
 
   remote-claude-server:
@@ -49,10 +54,10 @@ jobs:
       run:
         working-directory: apps/server
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -66,10 +71,10 @@ jobs:
           sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Build
-        run: cargo build --release --target x86_64-unknown-linux-musl -p remote-claude-server
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl -p remote-claude-server
 
       - name: Run tests
-        run: cargo test --target x86_64-unknown-linux-musl -p remote-claude-server
+        run: cargo test --locked --target x86_64-unknown-linux-musl -p remote-claude-server
 
   remote-claude-client:
     name: remote-claude-client
@@ -80,7 +85,7 @@ jobs:
       run:
         working-directory: apps/client
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Install musl target
         run: |
@@ -88,7 +93,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -97,10 +102,10 @@ jobs:
           key: ${{ runner.os }}-cargo-client-musl-${{ hashFiles('Cargo.lock') }}
 
       - name: Build
-        run: cargo build --release --target x86_64-unknown-linux-musl -p remote-claude-client
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl -p remote-claude-client
 
       - name: Run tests
-        run: cargo test --target x86_64-unknown-linux-musl -p remote-claude-client
+        run: cargo test --locked --target x86_64-unknown-linux-musl -p remote-claude-client
 
   web-ui:
     name: web-ui
@@ -111,17 +116,15 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
-          node-version: latest
+          node-version-file: '.node-version'
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -133,7 +136,7 @@ jobs:
 
       - name: Build
         run: |
-          VERSION=$(grep '^version' apps/client/Cargo.toml | head -1 | cut -d'"' -f2)
+          VERSION=$(grep '^version' ../client/Cargo.toml | head -1 | cut -d'"' -f2)
           export VITE_CLIENT_VERSION="$VERSION"
           pnpm build
 

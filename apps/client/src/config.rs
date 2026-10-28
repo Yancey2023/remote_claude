@@ -141,7 +141,11 @@ impl Config {
     }
 
     fn config_path() -> PathBuf {
-        if let Ok(path) = env::var("CONFIG_PATH") {
+        Self::config_path_with_override(env::var("CONFIG_PATH").ok())
+    }
+
+    fn config_path_with_override(override_path: Option<String>) -> PathBuf {
+        if let Some(path) = override_path {
             return PathBuf::from(path);
         }
         let exe_dir = std::env::current_exe()
@@ -236,26 +240,14 @@ mod tests {
 
     #[test]
     fn test_config_path_default() {
-        let saved = env::var("CONFIG_PATH").ok();
-        unsafe { env::remove_var("CONFIG_PATH") };
-        let path = Config::config_path();
+        let path = Config::config_path_with_override(None);
         assert_eq!(path.file_name().unwrap(), "remote-claude-client.toml");
-        if let Some(v) = saved {
-            unsafe { env::set_var("CONFIG_PATH", v) };
-        }
     }
 
     #[test]
     fn test_config_path_override() {
-        let saved = env::var("CONFIG_PATH").ok();
-        unsafe { env::set_var("CONFIG_PATH", "/tmp/test-client.toml") };
-        let path = Config::config_path();
+        let path = Config::config_path_with_override(Some("/tmp/test-client.toml".into()));
         assert_eq!(path, PathBuf::from("/tmp/test-client.toml"));
-        // Restore original value
-        match saved {
-            Some(v) => unsafe { env::set_var("CONFIG_PATH", v) },
-            None => unsafe { env::remove_var("CONFIG_PATH") },
-        }
     }
 
 }

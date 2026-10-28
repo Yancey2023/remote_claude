@@ -106,7 +106,11 @@ impl Config {
     ///   - `CONFIG_PATH` env var override, or
     ///   - Platform-specific: `{exe_dir}/config/remote-claude-server.toml`
     fn config_path() -> PathBuf {
-        if let Ok(path) = env::var("CONFIG_PATH") {
+        Self::config_path_with_override(env::var("CONFIG_PATH").ok())
+    }
+
+    fn config_path_with_override(override_path: Option<String>) -> PathBuf {
+        if let Some(path) = override_path {
             return PathBuf::from(path);
         }
         let exe_dir = std::env::current_exe()
@@ -241,17 +245,14 @@ mod tests {
 
     #[test]
     fn test_config_path_default() {
-        let path = Config::config_path();
+        let path = Config::config_path_with_override(None);
         assert!(path.ends_with("remote-claude-server.toml"));
     }
 
     #[test]
     fn test_config_path_override() {
-        // Set CONFIG_PATH and verify it's used
-        unsafe { env::set_var("CONFIG_PATH", "/tmp/test-relay.toml") };
-        let path = Config::config_path();
+        let path = Config::config_path_with_override(Some("/tmp/test-relay.toml".into()));
         assert_eq!(path, PathBuf::from("/tmp/test-relay.toml"));
-        unsafe { env::remove_var("CONFIG_PATH") };
     }
 
     #[test]

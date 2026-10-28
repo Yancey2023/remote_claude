@@ -12,14 +12,14 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
           ref: main
 
       - name: Install git-cliff
-        run: pipx install git-cliff
+        run: pipx install git-cliff==2.14.2
 
       - name: Generate changelog
         run: |
@@ -34,6 +34,6 @@ jobs:
           git diff --staged --quiet || git commit -m "docs: update CHANGELOG.md [skip ci]"
           git push
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3.0.3
         with:
           body_path: release-notes.md

@@ -1,3 +1,6 @@
 packages:
   - 'package/shared-types'
   - 'apps/web'
+minimumReleaseAgeExclude:
+  - react-router-dom@7.18.5
+  - react-router@7.18.5

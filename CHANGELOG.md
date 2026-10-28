@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Dependencies
+
+- Upgrade all Rust and web direct dependencies to the latest stable releases verified on 2026-10-28, including jsonwebtoken 11, tokio-tungstenite 0.30, Argon2 0.6, React 19.3, TypeScript 7, and Vitest 5; refresh both lockfiles.
+- Pin Rust 1.99.1, Node 26.12.1, and pnpm 12.15.0; update all GitHub Actions and git-cliff, and move Docker images to Debian trixie.
+- Document retained transitive compatibility lines and upstream constraints in doc/dependencies.md; use the official npm registry and frozen CI installs.
+
+### Testing
+
+- Verify legacy HS256 login tokens after the JWT library upgrade and remove environment-variable races from configuration path tests.
+
 ### Bug Fixes
 
 - Allow anonymous client downloads and download metadata for installation on new devices; keep device, session, and token APIs authenticated.

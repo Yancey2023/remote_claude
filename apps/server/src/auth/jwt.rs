@@ -75,6 +75,19 @@ mod tests {
     }
 
     #[test]
+    fn test_verify_legacy_hs256_token() {
+        // Fixed JWT in the format used before the jsonwebtoken 11 upgrade.
+        // Keep this independent of create_token so a coordinated encoding /
+        // decoding change cannot silently invalidate existing login tokens.
+        let token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJsZWdhY3ktdXNlciIsInVzZXJuYW1lIjoiYWxpY2UiLCJyb2xlIjoiVXNlciIsImV4cCI6NDEwMjQ0NDgwMCwiaWF0IjoxNzYwMDAwMDAwLCJ0b2tlbl92ZXJzaW9uIjowfQ.fJ_gdLMaqMikYUK1yBLqBHQ5Ela9zHSk3pJgu5iR13Q";
+        let claims = verify_token(token, "legacy-jwt-test-secret-key").unwrap();
+        assert_eq!(claims.sub, "legacy-user");
+        assert_eq!(claims.username, "alice");
+        assert_eq!(claims.role, "User");
+        assert_eq!(claims.token_version, 0);
+    }
+
+    #[test]
     fn test_create_admin_token() {
         let secret = "admin-secret";
         let token = create_token("admin-id", "root", &UserRole::Admin, secret, 1, 1).unwrap();

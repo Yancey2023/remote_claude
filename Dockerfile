@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── relay-server builder (latest Rust) ──
-FROM rust:bookworm AS relay-builder
+FROM rust:1.99.1-trixie AS relay-builder
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y musl-tools && rm -rf /var/lib/apt/lists/* && \
@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y musl-tools && rm -rf /var/lib/apt/lists
 # Copy workspace root + all member Cargo.tomls and lockfile for dependency caching
 COPY Cargo.toml ./Cargo.toml
 COPY Cargo.lock ./Cargo.lock
+COPY rust-toolchain.toml ./rust-toolchain.toml
 COPY apps/server/Cargo.toml ./apps/server/Cargo.toml
 COPY apps/client/Cargo.toml ./apps/client/Cargo.toml
 
@@ -17,14 +18,14 @@ COPY apps/client/Cargo.toml ./apps/client/Cargo.toml
 RUN mkdir -p apps/server/src apps/client/src && \
     echo "fn main() {}" > apps/server/src/main.rs && \
     echo "fn main() {}" > apps/client/src/main.rs && \
-    cargo build -p remote-claude-server --release --target x86_64-unknown-linux-musl && \
+    cargo build --locked -p remote-claude-server --release --target x86_64-unknown-linux-musl && \
     rm -rf apps/server/src apps/client/src
 
 # Copy real source and rebuild (dependencies are cached)
 COPY apps/server/src ./apps/server/src
 RUN mkdir -p apps/client/src && echo "fn main() {}" > apps/client/src/main.rs && \
     touch apps/server/src/main.rs && \
-    cargo build -p remote-claude-server --release --target x86_64-unknown-linux-musl && \
+    cargo build --locked -p remote-claude-server --release --target x86_64-unknown-linux-musl && \
     cp target/x86_64-unknown-linux-musl/release/remote-claude-server /remote-claude-server
 
 # ── desktop-client binaries ──
@@ -33,7 +34,7 @@ FROM scratch AS client-binaries
 COPY downloads /downloads
 
 # ── Runtime ──
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates && \

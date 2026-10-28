@@ -3,6 +3,7 @@
 Remote Claude 文档按读者和用途拆分如下：
 
 - [开发指南](development.md)：本地启动、测试、项目结构和开发约定。
+- [依赖升级记录](dependencies.md)：当前依赖版本、构建工具和保留旧间接依赖的原因。
 - [配置说明](configuration.md)：服务器、客户端和 Web 前端配置。
 - [部署指南](deployment.md)：Docker、持久化、CI/CD 和生产部署。
 - [协议说明](protocol.md)：REST API 与 WebSocket 消息协议。

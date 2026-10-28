@@ -14,6 +14,10 @@ doc/                     项目文档
 
 ## 本地启动
 
+项目固定使用 Rust 1.99.1（`rust-toolchain.toml`）、Node 26.12.1（`.node-version`）和 pnpm 12.15.0（根 `package.json` 的 `packageManager`）。使用 rustup 和相应的 Node 版本管理器安装工具链；pnpm 安装时遵循项目版本。依赖安装使用 npm 官方 registry，CI 通过锁文件复现版本。
+
+完整版本清单、兼容性限制和验证结果见 [依赖升级记录](dependencies.md)。
+
 服务器：
 
 ```bash
